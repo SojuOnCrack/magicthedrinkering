@@ -12,6 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CommanderForge">
 <link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
 
 <!-- DNS prefetch für externe Dienste -->
 <link rel="dns-prefetch" href="https://fonts.googleapis.com">
@@ -50,9 +51,9 @@
 
     <div class="spacer"></div>
     <div id="deck-stats">
-      <div class="stat"><b id="s-total">0</b><s>Cards</s></div>
-      <div class="stat"><b id="s-lands">0</b><s>Lands</s></div>
-      <div class="stat"><b id="s-price">$0</b><s>Value</s></div>
+      <div class="stat"><b id="s-total">0</b><s id="s-total-label">Cards</s></div>
+      <div class="stat"><b id="s-lands">0</b><s id="s-lands-label">Lands</s></div>
+      <div class="stat"><b id="s-price">€0</b><s id="s-price-label">Value</s></div>
     </div>
     <div style="width:1px;height:28px;background:var(--border)"></div>
     <div class="view-toggle" id="view-toggle-wrap">
@@ -64,10 +65,10 @@
     <button class="tbtn" id="forge-add-btn" onclick="App._showAddRow()" style="display:none">＋ Add Card</button>
     <button class="tbtn" id="share-btn" onclick="ShareMgr.open()" title="Share deck" style="display:none">🔗 Share</button>
     <div style="width:1px;height:28px;background:var(--border)"></div>
-    <div id="auth-user-bar" onclick="Auth.showMenu()" title="Account">
+    <div id="auth-user-bar" onclick="Menu.go('community');CommunityNav.go('profile')" title="Open my profile">
       <div class="auth-avatar" id="auth-avatar">?</div>
       <span class="auth-username" id="auth-username">Not signed in</span>
-      <div class="auth-sync-dot" id="auth-sync-dot" title="Sync status"></div>
+      <div class="auth-sync-dot" id="auth-sync-dot" onclick="event.stopPropagation();Auth.showMenu()" title="Cloud actions"></div>
     </div>
     <button class="tbtn" id="auth-signin-btn" onclick="Auth.show()" style="font-size:10px">Sign In</button>
     <button class="tbtn" onclick="SettingsMgr.open()" title="Open Settings" style="display:flex;align-items:center;gap:5px;padding:5px 11px">
@@ -100,6 +101,7 @@
     <div class="im-sep"></div>
     <button class="im-btn" data-section="trade" onclick="Menu.go('trade')" title="Trade">
       <div class="im-ico">🤝</div><div class="im-lbl">Trade</div>
+      <div class="im-badge" id="trade-nav-badge"></div>
       <div class="im-tooltip">Trade Tracker</div>
     </button>
     <div class="im-sep"></div>
@@ -111,6 +113,16 @@
     <button class="im-btn" data-section="vault" onclick="Menu.go('vault')" title="Vault">
       <div class="im-ico">🏛</div><div class="im-lbl">Vault</div>
       <div class="im-tooltip">Vault &amp; Analysis</div>
+    </button>
+    <div class="im-sep"></div>
+    <button class="im-btn" data-section="vault" onclick="Menu.go('vault');VaultNav.go('bracket')" title="Bracket">
+      <div class="im-ico">🏆</div><div class="im-lbl">Bracket</div>
+      <div class="im-tooltip">Bracket Calculator</div>
+    </button>
+    <div class="im-sep"></div>
+    <button class="im-btn" data-section="vault" onclick="Menu.go('vault');VaultNav.go('tradematching')" title="Trade Matching">
+      <div class="im-ico">🔄</div><div class="im-lbl">Match</div>
+      <div class="im-tooltip">Trade Matching</div>
     </button>
     <div class="im-sep"></div>
     <button class="im-btn" data-section="community" onclick="Menu.go('community')" title="Community">
@@ -393,6 +405,11 @@
 
         <div class="cs-status" id="bulk-status"></div>
         <div class="cs-grid" id="bulk-list"></div>
+        <div id="bulk-pagination" class="bulk-pagination" style="display:none">
+          <button class="tbtn" id="bulk-prev-btn" onclick="BulkPool.prevPage()">← Prev</button>
+          <div class="bulk-page-label" id="bulk-page-label">Page 1 / 1</div>
+          <button class="tbtn" id="bulk-next-btn" onclick="BulkPool.nextPage()">Next →</button>
+        </div>
         <div id="bulk-empty" style="display:none;padding:40px;text-align:center">
           <div style="font-size:40px;opacity:.2;margin-bottom:12px">📦</div>
           <div style="font-family:'Cinzel',serif;font-size:13px;color:var(--text2);margin-bottom:6px">Pool is empty</div>

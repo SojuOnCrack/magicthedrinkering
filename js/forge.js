@@ -280,6 +280,45 @@ const App={
     }
   },
 
+  _collectionSummary(){
+    const unique=new Set();
+    let totalCopies=0;
+    let totalValue=0;
+    Store.decks.forEach(deck=>{
+      deck.cards.forEach(card=>{
+        unique.add(card.name);
+        totalCopies+=card.qty||0;
+        totalValue+=(parseFloat(Store.card(card.name)?.prices?.eur||0)*(card.qty||0));
+      });
+    });
+    return {unique:unique.size,copies:totalCopies,value:totalValue,decks:Store.decks.length};
+  },
+
+  refreshTopbarStats(){
+    const totalLabel=document.getElementById('s-total-label');
+    const landsLabel=document.getElementById('s-lands-label');
+    const priceLabel=document.getElementById('s-price-label');
+    const totalEl=document.getElementById('s-total');
+    const landsEl=document.getElementById('s-lands');
+    const priceEl=document.getElementById('s-price');
+    if(!totalEl||!landsEl||!priceEl)return;
+
+    const onForge=Menu?.cur==='forge';
+    const deck=Store.getDeck(this.curId);
+    if(onForge&&deck){
+      this._updHeader(deck);
+      return;
+    }
+
+    const sum=this._collectionSummary();
+    totalEl.textContent=sum.unique;
+    landsEl.textContent=sum.decks;
+    priceEl.textContent='€'+sum.value.toFixed(0);
+    if(totalLabel)totalLabel.textContent='Unique';
+    if(landsLabel)landsLabel.textContent='Decks';
+    if(priceLabel)priceLabel.textContent='Value';
+  },
+
   _makeTile(c,deck){
     const cd=Store.card(c.name)||{};
     const isCmdr=c.name===deck.commander;
@@ -391,7 +430,12 @@ const App={
       document.getElementById('cmdr-name-1').textContent='No Commander';
       document.getElementById('ci-pips-1').innerHTML='';
       document.getElementById('partner-plus').style.display='none';
-      ['s-total','s-lands','s-price'].forEach(id=>{document.getElementById(id).textContent=id==='s-price'?'€0':'0';});
+      document.getElementById('s-total').textContent='0';
+      document.getElementById('s-lands').textContent='0';
+      document.getElementById('s-price').textContent='€0';
+      document.getElementById('s-total-label').textContent='Cards';
+      document.getElementById('s-lands-label').textContent='Lands';
+      document.getElementById('s-price-label').textContent='Value';
       return;
     }
     // Commander 1
@@ -418,6 +462,9 @@ const App={
     document.getElementById('s-total').textContent=total;
     document.getElementById('s-lands').textContent=lands;
     document.getElementById('s-price').textContent='€'+price.toFixed(0);
+    document.getElementById('s-total-label').textContent='Cards';
+    document.getElementById('s-lands-label').textContent='Lands';
+    document.getElementById('s-price-label').textContent='Value';
 
     // Show mechanics + tags chips under the deck name in topbar
     const mechs=(deck.mechanics||[]);

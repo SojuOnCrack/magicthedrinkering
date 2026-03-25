@@ -1,8 +1,16 @@
 /* CommanderForge — community: BulkPool, TradeMgr, WishlistMgr, CommunityNav,
    TradeMatch, DeckHealth */
 
+function communityDisplayName(username,email){
+  return username||email?.split('@')[0]||'User';
+}
+
+function communityMetaLabel(){
+  return 'Community member';
+}
+
 const BulkPool={
-  _data:[],_filtered:[],_tab:'single',_pasteLines:[],
+  _data:[],_filtered:[],_tab:'single',_pasteLines:[],_page:1,_pageSize:60,
 
   render(){
     // Show loading state immediately so user doesn't see blank page
@@ -253,6 +261,20 @@ const BulkPool={
       if(sort==='added')return new Date(b.created_at)-new Date(a.created_at);
       return(a.card_name||'').localeCompare(b.card_name||'');
     });
+    this._page=1;
+    this._renderList();
+  },
+
+  prevPage(){
+    if(this._page<=1)return;
+    this._page--;
+    this._renderList();
+  },
+
+  nextPage(){
+    const maxPage=Math.max(1,Math.ceil(this._filtered.length/this._pageSize));
+    if(this._page>=maxPage)return;
+    this._page++;
     this._renderList();
   },
 
@@ -276,12 +298,23 @@ const BulkPool={
     list.innerHTML='';
     const total=this._filtered.reduce((s,r)=>s+(r.qty||1),0);
     if(status)status.textContent=`${this._filtered.length} unique cards · ${total} total copies`;
+    const pageCount=Math.max(1,Math.ceil(this._filtered.length/this._pageSize));
+    if(this._page>pageCount)this._page=pageCount;
+    const pager=document.getElementById('bulk-pagination');
+    const pageLabel=document.getElementById('bulk-page-label');
+    const prevBtn=document.getElementById('bulk-prev-btn');
+    const nextBtn=document.getElementById('bulk-next-btn');
+    if(pager)pager.style.display=pageCount>1?'flex':'none';
+    if(pageLabel)pageLabel.textContent=`Page ${this._page} / ${pageCount}`;
+    if(prevBtn)prevBtn.disabled=this._page<=1;
+    if(nextBtn)nextBtn.disabled=this._page>=pageCount;
 
     const condColor={NM:'var(--green2)',LP:'var(--ice)',MP:'var(--gold)',HP:'var(--crimson2)'};
     const isMine=DB._user?document.getElementById('bulk-filter-owner')?.value==='mine':false;
+    const pageRows=this._filtered.slice((this._page-1)*this._pageSize,this._page*this._pageSize);
 
     // Fetch card data for any cards not yet in cache, then re-render once done
-    const missing=this._filtered.filter(r=>!Store.card(r.card_name));
+    const missing=pageRows.filter(r=>!Store.card(r.card_name));
     if(missing.length){
       let fetched=0;
       missing.forEach(r=>{
@@ -293,13 +326,13 @@ const BulkPool={
       });
     }
 
-    for(const r of this._filtered){
+    for(const r of pageRows){
       const cd=Store.card(r.card_name)||{};
       const img=cd.img?.normal||cd.img?.crop||'';
       const price=r.price_usd?'€'+parseFloat(r.price_usd).toFixed(2):'—';
       const rarity=cd.rarity||'common';
       const rarityClass={common:'cs-rarity-c',uncommon:'cs-rarity-u',rare:'cs-rarity-r',mythic:'cs-rarity-m'}[rarity]||'';
-      const owner=r.user_email?.split('@')[0]||'unknown';
+      const owner='community';
       const isOwn=DB._user&&DB._user.id===r.user_id;
       const setInfo=cd.set?(cd.set.toUpperCase()+(cd.collector_number?' #'+cd.collector_number:'')):'';
 
@@ -313,11 +346,11 @@ const BulkPool={
         <div class="cs-card-body">
           <div class="cs-card-name" title="${esc(r.card_name)}">${esc(r.card_name)}</div>
           <div class="cs-card-meta">
-            <span class="${rarityClass}" style="font-size:9px">${setInfo||esc(owner)}</span>
+            <span class="${rarityClass}" style="font-size:9px">${setInfo||'Shared Pool'}</span>
             <span class="cs-card-price">${esc(price)}</span>
           </div>
           <div style="display:flex;justify-content:space-between;margin-top:3px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3)">
-            <span>by ${esc(owner)}</span>
+            <span>${isOwn?'My copy':'Community copy'}</span>
             <span style="color:${condColor[r.condition]||'var(--text3)'}">
               ${esc(r.condition||'NM')} · ${r.qty||1}×
             </span>
@@ -725,14 +758,14 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
 
       for(const u of data){
         const isFriend=friendIds.has(u.id);
-        const displayName=u.username||u.email?.split('@')[0]||'User';
+        const displayName=communityDisplayName(u.username,u.email);
         const hue=(u.id.charCodeAt(0)*17)%360;
         const card=document.createElement('div');card.className='friend-card';card.id='user-card-'+u.id;
         card.innerHTML=`
           <div class="friend-avatar" style="background:hsl(${hue},35%,22%);border-color:hsl(${hue},50%,42%)">${esc(displayName.slice(0,1).toUpperCase())}</div>
           <div style="flex:1;min-width:0">
             <div class="friend-name">${esc(displayName)}</div>
-            <div class="friend-meta">${esc(u.email||'')}</div>
+            <div class="friend-meta">${communityMetaLabel()}</div>
           </div>
           <button class="tbtn sm ${isFriend?'':'gold'}" id="friend-btn-${u.id}"
             onclick="CommunityNav.${isFriend?'removeFriend':'addFriend'}('${u.id}','${esc(u.email||'')}','${esc(displayName)}')">
@@ -765,14 +798,14 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
       }
       el.innerHTML=`<div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">${data.length} following</div>`;
       for(const f of data){
-        const displayName=f.friend_username||f.friend_email?.split('@')[0]||'User';
+        const displayName=communityDisplayName(f.friend_username,f.friend_email);
         const hue=(f.friend_id.charCodeAt(0)*17)%360;
         const card=document.createElement('div');card.className='friend-card';
         card.innerHTML=`
           <div class="friend-avatar" style="background:hsl(${hue},35%,22%);border-color:hsl(${hue},50%,42%)">${esc(displayName.slice(0,1).toUpperCase())}</div>
           <div style="flex:1;min-width:0">
             <div class="friend-name">${esc(displayName)}</div>
-            <div class="friend-meta">${esc(f.friend_email||'')}</div>
+            <div class="friend-meta">${communityMetaLabel()}</div>
           </div>
           <button class="tbtn sm" onclick="CommunityNav.viewUser('${f.friend_id}','${esc(f.friend_email||'')}','${esc(displayName)}')">View →</button>
           <button class="alert-del" onclick="CommunityNav.removeFriend('${f.friend_id}')">✕</button>
@@ -804,6 +837,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
 
   // ── View a user's profile ────────────────────────────────
   async viewUser(userId, email, displayName){
+    if(Menu?.cur!=='community')Menu.go('community');
     const el=document.getElementById('community-content');if(!el)return;
     this._viewingUser=userId;
     const name=displayName||email?.split('@')[0]||'User';
@@ -818,7 +852,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         <div class="fp-avatar" style="background:hsl(${hue},30%,18%);border-color:hsl(${hue},45%,38%);color:hsl(${hue},60%,70%)">${esc(initial)}</div>
         <div style="flex:1;min-width:0">
           <div class="fp-name">${esc(name)}</div>
-          <div class="fp-email">${esc(email||'')}</div>
+          <div class="fp-email">${communityMetaLabel()}</div>
           <div class="fp-stats">
             <div class="fp-stat">Decks: <span id="fp-deck-count">…</span></div>
             <div class="fp-stat">Cards: <span id="fp-card-count">…</span></div>
@@ -1080,7 +1114,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         const pb=parseFloat(Store.card(b.name)?.prices?.eur||0);
         return pb-pa;
       });
-      const rows=sorted.map(card=>{
+      const tiles=sorted.map(card=>{
         const cd=Store.card(card.name)||{};
         const price=parseFloat(cd.prices?.eur||0);
         const iOwn=myDeckCards.has(card.name.toLowerCase());
@@ -1090,17 +1124,17 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
               onclick="WishlistMgr.addByName('${esc(card.name).replace(/'/g,'\\&#39;')}');this.textContent='⭐';this.classList.add('on');this.disabled=true;">⭐</button>`
           :iWant?'<span class="fp-want-btn on" style="cursor:default;padding:2px 5px">⭐</span>'
           :'<span class="fp-have-badge">✓</span>';
-        return `<div class="fp-card-row" style="${price>20?'background:rgba(200,168,75,.04);':''}">
-          ${cd.img?.crop?`<img class="fp-card-thumb" src="${esc(cd.img.crop)}" loading="lazy">`:'<div class="fp-card-thumb" style="background:var(--bg3)"></div>'}
-          <span class="fp-card-name">${esc(card.name)}</span>
-          <span class="fp-card-qty" style="color:var(--text2)">${card.qty>1?card.qty+'×':''}</span>
-          <span class="fp-card-mana">${fmtMana(cd.mana_cost||'')}</span>
-          <span class="fp-card-price">${price?'€'+price.toFixed(2):''}</span>
-          ${wantBtn}
+        return `<div class="fp-mini-card" onclick="M.open({name:'${esc(card.name).replace(/'/g,"\\'")}',qty:${card.qty||1}},null)">
+          ${cd.img?.crop?`<img class="fp-mini-thumb" src="${esc(cd.img.crop)}" loading="lazy" alt="${esc(card.name)}">`:'<div class="fp-mini-thumb"></div>'}
+          ${card.qty>1?`<div class="fp-mini-badge">${card.qty}×</div>`:''}
+          <div class="fp-mini-info">
+            <div class="fp-mini-name">${esc(card.name)}</div>
+            <div class="fp-mini-meta"><span>${price?'€'+price.toFixed(0):'—'}</span><span>${shortType(cd.type_line||'')}</span></div>
+            <div style="margin-top:4px;display:flex;justify-content:flex-end">${wantBtn}</div>
+          </div>
         </div>`;
       }).join('');
-      return `<div style="font-family:'Cinzel',serif;font-size:9px;letter-spacing:.1em;text-transform:uppercase;
-                  color:var(--text3);margin:10px 0 6px;padding-top:6px;border-top:1px solid var(--border)">${title} (${arr.reduce((s,c_)=>s+c_.qty,0)})</div>${rows}`;
+      return `<div class="fp-group-title">${title} (${arr.reduce((s,c_)=>s+c_.qty,0)})</div><div class="fp-mini-grid">${tiles}</div>`;
     };
 
     el.innerHTML=`
@@ -1201,13 +1235,14 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     const daysLeft=Math.max(0,30-daysSince);
 
     const hue=(DB._user.id.charCodeAt(0)*17)%360;
+    const avatarCard=ProfilePrefs?.getAvatarCard?.()||'';
 
     el.innerHTML=`
       <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px 0 28px;border-bottom:1px solid var(--border);margin-bottom:20px">
-        <div class="friend-avatar" style="width:64px;height:64px;font-size:28px;background:hsl(${hue},35%,22%);border-color:hsl(${hue},50%,42%)">${esc(username.slice(0,1).toUpperCase())}</div>
+        <div class="friend-avatar" id="profile-avatar-preview" style="width:64px;height:64px;font-size:28px;background:hsl(${hue},35%,22%);border-color:hsl(${hue},50%,42%)">${esc(username.slice(0,1).toUpperCase())}</div>
         <div style="text-align:center">
           <div style="font-family:'Cinzel',serif;font-size:20px;color:var(--gold2);font-weight:700">${esc(username)}</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-top:4px">${esc(DB._user.email||'')}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-top:4px">Private profile</div>
         </div>
         <div style="display:flex;gap:16px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">
           <span>${Store.decks.length} decks</span>
@@ -1242,6 +1277,21 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         <div id="profile-nickname-status" style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:10px"></div>
       </div>
 
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:16px">
+        <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">
+          Profile Picture
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input id="profile-avatar-card-inp" class="auth-field" value="${esc(avatarCard)}"
+            placeholder="Favourite card name" style="flex:1;min-width:180px;margin-bottom:0">
+          <button class="tbtn gold" onclick="CommunityNav._saveAvatarCard()">Save Avatar</button>
+          <button class="tbtn" onclick="CommunityNav._clearAvatarCard()">Reset</button>
+        </div>
+        <div id="profile-avatar-status" style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">
+          Optional local avatar using your favourite card art.
+        </div>
+      </div>
+
       <!-- My public decks toggle -->
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px">
         <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">
@@ -1254,6 +1304,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
 
     // Render deck visibility toggles
     this._renderDeckVisibility();
+    ProfilePrefs?.applyAvatar?.(document.getElementById('profile-avatar-preview'),username);
   },
 
   async _renderDeckVisibility(){
@@ -1324,13 +1375,42 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     const usernameEl=document.getElementById('auth-username');
     if(usernameEl)usernameEl.textContent=newName;
     const avEl=document.getElementById('auth-avatar');
-    if(avEl)avEl.textContent=newName.slice(0,1).toUpperCase();
+    ProfilePrefs?.applyAvatar?.(avEl,newName);
     DB._nickname=newName;
     if(status)status.innerHTML='<span style="color:var(--green2)">✓ Nickname updated! Next change in 30 days.</span>';
     Notify.show('Nickname changed to "'+newName+'"','ok');
 
     // Refresh profile view
     setTimeout(()=>this._renderMyProfile(),1500);
+  },
+
+  async _saveAvatarCard(){
+    const inp=document.getElementById('profile-avatar-card-inp');
+    const status=document.getElementById('profile-avatar-status');
+    const name=(inp?.value||'').trim();
+    if(!name){
+      if(status)status.textContent='Enter a card name or click Reset.';
+      return;
+    }
+    if(!Store.card(name))await new Promise(res=>SF.fetch(name,()=>res()));
+    const cd=Store.card(name);
+    if(!cd?.img?.crop&&!cd?.img?.normal){
+      if(status)status.textContent='Card art could not be loaded.';
+      return;
+    }
+    ProfilePrefs?.setAvatarCard?.(name);
+    ProfilePrefs?.applyAvatar?.(document.getElementById('auth-avatar'),DB._nickname||'U');
+    ProfilePrefs?.applyAvatar?.(document.getElementById('profile-avatar-preview'),DB._nickname||'U');
+    if(status)status.textContent=`Avatar set to ${name}.`;
+    Notify.show('Profile picture updated','ok');
+  },
+
+  _clearAvatarCard(){
+    const status=document.getElementById('profile-avatar-status');
+    ProfilePrefs?.setAvatarCard?.('');
+    ProfilePrefs?.applyAvatar?.(document.getElementById('auth-avatar'),DB._nickname||'U');
+    ProfilePrefs?.applyAvatar?.(document.getElementById('profile-avatar-preview'),DB._nickname||'U');
+    if(status)status.textContent='Avatar reset.';
   }
 };
 
@@ -1371,7 +1451,7 @@ const TradeMatch={
       // Load profile names
       const userIds=new Set([...(allTrades||[]).map(t=>t.user_id),...(allWishes||[]).map(w=>w.user_id)]);
       const{data:profiles}=await DB._sb.from('profiles').select('id,username,email').in('id',[...userIds]);
-      const profileMap={};(profiles||[]).forEach(p=>{profileMap[p.id]={username:p.username||p.email?.split('@')[0]||'User',email:p.email||''};});
+      const profileMap={};(profiles||[]).forEach(p=>{profileMap[p.id]={username:communityDisplayName(p.username,p.email),email:p.email||''};});
 
       const myId=DB._user.id;
       const myWishCards=new Set((allWishes||[]).filter(w=>w.user_id===myId).map(w=>w.card_name.toLowerCase()));
@@ -1420,7 +1500,7 @@ const TradeMatch={
               <div class="match-avatar" style="background:hsl(${hue},35%,22%);border:2px solid hsl(${hue},50%,42%)">${esc(prof.username.slice(0,1).toUpperCase())}</div>
               <div style="flex:1;min-width:0">
                 <div class="match-username">${esc(prof.username)}</div>
-                <div class="match-sub">${esc(prof.email)} · has ${cards.length} card${cards.length>1?'s':''} you want</div>
+                <div class="match-sub">Has ${cards.length} card${cards.length>1?'s':''} you want</div>
               </div>
               <div class="match-score">${cards.length} match${cards.length>1?'es':''}</div>
             </div>
@@ -1457,7 +1537,7 @@ const TradeMatch={
               <div class="match-avatar" style="background:hsl(${hue},35%,22%);border:2px solid hsl(${hue},50%,42%)">${esc(prof.username.slice(0,1).toUpperCase())}</div>
               <div style="flex:1;min-width:0">
                 <div class="match-username">${esc(prof.username)}</div>
-                <div class="match-sub">${esc(prof.email)} · wants ${wishes.length} card${wishes.length>1?'s':''} you have</div>
+                <div class="match-sub">Wants ${wishes.length} card${wishes.length>1?'s':''} you have</div>
               </div>
               <div class="match-score">${wishes.length} match${wishes.length>1?'es':''}</div>
             </div>
@@ -1496,7 +1576,7 @@ const TradeMatch={
               <div class="match-avatar" style="background:hsl(${hue},35%,22%);border:2px solid hsl(${hue},50%,42%)">${esc(prof.username.slice(0,1).toUpperCase())}</div>
               <div style="flex:1;min-width:0">
                 <div class="match-username">${esc(prof.username)}</div>
-                <div class="match-sub">${esc(prof.email)}</div>
+                <div class="match-sub">Mutual trade partner</div>
               </div>
               <span class="trade-badge have" style="font-size:11px">⚡ Mutual — ${theyHave.length+theyWant.length} cards</span>
             </div>

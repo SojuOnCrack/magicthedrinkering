@@ -14,6 +14,36 @@ const Config={
   set(k,v){this.data[k]=v;this.save()}
 };
 
+const ProfilePrefs={
+  AVATAR_CARD_KEY:'cforge_avatar_card',
+  getAvatarCard(){return (localStorage.getItem(this.AVATAR_CARD_KEY)||'').trim();},
+  setAvatarCard(name){
+    const clean=(name||'').trim();
+    if(clean)localStorage.setItem(this.AVATAR_CARD_KEY,clean);
+    else localStorage.removeItem(this.AVATAR_CARD_KEY);
+  },
+  applyAvatar(el,fallbackText='?'){
+    if(!el)return;
+    const avatarCard=this.getAvatarCard();
+    const fallback=(fallbackText||'?').slice(0,1).toUpperCase();
+    const cd=avatarCard?Store.card(avatarCard):null;
+    const img=cd?.img?.crop||cd?.img?.normal||'';
+    if(img){
+      el.textContent='';
+      el.style.backgroundImage=`url("${img}")`;
+      el.style.backgroundSize='cover';
+      el.style.backgroundPosition='center';
+      el.style.color='transparent';
+    }else{
+      el.textContent=fallback;
+      el.style.backgroundImage='';
+      el.style.backgroundSize='';
+      el.style.backgroundPosition='';
+      el.style.color='';
+    }
+  }
+};
+
 /* ═══════════════════════════════════════════════════════════
    SUPABASE SYNC
    ═══════════════════════════════════════════════════════════ */
@@ -307,15 +337,19 @@ const Auth={
         const el=document.getElementById('auth-username');if(el)el.textContent=display;
         // Update avatar with first letter of nickname (not email)
         const av=document.getElementById('auth-avatar');
-        if(av)av.textContent=display.slice(0,1).toUpperCase();
+        ProfilePrefs.applyAvatar(av,display);
         // Cache nickname for use elsewhere
         DB._nickname=display;
       });
     } else {
       const display=user.email?.split('@')[0]||'User';
       const el=document.getElementById('auth-username');if(el)el.textContent=display;
-      document.getElementById('auth-avatar').textContent=display.slice(0,1).toUpperCase();
+      ProfilePrefs.applyAvatar(document.getElementById('auth-avatar'),display);
       DB._nickname=display;
+    }
+    const avatarCard=ProfilePrefs.getAvatarCard();
+    if(avatarCard&&!Store.card(avatarCard)){
+      SF.fetch(avatarCard,()=>ProfilePrefs.applyAvatar(document.getElementById('auth-avatar'),DB._nickname||'U'));
     }
     this._updSyncDot('ok');
     // Pull decks from cloud on sign-in

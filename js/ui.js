@@ -25,6 +25,7 @@ const Menu={
     if(section==='collection')CollSection.render();
     if(section==='wishlist')WishSection.render();
     if(section==='trade')TradeSection.render();
+    App?.refreshTopbarStats?.();
   }
 };
 
@@ -468,33 +469,27 @@ const P={
       let text=null,deckName='Imported Deck';
 
       // ── Moxfield ──
-if (url.includes('moxfield.com/decks/')) {
-  const id = url.split('/decks/')[1].split(/[/?#]/)[0];
-  const apiUrl = `/api/moxfield/${id}`;
-
-  let data = null;
-
-  try {
-    const res = await fetch(apiUrl, {
-      headers: { 'Accept': 'application/json' }
-    });
-
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-
-    data = await res.json();
-  } catch (e) {
-    throw new Error(`Could not fetch Moxfield deck (${e.message}).`);
-  }
-
-  if (!data) {
-    throw new Error('Could not fetch Moxfield deck.');
-  }
-
-  deckName = data.name || 'Moxfield Deck';
-  text = URLImport.moxfieldToText(data);
-}
+      if(url.includes('moxfield.com/decks/')){
+        const m=url.match(/moxfield\.com\/decks\/([^/?#]+)/i);
+        if(!m)throw new Error('Could not parse Moxfield deck ID');
+        const id=m[1];
+        let data=null;
+        try{
+          const res=await fetch(`/api/moxfield/${encodeURIComponent(id)}`,{
+            headers:{'Accept':'application/json'}
+          });
+          if(!res.ok){
+            const errBody=await res.text();
+            throw new Error(errBody||`HTTP ${res.status}`);
+          }
+          data=await res.json();
+        }catch(e){
+          throw new Error(`Could not fetch Moxfield deck (${e.message}).`);
+        }
+        if(!data)throw new Error('Could not fetch Moxfield deck.');
+        deckName=data.name||'Moxfield Deck';
+        text=URLImport.moxfieldToText(data);
+      }
       // ── Archidekt ──
       else if(url.includes('archidekt.com')){
         const m=url.match(/decks\/(\d+)/);

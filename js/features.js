@@ -1539,7 +1539,7 @@ const WishSection={
 
   onType(val){
     clearTimeout(this._acTimer);
-    const ac=document.getElementById('wish2-autocomplete');
+    const ac=document.getElementById('trade2-autocomplete');
     if(val.length<2){if(ac)ac.style.display='none';return;}
     this._acTimer=setTimeout(async()=>{
       try{
@@ -1555,7 +1555,7 @@ const WishSection={
           item.textContent=name;item.dataset.idx=i;
           item.onmouseenter=()=>{ac.querySelectorAll('[data-idx]').forEach(el=>el.style.background='');item.style.background='var(--bg3)';this._acIdx=i;};
           item.onmouseleave=()=>item.style.background='';
-          item.onmousedown=e=>{e.preventDefault();document.getElementById('wish2-add-name').value=name;ac.style.display='none';};
+          item.onmousedown=e=>{e.preventDefault();document.getElementById('trade2-add-name').value=name;ac.style.display='none';};
           ac.appendChild(item);
         });
         ac.style.display='block';
@@ -1564,7 +1564,7 @@ const WishSection={
   },
 
   onKey(e){
-    const ac=document.getElementById('wish2-autocomplete');
+    const ac=document.getElementById('trade2-autocomplete');
     const items=ac?ac.querySelectorAll('[data-idx]'):[];
     if(e.key==='ArrowDown'){e.preventDefault();this._acIdx=Math.min(this._acIdx+1,items.length-1);items.forEach((el,i)=>el.style.background=i===this._acIdx?'var(--bg3)':'');}
     else if(e.key==='ArrowUp'){e.preventDefault();this._acIdx=Math.max(this._acIdx-1,0);items.forEach((el,i)=>el.style.background=i===this._acIdx?'var(--bg3)':'');}
@@ -1573,24 +1573,19 @@ const WishSection={
   },
 
   async add(){
-    const nameEl=document.getElementById('trade2-add-name');
-    const priceEl=document.getElementById('trade2-add-price');
+    const nameEl=document.getElementById('wish2-add-name');
+    const noteEl=document.getElementById('wish2-add-note');
     const name=(nameEl?.value||'').trim();
+    const note=(noteEl?.value||'').trim();
     if(!name){Notify.show('Enter a card name','err');return;}
-    if(!DB._sb||!DB._user){Notify.show('Sign in to use Trade Tracker','err');return;}
-    const qty=parseInt(document.getElementById('trade2-add-qty')?.value||'1')||1;
-    const cond=document.getElementById('trade2-add-cond')?.value||'NM';
-    const priceRaw=(priceEl?.value||'').trim();
-    const priceNum=priceRaw?parseFloat(priceRaw):null;
-    const payload={card_name:name,qty,condition:cond,user_id:DB._user.id,user_email:DB._user.email||''};
-    if(Number.isFinite(priceNum))payload.price_usd=priceNum;
-    const {error}=await DB._sb.from('trade_list').insert(payload);
-    if(error){Notify.show('Could not add to trade list','err');return;}
-    Notify.show(name+' listed for trade','ok');
+    if(!DB._sb||!DB._user){Notify.show('Sign in to use Wishlist','err');return;}
+    const {error}=await DB._sb.from('wishlist').insert({card_name:name,note,user_id:DB._user.id,user_email:DB._user.email||''});
+    if(error){Notify.show('Could not add to wishlist','err');return;}
+    Notify.show(name+' added to wishlist','ok');
     if(nameEl)nameEl.value='';
-    if(priceEl)priceEl.value='';
-    TradeAC?.hide?.('trade2-add-name');
-    await TradeMgr.render();
+    if(noteEl)noteEl.value='';
+    const ac=document.getElementById('wish2-autocomplete');if(ac)ac.style.display='none';
+    await WishlistMgr.render();
     this._renderList();
   },
 
@@ -1631,9 +1626,9 @@ const TradeSection={
   },
 
   _updateBadge(){
-    const count=(WishlistMgr._data||[]).length;
-    const badge=document.getElementById('wish-nav-badge');
-    const sb=document.getElementById('wish-sb-count');
+    const count=(TradeMgr._data||[]).length;
+    const badge=document.getElementById('trade-nav-badge');
+    const sb=document.getElementById('trade-sb-count');
     if(badge){badge.textContent=count||'';badge.classList.toggle('show',count>0);}
     if(sb)sb.textContent=count;
   },
@@ -1750,11 +1745,13 @@ const TradeSection={
   },
 
   addByName(name,note=''){
-    return WishlistMgr.addByName?.(name,note);
+    const input=document.getElementById('trade2-add-name');
+    if(input)input.value=name;
+    return this.add();
   },
 
   async remove(id){
-    await WishlistMgr.remove(id);
+    await TradeMgr.remove(id);
     this._renderList();
   }
 };
