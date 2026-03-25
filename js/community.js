@@ -1,12 +1,8 @@
 /* CommanderForge — community: BulkPool, TradeMgr, WishlistMgr, CommunityNav,
    TradeMatch, DeckHealth */
 
-function jsq(s){return String(s??'').replace(/\/g,'\\').replace(/'/g,"\'").replace(/?
-/g,' ')}
-
 const BulkPool={
   _data:[],_filtered:[],_tab:'single',_pasteLines:[],
-  _page:1,_pageSize:24,
 
   render(){
     // Show loading state immediately so user doesn't see blank page
@@ -74,7 +70,6 @@ const BulkPool={
       const{data,error}=await DB._sb.from('bulk_pool').select('*').order('created_at',{ascending:false});
       if(error)throw error;
       this._data=data||[];this._filtered=[...this._data];
-      this._page=1;
       this._updateStats();this.filter();
       /* Warm card cache then backfill any price_usd=0 rows */
       const names=[...new Set((data||[]).map(r=>r.card_name))];
@@ -247,7 +242,6 @@ const BulkPool={
     const srch=(document.getElementById('bulk-search')?.value||'').toLowerCase();
     const sort=document.getElementById('bulk-sort')?.value||'name';
     const owner=document.getElementById('bulk-filter-owner')?.value||'';
-    this._page=1;
     this._filtered=this._data.filter(r=>{
       if(srch&&!(r.card_name||'').toLowerCase().includes(srch))return false;
       if(owner==='mine'&&DB._user&&r.user_id!==DB._user.id)return false;
@@ -283,24 +277,11 @@ const BulkPool={
     const total=this._filtered.reduce((s,r)=>s+(r.qty||1),0);
     if(status)status.textContent=`${this._filtered.length} unique cards · ${total} total copies`;
 
-    const totalPages=Math.max(1,Math.ceil(this._filtered.length/this._pageSize));
-    if(this._page>totalPages)this._page=totalPages;
-    const start=(this._page-1)*this._pageSize;
-    const end=start+this._pageSize;
-    const pageRows=this._filtered.slice(start,end);
-    if(status)status.innerHTML=`${this._filtered.length} unique cards · ${total} total copies <span style="color:var(--text3)">· page ${this._page}/${totalPages}</span>`;
-    const pager=document.getElementById('bulk-pager');
-    if(pager){
-      pager.innerHTML=`<button class="tbtn sm" ${this._page<=1?'disabled':''} onclick="BulkPool.prevPage()">← Prev</button>
-      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">Page ${this._page}/${totalPages}</span>
-      <button class="tbtn sm" ${this._page>=totalPages?'disabled':''} onclick="BulkPool.nextPage()">Next →</button>`;
-    }
-
     const condColor={NM:'var(--green2)',LP:'var(--ice)',MP:'var(--gold)',HP:'var(--crimson2)'};
     const isMine=DB._user?document.getElementById('bulk-filter-owner')?.value==='mine':false;
 
     // Fetch card data for any cards not yet in cache, then re-render once done
-    const missing=pageRows.filter(r=>!Store.card(r.card_name));
+    const missing=this._filtered.filter(r=>!Store.card(r.card_name));
     if(missing.length){
       let fetched=0;
       missing.forEach(r=>{
@@ -312,13 +293,13 @@ const BulkPool={
       });
     }
 
-    for(const r of pageRows){
+    for(const r of this._filtered){
       const cd=Store.card(r.card_name)||{};
       const img=cd.img?.normal||cd.img?.crop||'';
       const price=r.price_usd?'€'+parseFloat(r.price_usd).toFixed(2):'—';
       const rarity=cd.rarity||'common';
       const rarityClass={common:'cs-rarity-c',uncommon:'cs-rarity-u',rare:'cs-rarity-r',mythic:'cs-rarity-m'}[rarity]||'';
-      const owner='Trader';
+      const owner=r.user_email?.split('@')[0]||'unknown';
       const isOwn=DB._user&&DB._user.id===r.user_id;
       const setInfo=cd.set?(cd.set.toUpperCase()+(cd.collector_number?' #'+cd.collector_number:'')):'';
 
@@ -332,11 +313,11 @@ const BulkPool={
         <div class="cs-card-body">
           <div class="cs-card-name" title="${esc(r.card_name)}">${esc(r.card_name)}</div>
           <div class="cs-card-meta">
-            <span class="${rarityClass}" style="font-size:9px">${setInfo||'Shared Pool'}</span>
+            <span class="${rarityClass}" style="font-size:9px">${setInfo||esc(owner)}</span>
             <span class="cs-card-price">${esc(price)}</span>
           </div>
           <div style="display:flex;justify-content:space-between;margin-top:3px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3)">
-            <span>shared pool</span>
+            <span>by ${esc(owner)}</span>
             <span style="color:${condColor[r.condition]||'var(--text3)'}">
               ${esc(r.condition||'NM')} · ${r.qty||1}×
             </span>
@@ -365,9 +346,6 @@ const BulkPool={
     }
   },
 
-  prevPage(){if(this._page>1){this._page--;this._renderList();}},
-  nextPage(){const totalPages=Math.max(1,Math.ceil(this._filtered.length/this._pageSize));if(this._page<totalPages){this._page++;this._renderList();}},
-
   _addToDeck(name){
     /* Use the active deck in Forge, or prompt if none */
     const deckId=App.curId;
@@ -392,44 +370,6 @@ const BulkPool={
    ═══════════════════════════════════════════════════════════ */
 const TradeMgr={
   _data:[],
-  _acTimer:null,_acResults:[],_acIdx:-1,
-
-
-
-onType(val){
-  clearTimeout(this._acTimer);
-  const ac=document.getElementById('trade-autocomplete');
-  if(val.length<2){if(ac)ac.style.display='none';return;}
-  this._acTimer=setTimeout(async()=>{
-    try{
-      const r=await fetch(`/api/scryfall/cards/autocomplete?q=${encodeURIComponent(val)}&include_extras=false`);
-      if(!r.ok)return;
-      const d=await r.json();
-      this._acResults=d.data||[];this._acIdx=-1;
-      if(!ac||!this._acResults.length){if(ac)ac.style.display='none';return;}
-      ac.innerHTML='';
-      this._acResults.slice(0,8).forEach((name,i)=>{
-        const item=document.createElement('div');
-        item.style.cssText='padding:7px 12px;cursor:pointer;font-family:Cinzel,serif;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);transition:background .1s';
-        item.textContent=name;item.dataset.idx=i;
-        item.onmouseenter=()=>{ac.querySelectorAll('[data-idx]').forEach(el=>el.style.background='');item.style.background='var(--bg3)';this._acIdx=i;};
-        item.onmouseleave=()=>item.style.background='';
-        item.onmousedown=e=>{e.preventDefault();document.getElementById('trade-add-name').value=name;ac.style.display='none';};
-        ac.appendChild(item);
-      });
-      ac.style.display='block';
-    }catch{}
-  },200);
-},
-
-onKey(e){
-  const ac=document.getElementById('trade-autocomplete');
-  const items=ac?ac.querySelectorAll('[data-idx]'):[];
-  if(e.key==='ArrowDown'){e.preventDefault();this._acIdx=Math.min(this._acIdx+1,items.length-1);items.forEach((el,i)=>el.style.background=i===this._acIdx?'var(--bg3)':'');}
-  else if(e.key==='ArrowUp'){e.preventDefault();this._acIdx=Math.max(this._acIdx-1,0);items.forEach((el,i)=>el.style.background=i===this._acIdx?'var(--bg3)':'');}
-  else if(e.key==='Enter'){e.preventDefault();if(this._acIdx>=0&&this._acResults[this._acIdx]){document.getElementById('trade-add-name').value=this._acResults[this._acIdx];if(ac)ac.style.display='none';}else this.add();}
-  else if(e.key==='Escape'){if(ac)ac.style.display='none';}
-},
 
   async render(){
     const listEl=document.getElementById('trade-list');
@@ -451,14 +391,16 @@ onKey(e){
   },
 
   async add(){
-    const name=(document.getElementById('trade-add-name')?.value||'').trim();
+    const nameEl=document.getElementById('trade-add-name');
+    const name=(nameEl?.value||'').trim();
     const qty=parseInt(document.getElementById('trade-add-qty')?.value||'1');
     const cond=document.getElementById('trade-add-cond')?.value||'NM';
-    if(!name||!DB._sb||!DB._user)return;
+    if(!name){Notify.show('Enter a card name','err');return;}
+    if(!DB._sb||!DB._user)return;
     await DB._sb.from('trade_list').insert({card_name:name,qty,condition:cond,user_id:DB._user.id,user_email:DB._user.email||''});
     Notify.show(name+' added to trade list','ok');
-    document.getElementById('trade-add-name').value='';
-    const ac=document.getElementById('trade-autocomplete');if(ac)ac.style.display='none';
+    if(nameEl)nameEl.value='';
+    TradeAC?.hide?.('trade-add-name');
     this.render();
   },
 
@@ -790,13 +732,13 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           <div class="friend-avatar" style="background:hsl(${hue},35%,22%);border-color:hsl(${hue},50%,42%)">${esc(displayName.slice(0,1).toUpperCase())}</div>
           <div style="flex:1;min-width:0">
             <div class="friend-name">${esc(displayName)}</div>
-            <div class="friend-meta">Community profile</div>
+            <div class="friend-meta">${esc(u.email||'')}</div>
           </div>
           <button class="tbtn sm ${isFriend?'':'gold'}" id="friend-btn-${u.id}"
             onclick="CommunityNav.${isFriend?'removeFriend':'addFriend'}('${u.id}','${esc(u.email||'')}','${esc(displayName)}')">
             ${isFriend?'✓ Following':'+ Follow'}
           </button>
-          <button class="tbtn sm" onclick="CommunityNav.viewUser('${u.id}','${jsq(u.email||'')}','${jsq(displayName)}')">View →</button>
+          <button class="tbtn sm" onclick="CommunityNav.viewUser('${u.id}','${esc(u.email||'')}','${esc(displayName)}')">View →</button>
         `;
         el.appendChild(card);
       }
@@ -830,9 +772,9 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           <div class="friend-avatar" style="background:hsl(${hue},35%,22%);border-color:hsl(${hue},50%,42%)">${esc(displayName.slice(0,1).toUpperCase())}</div>
           <div style="flex:1;min-width:0">
             <div class="friend-name">${esc(displayName)}</div>
-            <div class="friend-meta">Following</div>
+            <div class="friend-meta">${esc(f.friend_email||'')}</div>
           </div>
-          <button class="tbtn sm" onclick="CommunityNav.viewUser('${f.friend_id}','${jsq(f.friend_email||'')}','${jsq(displayName)}')">View →</button>
+          <button class="tbtn sm" onclick="CommunityNav.viewUser('${f.friend_id}','${esc(f.friend_email||'')}','${esc(displayName)}')">View →</button>
           <button class="alert-del" onclick="CommunityNav.removeFriend('${f.friend_id}')">✕</button>
         `;
         el.appendChild(card);
@@ -864,7 +806,6 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
   async viewUser(userId, email, displayName){
     const el=document.getElementById('community-content');if(!el)return;
     this._viewingUser=userId;
-    if(!displayName&&DB._sb){try{const {data:p}=await DB._sb.from('profiles').select('username,email').eq('id',userId).single();displayName=p?.username||displayName;email=p?.email||email;}catch{}}
     const name=displayName||email?.split('@')[0]||'User';
     const hue=(userId.charCodeAt(0)*17)%360;
     const initial=name.slice(0,1).toUpperCase();
@@ -877,7 +818,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         <div class="fp-avatar" style="background:hsl(${hue},30%,18%);border-color:hsl(${hue},45%,38%);color:hsl(${hue},60%,70%)">${esc(initial)}</div>
         <div style="flex:1;min-width:0">
           <div class="fp-name">${esc(name)}</div>
-          <div class="fp-email">Community profile</div>
+          <div class="fp-email">${esc(email||'')}</div>
           <div class="fp-stats">
             <div class="fp-stat">Decks: <span id="fp-deck-count">…</span></div>
             <div class="fp-stat">Cards: <span id="fp-card-count">…</span></div>
@@ -1479,7 +1420,7 @@ const TradeMatch={
               <div class="match-avatar" style="background:hsl(${hue},35%,22%);border:2px solid hsl(${hue},50%,42%)">${esc(prof.username.slice(0,1).toUpperCase())}</div>
               <div style="flex:1;min-width:0">
                 <div class="match-username">${esc(prof.username)}</div>
-                <div class="match-sub">has ${cards.length} card${cards.length>1?'s':''} you want</div>
+                <div class="match-sub">${esc(prof.email)} · has ${cards.length} card${cards.length>1?'s':''} you want</div>
               </div>
               <div class="match-score">${cards.length} match${cards.length>1?'es':''}</div>
             </div>
@@ -1492,7 +1433,7 @@ const TradeMatch={
               }).join('')}
             </div>
             <div style="margin-top:10px;display:flex;gap:8px">
-              <button class="tbtn sm gold" onclick="CommunityNav.viewUser('${uid}','${jsq(prof.email)}','${jsq(prof.username)}')">View Profile →</button>
+              <button class="tbtn sm gold" onclick="CommunityNav.viewUser('${uid}','${esc(prof.email)}','${esc(prof.username)}')">View Profile →</button>
               ${mutualIds.has(uid)?'<span class="trade-badge have" style="align-self:center">⚡ Mutual match</span>':''}
             </div>
           `;
@@ -1516,7 +1457,7 @@ const TradeMatch={
               <div class="match-avatar" style="background:hsl(${hue},35%,22%);border:2px solid hsl(${hue},50%,42%)">${esc(prof.username.slice(0,1).toUpperCase())}</div>
               <div style="flex:1;min-width:0">
                 <div class="match-username">${esc(prof.username)}</div>
-                <div class="match-sub">wants ${wishes.length} card${wishes.length>1?'s':''} you have</div>
+                <div class="match-sub">${esc(prof.email)} · wants ${wishes.length} card${wishes.length>1?'s':''} you have</div>
               </div>
               <div class="match-score">${wishes.length} match${wishes.length>1?'es':''}</div>
             </div>
@@ -1529,7 +1470,7 @@ const TradeMatch={
                 </span>`;
               }).join('')}
             </div>
-            <button class="tbtn sm" style="margin-top:10px" onclick="CommunityNav.viewUser('${uid}','${jsq(prof.email)}','${jsq(prof.username)}')">View Profile →</button>
+            <button class="tbtn sm" style="margin-top:10px" onclick="CommunityNav.viewUser('${uid}','${esc(prof.email)}','${esc(prof.username)}')">View Profile →</button>
           `;
           listEl.appendChild(card);
         }
@@ -1555,7 +1496,7 @@ const TradeMatch={
               <div class="match-avatar" style="background:hsl(${hue},35%,22%);border:2px solid hsl(${hue},50%,42%)">${esc(prof.username.slice(0,1).toUpperCase())}</div>
               <div style="flex:1;min-width:0">
                 <div class="match-username">${esc(prof.username)}</div>
-                <div class="match-sub">Mutual trade match</div>
+                <div class="match-sub">${esc(prof.email)}</div>
               </div>
               <span class="trade-badge have" style="font-size:11px">⚡ Mutual — ${theyHave.length+theyWant.length} cards</span>
             </div>
@@ -1569,7 +1510,7 @@ const TradeMatch={
                 <div class="match-pills">${theyWant.map(w=>`<span class="match-pill you-have">${esc(w.card_name)}</span>`).join('')}</div>
               </div>
             </div>
-            <button class="tbtn sm gold" style="margin-top:10px" onclick="CommunityNav.viewUser('${uid}','${jsq(prof.email)}','${jsq(prof.username)}')">View Profile &amp; Initiate Trade →</button>
+            <button class="tbtn sm gold" style="margin-top:10px" onclick="CommunityNav.viewUser('${uid}','${esc(prof.email)}','${esc(prof.username)}')">View Profile &amp; Initiate Trade →</button>
           `;
           listEl.appendChild(card);
         }

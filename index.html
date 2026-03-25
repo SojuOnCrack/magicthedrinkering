@@ -23,15 +23,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="/css/main.css?v=202603240645">
-
-<style>
-#icon-menu .im-btn{padding:12px 8px;min-height:72px}
-#icon-menu .im-ico{font-size:20px!important}
-#icon-menu .im-lbl{font-size:12px!important}
-#icon-menu .im-tooltip{font-size:12px!important}
-.friend-meta,.fp-email{color:var(--text3)}
-</style>
-
 </head>
 <body>
 <div id="shell">
@@ -401,7 +392,6 @@
         </div>
 
         <div class="cs-status" id="bulk-status"></div>
-        <div id="bulk-pager" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-bottom:10px"></div>
         <div class="cs-grid" id="bulk-list"></div>
         <div id="bulk-empty" style="display:none;padding:40px;text-align:center">
           <div style="font-size:40px;opacity:.2;margin-bottom:12px">📦</div>
@@ -706,13 +696,15 @@
       <div class="vpage" id="vpage-trade" style="display:none">
         <div class="pg-title">🤝 Trade Tracker</div>
         <div class="pg-sub">Cards you have available for trade — visible to friends and community</div>
-        <div class="bulk-add-row" style="position:relative">
+        <div class="bulk-add-row" style="position:relative;align-items:flex-start">
           <div style="flex:1;position:relative;min-width:0">
-            <input class="bulk-inp" id="trade-add-name" placeholder="Card name…" autocomplete="off" oninput="TradeMgr.onType(this.value)" onkeydown="TradeMgr.onKey(event)">
-            <div id="trade-autocomplete" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;
-              background:var(--bg2);border:1px solid var(--border2);border-top:none;border-radius:0 0 var(--r) var(--r);
-              max-height:220px;overflow-y:auto;box-shadow:var(--shadow)"></div>
+            <input class="bulk-inp" id="trade-add-name" placeholder="Start typing a card name…" autocomplete="off"
+              oninput="TradeAC.onType('trade-add-name', this.value)"
+              onkeydown="TradeAC.onKey('trade-add-name', event)"
+              style="width:100%">
+            <div id="trade-autocomplete" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:700;background:var(--bg2);border:1px solid var(--gold3);border-radius:0 0 8px 8px;max-height:260px;overflow-y:auto;box-shadow:0 10px 28px rgba(0,0,0,.45)"></div>
           </div>
+          <div id="trade-preview" style="display:none;width:220px;min-height:120px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px;box-shadow:0 10px 28px rgba(0,0,0,.45)"></div>
           <input class="bulk-inp" id="trade-add-qty" type="number" min="1" value="1" style="max-width:70px">
           <select class="form-sel" id="trade-add-cond">
             <option value="NM">NM</option><option value="LP">LP</option><option value="MP">MP</option>
@@ -990,8 +982,15 @@
       <div style="flex:1;overflow-y:auto;padding:20px;">
         <div class="pg-title">🤝 Trade Tracker</div>
         <div class="pg-sub">Cards you have available for trade or sale — visible to the whole community</div>
-        <div class="bulk-add-row" style="margin-bottom:16px">
-          <input class="bulk-inp" id="trade2-add-name" placeholder="Card name…">
+        <div class="bulk-add-row" style="margin-bottom:16px;position:relative;align-items:flex-start">
+          <div style="flex:1;position:relative;min-width:0">
+            <input class="bulk-inp" id="trade2-add-name" placeholder="Start typing a card name…" autocomplete="off"
+              oninput="TradeAC.onType('trade2-add-name', this.value)"
+              onkeydown="TradeAC.onKey('trade2-add-name', event)"
+              style="width:100%">
+            <div id="trade2-autocomplete" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:700;background:var(--bg2);border:1px solid var(--gold3);border-radius:0 0 8px 8px;max-height:260px;overflow-y:auto;box-shadow:0 10px 28px rgba(0,0,0,.45)"></div>
+          </div>
+          <div id="trade2-preview" style="display:none;width:220px;min-height:120px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px;box-shadow:0 10px 28px rgba(0,0,0,.45)"></div>
           <input class="bulk-inp" id="trade2-add-qty" type="number" min="1" value="1" style="max-width:70px">
           <select class="form-sel" id="trade2-add-cond">
             <option value="NM">NM</option><option value="LP">LP</option>

@@ -1573,16 +1573,24 @@ const WishSection={
   },
 
   async add(){
-    const nameEl=document.getElementById('wish2-add-name');
-    const noteEl=document.getElementById('wish2-add-note');
+    const nameEl=document.getElementById('trade2-add-name');
+    const priceEl=document.getElementById('trade2-add-price');
     const name=(nameEl?.value||'').trim();
     if(!name){Notify.show('Enter a card name','err');return;}
-    if(!DB._sb||!DB._user){Notify.show('Sign in to use Wishlist','err');return;}
-    const note=(noteEl?.value||'').trim();
-    const ac=document.getElementById('wish2-autocomplete');
-    if(ac)ac.style.display='none';
-    await WishlistMgr.addByName(name,note);
-    if(nameEl)nameEl.value='';if(noteEl)noteEl.value='';
+    if(!DB._sb||!DB._user){Notify.show('Sign in to use Trade Tracker','err');return;}
+    const qty=parseInt(document.getElementById('trade2-add-qty')?.value||'1')||1;
+    const cond=document.getElementById('trade2-add-cond')?.value||'NM';
+    const priceRaw=(priceEl?.value||'').trim();
+    const priceNum=priceRaw?parseFloat(priceRaw):null;
+    const payload={card_name:name,qty,condition:cond,user_id:DB._user.id,user_email:DB._user.email||''};
+    if(Number.isFinite(priceNum))payload.price_usd=priceNum;
+    const {error}=await DB._sb.from('trade_list').insert(payload);
+    if(error){Notify.show('Could not add to trade list','err');return;}
+    Notify.show(name+' listed for trade','ok');
+    if(nameEl)nameEl.value='';
+    if(priceEl)priceEl.value='';
+    TradeAC?.hide?.('trade2-add-name');
+    await TradeMgr.render();
     this._renderList();
   },
 
@@ -1720,16 +1728,24 @@ const TradeSection={
   },
 
   async add(){
-    const nameEl=document.getElementById('wish2-add-name');
-    const noteEl=document.getElementById('wish2-add-note');
+    const nameEl=document.getElementById('trade2-add-name');
+    const priceEl=document.getElementById('trade2-add-price');
     const name=(nameEl?.value||'').trim();
     if(!name){Notify.show('Enter a card name','err');return;}
-    if(!DB._sb||!DB._user){Notify.show('Sign in to use Wishlist','err');return;}
-    const note=(noteEl?.value||'').trim();
-    const ac=document.getElementById('wish2-autocomplete');
-    if(ac)ac.style.display='none';
-    await WishlistMgr.addByName(name,note);
-    if(nameEl)nameEl.value='';if(noteEl)noteEl.value='';
+    if(!DB._sb||!DB._user){Notify.show('Sign in to use Trade Tracker','err');return;}
+    const qty=parseInt(document.getElementById('trade2-add-qty')?.value||'1')||1;
+    const cond=document.getElementById('trade2-add-cond')?.value||'NM';
+    const priceRaw=(priceEl?.value||'').trim();
+    const priceNum=priceRaw?parseFloat(priceRaw):null;
+    const payload={card_name:name,qty,condition:cond,user_id:DB._user.id,user_email:DB._user.email||''};
+    if(Number.isFinite(priceNum))payload.price_usd=priceNum;
+    const {error}=await DB._sb.from('trade_list').insert(payload);
+    if(error){Notify.show('Could not add to trade list','err');return;}
+    Notify.show(name+' listed for trade','ok');
+    if(nameEl)nameEl.value='';
+    if(priceEl)priceEl.value='';
+    TradeAC?.hide?.('trade2-add-name');
+    await TradeMgr.render();
     this._renderList();
   },
 
@@ -1742,6 +1758,113 @@ const TradeSection={
     this._renderList();
   }
 };
+
+const TradeAC={
+  _states:{},
+  _previewCache:{},
+  _cfg(inputId){
+    return inputId==='trade2-add-name'
+      ? {input:'trade2-add-name',ac:'trade2-autocomplete',preview:'trade2-preview',submit:()=>TradeSection.add()}
+      : {input:'trade-add-name',ac:'trade-autocomplete',preview:'trade-preview',submit:()=>TradeMgr.add()};
+  },
+  _state(inputId){
+    return this._states[inputId]||(this._states[inputId]={timer:null,items:[],idx:-1,previewTimer:null});
+  },
+  hide(inputId){
+    const cfg=this._cfg(inputId); const ac=document.getElementById(cfg.ac); const pv=document.getElementById(cfg.preview);
+    if(ac)ac.style.display='none'; if(pv)pv.style.display='none';
+    const st=this._state(inputId); st.idx=-1;
+  },
+  async onType(inputId,val){
+    const st=this._state(inputId); const cfg=this._cfg(inputId);
+    clearTimeout(st.timer);
+    const ac=document.getElementById(cfg.ac);
+    if(!val||val.trim().length<2){ if(ac)ac.style.display='none'; this.hide(inputId); return; }
+    st.timer=setTimeout(async()=>{
+      try{
+        const r=await fetch(`/api/scryfall/cards/autocomplete?q=${encodeURIComponent(val.trim())}&include_extras=false`,{headers:{'Accept':'application/json'}});
+        if(!r.ok)return;
+        const d=await r.json();
+        st.items=(d.data||[]).slice(0,12); st.idx=-1;
+        if(!ac||!st.items.length){ if(ac)ac.style.display='none'; const pv=document.getElementById(cfg.preview); if(pv)pv.style.display='none'; return; }
+        ac.innerHTML='';
+        st.items.forEach((name,i)=>{
+          const item=document.createElement('div');
+          item.dataset.idx=i;
+          item.style.cssText='padding:8px 10px;cursor:pointer;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:10px';
+          item.innerHTML=`<span>${esc(name)}</span><span style="color:var(--text3);font-size:10px">↵ add</span>`;
+          item.onmouseenter=()=>{ st.idx=i; this._paint(inputId); this._showPreview(inputId,name); };
+          item.onmouseleave=()=>{};
+          item.onmousedown=(e)=>{ e.preventDefault(); this.select(inputId,i,true); };
+          ac.appendChild(item);
+        });
+        ac.style.display='block';
+      }catch{}
+    },180);
+  },
+  _paint(inputId){
+    const cfg=this._cfg(inputId); const ac=document.getElementById(cfg.ac); const st=this._state(inputId); if(!ac)return;
+    ac.querySelectorAll('[data-idx]').forEach((el,i)=>{ el.style.background=i===st.idx?'var(--bg3)':''; el.style.color=i===st.idx?'var(--gold2)':'var(--text2)'; });
+  },
+  async _fetchPreviewCard(name){
+    if(this._previewCache[name])return this._previewCache[name];
+    const cached=Store.card?.(name); if(cached?.img?.normal||cached?.img?.crop){ this._previewCache[name]=cached; return cached; }
+    try{
+      const r=await fetch(`/api/scryfall/cards/named?exact=${encodeURIComponent(name)}`,{headers:{'Accept':'application/json'}});
+      if(!r.ok)return null;
+      const d=await r.json();
+      const slim=SF._slim?SF._slim(d):d;
+      if(Store.setCard && slim?.name)Store.setCard(slim.name,slim);
+      this._previewCache[name]=slim;
+      return slim;
+    }catch{return null;}
+  },
+  async _showPreview(inputId,name){
+    const st=this._state(inputId); const cfg=this._cfg(inputId); const pv=document.getElementById(cfg.preview); if(!pv)return;
+    clearTimeout(st.previewTimer);
+    st.previewTimer=setTimeout(async()=>{
+      pv.style.display='block';
+      pv.innerHTML='<div style="font-size:11px;color:var(--text3)">Loading preview…</div>';
+      const cd=await this._fetchPreviewCard(name);
+      const img=cd?.img?.normal||cd?.img?.crop||'';
+      const setInfo=cd?.set?`${String(cd.set).toUpperCase()}${cd.collector_number?' #'+cd.collector_number:''}`:'Unknown print';
+      const type=cd?.type_line||'';
+      const price=cd?.prices?.eur?`€${cd.prices.eur}`:'';
+      pv.innerHTML=`${img?`<img src="${esc(img)}" alt="${esc(name)}" style="width:100%;border-radius:6px;border:1px solid var(--border);margin-bottom:8px">`:''}<div style="font-family:Cinzel,serif;font-size:12px;color:var(--gold2);margin-bottom:4px">${esc(name)}</div><div style="font-size:10px;color:var(--ice);margin-bottom:3px">${esc(setInfo)}</div><div style="font-size:10px;color:var(--text3);line-height:1.4">${esc(type)}</div>${price?`<div style="font-size:11px;color:var(--green2);margin-top:6px">${esc(price)}</div>`:''}`;
+    },120);
+  },
+  select(inputId,i,autoSubmit=false){
+    const st=this._state(inputId); const cfg=this._cfg(inputId); const input=document.getElementById(cfg.input); const name=st.items[i];
+    if(!name||!input)return;
+    input.value=name;
+    input.dispatchEvent(new Event('input'));
+    this.hide(inputId);
+    if(autoSubmit)cfg.submit();
+  },
+  onKey(inputId,e){
+    const st=this._state(inputId); const cfg=this._cfg(inputId); const ac=document.getElementById(cfg.ac); const items=ac?ac.querySelectorAll('[data-idx]'):[];
+    if(e.key==='ArrowDown'){
+      e.preventDefault();
+      if(!items.length)return;
+      st.idx=Math.min(st.idx+1,items.length-1);
+      this._paint(inputId);
+      const name=st.items[st.idx]; if(name)this._showPreview(inputId,name);
+    }else if(e.key==='ArrowUp'){
+      e.preventDefault();
+      if(!items.length)return;
+      st.idx=Math.max(st.idx-1,0);
+      this._paint(inputId);
+      const name=st.items[st.idx]; if(name)this._showPreview(inputId,name);
+    }else if(e.key==='Enter'){
+      e.preventDefault();
+      if(items.length && st.idx>=0){ this.select(inputId,st.idx,true); }
+      else { cfg.submit(); }
+    }else if(e.key==='Escape'){
+      this.hide(inputId);
+    }
+  }
+};
+
 Bus.on('decks:changed', ()=>{
   if(Menu?.cur==='search') CardSearch2._populateDeckSel?.();
 });
