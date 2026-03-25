@@ -479,8 +479,17 @@ const P={
             headers:{'Accept':'application/json'}
           });
           if(!res.ok){
-            const errBody=await res.text();
-            throw new Error(errBody||`HTTP ${res.status}`);
+            let errMsg=`HTTP ${res.status}`;
+            try{
+              const errJson=await res.json();
+              errMsg=errJson?.error||errMsg;
+            }catch{
+              try{
+                const errText=await res.text();
+                if(errText)errMsg=errText;
+              }catch{}
+            }
+            throw new Error(errMsg);
           }
           data=await res.json();
         }catch(e){
