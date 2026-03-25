@@ -1598,7 +1598,9 @@ const WishSection={
   },
 
   async remove(id){
-    await WishlistMgr.remove(id);
+    if(!DB._sb||!DB._user)return;
+    await DB._sb.from('wishlist').delete().eq('id',id).eq('user_id',DB._user.id);
+    await WishlistMgr.render();
     this._renderList();
   }
 };
@@ -1697,7 +1699,7 @@ const TradeSection={
 
   onType(val){
     clearTimeout(this._acTimer);
-    const ac=document.getElementById('wish2-autocomplete');
+    const ac=document.getElementById('trade2-autocomplete');
     if(val.length<2){if(ac)ac.style.display='none';return;}
     this._acTimer=setTimeout(async()=>{
       try{
@@ -1713,7 +1715,7 @@ const TradeSection={
           item.textContent=name;item.dataset.idx=i;
           item.onmouseenter=()=>{ac.querySelectorAll('[data-idx]').forEach(el=>el.style.background='');item.style.background='var(--bg3)';this._acIdx=i;};
           item.onmouseleave=()=>item.style.background='';
-          item.onmousedown=e=>{e.preventDefault();document.getElementById('wish2-add-name').value=name;ac.style.display='none';};
+          item.onmousedown=e=>{e.preventDefault();document.getElementById('trade2-add-name').value=name;ac.style.display='none';};
           ac.appendChild(item);
         });
         ac.style.display='block';
@@ -1722,7 +1724,7 @@ const TradeSection={
   },
 
   onKey(e){
-    const ac=document.getElementById('wish2-autocomplete');
+    const ac=document.getElementById('trade2-autocomplete');
     const items=ac?ac.querySelectorAll('[data-idx]'):[];
     if(e.key==='ArrowDown'){e.preventDefault();this._acIdx=Math.min(this._acIdx+1,items.length-1);items.forEach((el,i)=>el.style.background=i===this._acIdx?'var(--bg3)':'');}
     else if(e.key==='ArrowUp'){e.preventDefault();this._acIdx=Math.max(this._acIdx-1,0);items.forEach((el,i)=>el.style.background=i===this._acIdx?'var(--bg3)':'');}
@@ -1759,7 +1761,9 @@ const TradeSection={
   },
 
   async remove(id){
-    await TradeMgr.remove(id);
+    if(!DB._sb||!DB._user)return;
+    await DB._sb.from('trade_list').delete().eq('id',id).eq('user_id',DB._user.id);
+    await TradeMgr.render();
     this._renderList();
   }
 };
