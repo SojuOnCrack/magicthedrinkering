@@ -1,0 +1,16 @@
+# Cloudflare / Wrangler
+.dev.vars
+.wrangler/
+.cache/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs (falls später ein Build-Schritt dazukommt)
+dist/
+build/

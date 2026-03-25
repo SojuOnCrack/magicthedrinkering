@@ -1,0 +1,33 @@
+# ═══════════════════════════════════════════════════════════
+#  CommanderForge — Cloudflare Pages Konfiguration
+#  Datei: wrangler.toml (im Root des Repos ablegen)
+# ═══════════════════════════════════════════════════════════
+
+name = "commanderforge"
+pages_build_output_dir = "."   # Single-File-App, kein Build-Schritt nötig
+
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# ── Lokale Entwicklung ──────────────────────────────────────
+[dev]
+port = 8788
+local_protocol = "http"
+# Supabase URL/Key werden über .dev.vars gesetzt (siehe unten)
+
+# ── Produktions-Umgebung ────────────────────────────────────
+# ACHTUNG: SUPABASE_URL und SUPABASE_KEY sind im Code hardcoded
+# (anonym/public keys — das ist bei Supabase okay).
+# Für zusätzliche Secrets (TCGPlayer, MKM) in Cloudflare Dashboard:
+#   Pages → Dein Projekt → Settings → Environment Variables
+
+# [vars]
+# SUPABASE_URL = "https://pwrpvtzocycnemgnsooz.supabase.co"
+# Secrets nie in wrangler.toml eintragen → stattdessen im Dashboard oder:
+#   wrangler pages secret put SUPABASE_KEY
+
+# ── KV Namespace (optional, für serverseitigen Session-Cache) ──
+# Nur nötig wenn du serverseitige Features via Pages Functions baust
+# [[kv_namespaces]]
+# binding = "CFORGE_KV"
+# id = "DEINE_KV_ID"

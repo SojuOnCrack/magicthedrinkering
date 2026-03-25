@@ -1,0 +1,47 @@
+# ═══════════════════════════════════════════════════
+#  CommanderForge — Cloudflare Pages _headers
+# ═══════════════════════════════════════════════════
+
+# ── Security headers on everything ──
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  # Supabase + Scryfall + Google Fonts müssen explizit erlaubt sein
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://cards.scryfall.io https://*.scryfall.io https://*.supabase.co; connect-src 'self' https://api.scryfall.com https://*.scryfall.io https://data.scryfall.io https://*.supabase.co wss://*.supabase.co https://api2.moxfield.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com https://cloudflareinsights.com; worker-src 'self'; frame-ancestors 'none'; base-uri 'self';
+
+# ── index.html: kein Cache (App-Shell muss immer aktuell sein) ──
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+
+# ── Static assets: aggressives Caching mit immutable ──
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.woff2
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.woff
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.png
+  Cache-Control: public, max-age=604800
+
+/*.ico
+  Cache-Control: public, max-age=604800
+
+/*.svg
+  Cache-Control: public, max-age=604800
+
+# ── Manifests / SW: kurzlebig damit Updates ankommen ──
+/manifest.json
+  Cache-Control: public, max-age=3600
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate

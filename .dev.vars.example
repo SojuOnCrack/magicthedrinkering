@@ -1,0 +1,18 @@
+# ═══════════════════════════════════════════════════════════
+#  .dev.vars — Lokale Secrets für wrangler dev
+#  NIEMALS ins Git-Repository committen!
+#  In .gitignore eintragen: .dev.vars
+# ═══════════════════════════════════════════════════════════
+
+# Diese Werte werden nur für lokale Tests via `wrangler pages dev` benötigt.
+# In Produktion werden sie im Cloudflare Dashboard gesetzt.
+
+# Supabase (public anon key — sicher für Client-Side)
+SUPABASE_URL=https://pwrpvtzocycnemgnsooz.supabase.co
+SUPABASE_KEY=sb_publishable_doroVk7_Pblbapi7z9njyQ_zfVTZOmG
+
+# Optional: Price API Keys (falls du Pages Functions dafür nutzen willst)
+# TCGPLAYER_PUBLIC_KEY=
+# TCGPLAYER_PRIVATE_KEY=
+# MKM_APP_TOKEN=
+# MKM_APP_SECRET=
