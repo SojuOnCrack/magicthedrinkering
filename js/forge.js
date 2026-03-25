@@ -294,29 +294,46 @@ const App={
     return {unique:unique.size,copies:totalCopies,value:totalValue,decks:Store.decks.length};
   },
 
-  refreshTopbarStats(){
+  _bulkPoolSummary:{value:0,updated:0},
+  async _refreshBulkPoolSummary(force=false){
+    const fresh=(Date.now()-this._bulkPoolSummary.updated)<60000;
+    if(!force&&fresh)return this._bulkPoolSummary;
+    if(!DB?._sb)return this._bulkPoolSummary;
+    try{
+      const {data,error}=await DB._sb.from('bulk_pool').select('qty,price_usd,card_name');
+      if(error)throw error;
+      const value=(data||[]).reduce((sum,row)=>{
+        const fallback=parseFloat(Store.card(row.card_name)?.prices?.eur||0);
+        return sum+((parseFloat(row.price_usd)||fallback)*(row.qty||1));
+      },0);
+      this._bulkPoolSummary={value,updated:Date.now()};
+    }catch{}
+    return this._bulkPoolSummary;
+  },
+
+  async refreshTopbarStats(force=false){
     const totalLabel=document.getElementById('s-total-label');
     const landsLabel=document.getElementById('s-lands-label');
     const priceLabel=document.getElementById('s-price-label');
     const totalEl=document.getElementById('s-total');
     const landsEl=document.getElementById('s-lands');
     const priceEl=document.getElementById('s-price');
+    const cmdrName=document.getElementById('cmdr-name-1');
+    const ciPips=document.getElementById('ci-pips-1');
+    const partnerPlus=document.getElementById('partner-plus');
     if(!totalEl||!landsEl||!priceEl)return;
 
-    const onForge=Menu?.cur==='forge';
-    const deck=Store.getDeck(this.curId);
-    if(onForge&&deck){
-      this._updHeader(deck);
-      return;
-    }
-
     const sum=this._collectionSummary();
-    totalEl.textContent=sum.unique;
-    landsEl.textContent=sum.decks;
-    priceEl.textContent='€'+sum.value.toFixed(0);
-    if(totalLabel)totalLabel.textContent='Unique';
-    if(landsLabel)landsLabel.textContent='Decks';
-    if(priceLabel)priceLabel.textContent='Value';
+    const bulk=await this._refreshBulkPoolSummary(force);
+    totalEl.textContent=sum.copies;
+    landsEl.textContent='€'+sum.value.toFixed(0);
+    priceEl.textContent='€'+(bulk.value||0).toFixed(0);
+    if(totalLabel)totalLabel.textContent='Cards';
+    if(landsLabel)landsLabel.textContent='Collection';
+    if(priceLabel)priceLabel.textContent='Bulk Pool';
+    if(cmdrName)cmdrName.textContent='Collection Overview';
+    if(ciPips)ciPips.innerHTML='';
+    if(partnerPlus)partnerPlus.style.display='none';
   },
 
   _makeTile(c,deck){
@@ -426,6 +443,11 @@ const App={
   },
 
   _updHeader(deck){
+    const topbarTagBar=document.getElementById('deck-mechanic-chips');
+    if(topbarTagBar)topbarTagBar.innerHTML='';
+    this.refreshTopbarStats(!deck);
+    return;
+
     if(!deck){
       document.getElementById('cmdr-name-1').textContent='No Commander';
       document.getElementById('ci-pips-1').innerHTML='';

@@ -34,13 +34,13 @@
 
     <!-- Commander zone: up to 2 commanders -->
     <div id="cmdr-zone">
-      <div class="cmdr-pill" id="cmdr-pill-1" title="Set Commander" onclick="P.editCmdr()">
+      <div class="cmdr-pill" id="cmdr-pill-1" title="Collection Overview">
         <div class="ci-pips" id="ci-pips-1"></div>
-        <div class="cmdr-pill-name" id="cmdr-name-1">No Commander</div>
+        <div class="cmdr-pill-name" id="cmdr-name-1">Collection Overview</div>
       </div>
       <div id="partner-plus" style="display:none;align-items:center;gap:4px;">
         <span class="cmdr-plus" style="color:var(--purple);font-size:18px;opacity:.7">⊕</span>
-        <div class="cmdr-pill partner" id="cmdr-pill-2" title="Partner / Background" onclick="P.editCmdr()">
+        <div class="cmdr-pill partner" id="cmdr-pill-2" title="Collection Overview">
           <div class="ci-pips" id="ci-pips-2"></div>
           <div class="cmdr-pill-name" id="cmdr-name-2">Partner</div>
         </div>
@@ -52,8 +52,8 @@
     <div class="spacer"></div>
     <div id="deck-stats">
       <div class="stat"><b id="s-total">0</b><s id="s-total-label">Cards</s></div>
-      <div class="stat"><b id="s-lands">0</b><s id="s-lands-label">Lands</s></div>
-      <div class="stat"><b id="s-price">€0</b><s id="s-price-label">Value</s></div>
+      <div class="stat"><b id="s-lands">â‚¬0</b><s id="s-lands-label">Collection</s></div>
+      <div class="stat"><b id="s-price">€0</b><s id="s-price-label">Bulk Pool</s></div>
     </div>
     <div style="width:1px;height:28px;background:var(--border)"></div>
     <div class="view-toggle" id="view-toggle-wrap">
@@ -1152,9 +1152,11 @@
 
       <div class="settings-section">
         <div class="settings-section-title">☁ Cloud Sync</div>
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 0">
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;flex-wrap:wrap">
           <span id="cfg-sb-status-fixed" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green2)">✓ Connected to Supabase</span>
           <button class="tbtn sm" onclick="Auth.show()" style="font-size:10px">Sign In / Switch Account</button>
+          <button class="tbtn sm" onclick="DB.pullDecks()" style="font-size:10px">Pull from cloud</button>
+          <button class="tbtn sm" onclick="DB.pushDecks()" style="font-size:10px">Push to cloud</button>
         </div>
         <div class="settings-note">Cloud sync is pre-configured. Sign in to sync your decks across devices.</div>
       </div>

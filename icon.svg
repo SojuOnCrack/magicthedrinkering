@@ -1,16 +1,322 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="MagicTheDrinkering Icon">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0c1220"/>
-      <stop offset="100%" stop-color="#06090f"/>
+      <stop offset="0%" stop-color="#140d24"></stop>
+      <stop offset="55%" stop-color="#2d1a4d"></stop>
+      <stop offset="100%" stop-color="#5a31a8"></stop>
     </linearGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#e6cc78"/>
-      <stop offset="100%" stop-color="#c8a84b"/>
+
+    <linearGradient id="cardEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f3dfa9"></stop>
+      <stop offset="100%" stop-color="#b98a33"></stop>
     </linearGradient>
+
+    <linearGradient id="cardInner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ecd9a7"></stop>
+      <stop offset="100%" stop-color="#d3b06c"></stop>
+    </linearGradient>
+
+    <radialGradient id="ringGold" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#fff0b8"></stop>
+      <stop offset="55%" stop-color="#efc75d"></stop>
+      <stop offset="100%" stop-color="#9a6512"></stop>
+    </radialGradient>
+
+    <linearGradient id="glassBody" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5b3f14"></stop>
+      <stop offset="20%" stop-color="#7b5922"></stop>
+      <stop offset="55%" stop-color="#3c280c"></stop>
+      <stop offset="100%" stop-color="#1d1206"></stop>
+    </linearGradient>
+
+    <linearGradient id="glassDark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a2509"></stop>
+      <stop offset="100%" stop-color="#120a03"></stop>
+    </linearGradient>
+
+    <linearGradient id="beerFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8cf5e"></stop>
+      <stop offset="35%" stop-color="#e6a21d"></stop>
+      <stop offset="100%" stop-color="#9f5a07"></stop>
+    </linearGradient>
+
+    <linearGradient id="labelPaper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f7e7bc"></stop>
+      <stop offset="100%" stop-color="#d4b067"></stop>
+    </linearGradient>
+
+    <linearGradient id="capMetal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffe9a5"></stop>
+      <stop offset="100%" stop-color="#a8791f"></stop>
+    </linearGradient>
+
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur"></feGaussianBlur>
+      <feMerge>
+        <feMergeNode in="blur"></feMergeNode>
+        <feMergeNode in="SourceGraphic"></feMergeNode>
+      </feMerge>
+    </filter>
+
+    <filter id="shadow" x="-50%" y="-50%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.35"></feDropShadow>
+    </filter>
+
+    <clipPath id="cardClip">
+      <path d="
+        M80 58
+        L174 58
+        Q181 58 181 66
+        L181 92
+        L176 97
+        L181 104
+        L181 146
+        L175 151
+        L181 158
+        L181 191
+        Q181 198 173 198
+        L154 198
+        L148 193
+        L141 198
+        L109 198
+        L102 193
+        L94 198
+        L79 198
+        Q72 198 72 191
+        L72 165
+        L78 158
+        L72 152
+        L72 114
+        L77 108
+        L72 101
+        L72 67
+        Q72 60 80 58
+        Z"></path>
+    </clipPath>
   </defs>
-  <rect x="8" y="8" width="112" height="112" rx="24" fill="url(#bg)"/>
-  <rect x="16" y="16" width="96" height="96" rx="18" fill="none" stroke="#2a3d5a" stroke-width="4"/>
-  <path d="M39 94L57 29h14l18 65H76l-4-16H56l-4 16H39zm20-27h10l-5-22-5 22z" fill="url(#gold)"/>
-  <circle cx="96" cy="34" r="8" fill="#6ec9e0"/>
+
+  <!-- Hintergrund -->
+  <rect x="16" y="16" width="224" height="224" rx="48" fill="url(#bg)"></rect>
+
+  <!-- Magischer Außenring -->
+  <circle cx="128" cy="128" r="84" fill="none" stroke="#cab8ff" stroke-width="7" opacity="0.18"></circle>
+  <circle cx="128" cy="128" r="67" fill="none" stroke="#efe7ff" stroke-width="3" opacity="0.3" stroke-dasharray="7 9"></circle>
+
+  <!-- Zerfetzte Karte -->
+  <g transform="rotate(-8 128 128)" filter="url(#shadow)">
+    <!-- Kartenaußenform -->
+    <path d="
+      M80 58
+      L174 58
+      Q181 58 181 66
+      L181 92
+      L176 97
+      L181 104
+      L181 146
+      L175 151
+      L181 158
+      L181 191
+      Q181 198 173 198
+      L154 198
+      L148 193
+      L141 198
+      L109 198
+      L102 193
+      L94 198
+      L79 198
+      Q72 198 72 191
+      L72 165
+      L78 158
+      L72 152
+      L72 114
+      L77 108
+      L72 101
+      L72 67
+      Q72 60 80 58
+      Z" fill="url(#cardEdge)" stroke="#5e3900" stroke-width="5"></path>
+
+    <!-- Innenfläche -->
+    <path d="
+      M85 65
+      L169 65
+      Q174 65 174 71
+      L174 91
+      L170 97
+      L174 103
+      L174 145
+      L169 151
+      L174 157
+      L174 186
+      Q174 191 168 191
+      L153 191
+      L147 187
+      L141 191
+      L111 191
+      L104 186
+      L97 191
+      L84 191
+      Q79 191 79 185
+      L79 165
+      L84 158
+      L79 152
+      L79 116
+      L83 109
+      L79 102
+      L79 72
+      Q79 66 85 65
+      Z" fill="url(#cardInner)"></path>
+
+    <!-- Abnutzung / Flecken -->
+    <g opacity="0.18" clip-path="url(#cardClip)">
+      <path d="M79 100 C105 90 130 110 174 96 L174 118 C132 124 106 108 79 120 Z" fill="#6a420e"></path>
+      <path d="M79 150 C110 140 143 155 174 146 L174 167 C150 170 118 162 79 174 Z" fill="#5a3410"></path>
+      <circle cx="95" cy="176" r="10" fill="#7a4a17"></circle>
+      <circle cx="164" cy="84" r="8" fill="#7a4a17"></circle>
+    </g>
+
+    <!-- Risse / Cuts -->
+    <g stroke="#6e4510" stroke-width="2" stroke-linecap="round" opacity="0.55">
+      <path d="M88 74 L96 83 L92 90"></path>
+      <path d="M161 73 L154 82 L159 88"></path>
+      <path d="M175 146 L166 153 L170 161"></path>
+      <path d="M83 154 L90 162 L86 170"></path>
+      <path d="M120 191 L126 183 L132 191"></path>
+    </g>
+
+    <!-- Titelzeile -->
+    <rect x="89" y="72" width="76" height="12" rx="4" fill="#7b5414" opacity="0.2"></rect>
+
+    <!-- Artbox -->
+    <rect x="88" y="91" width="78" height="56" rx="6" fill="#4a3210" opacity="0.12"></rect>
+
+    <!-- Ring Illustration -->
+    <g transform="translate(127 119)">
+      <circle r="24" fill="#fff3cb" opacity="0.16"></circle>
+      <ellipse rx="21" ry="13.5" fill="none" stroke="url(#ringGold)" stroke-width="7"></ellipse>
+      <ellipse rx="11.5" ry="7" fill="none" stroke="#fff4c8" stroke-width="2.5"></ellipse>
+      <path d="M0-27 L3-18 L12-16 L5-11 L7-2 L0-8 L-7-2 L-5-11 L-12-16 L-3-18 Z" fill="#ffe27a" opacity="0.9"></path>
+      <path d="M-24 5 L-18 1 L-20 -6 L-14 -2 L-8 -8 L-8 -1 L-2 0 L-7 4 L-5 10 L-11 6 L-17 10 L-15 4 Z" fill="#f8dd72" opacity="0.55"></path>
+      <path d="M24 5 L18 1 L20 -6 L14 -2 L8 -8 L8 -1 L2 0 L7 4 L5 10 L11 6 L17 10 L15 4 Z" fill="#f8dd72" opacity="0.55"></path>
+    </g>
+
+    <!-- Textbereich -->
+    <rect x="89" y="155" width="52" height="8" rx="4" fill="#6b4a11" opacity="0.18"></rect>
+    <rect x="89" y="168" width="69" height="8" rx="4" fill="#6b4a11" opacity="0.12"></rect>
+    <rect x="89" y="180" width="61" height="6" rx="3" fill="#6b4a11" opacity="0.09"></rect>
+  </g>
+
+  <!-- Realistischere Bierflasche -->
+  <g filter="url(#softGlow)">
+    <!-- Flaschenschatten -->
+    <ellipse cx="129" cy="176" rx="23" ry="8" fill="#000" opacity="0.18"></ellipse>
+
+    <!-- Hals -->
+    <path d="
+      M120 82
+      C120 79 122 77 125 77
+      L131 77
+      C134 77 136 79 136 82
+      L136 106
+      C136 109 134 111 131 111
+      L125 111
+      C122 111 120 109 120 106
+      Z" fill="url(#glassBody)" stroke="#d5c39a" stroke-width="2"></path>
+
+    <!-- Kronkorken -->
+    <path d="
+      M119 77
+      L137 77
+      C138 77 139 78 139 79
+      L139 85
+      L136 87
+      L133 85
+      L130 87
+      L127 85
+      L124 87
+      L121 85
+      L118 87
+      L117 85
+      L117 79
+      C117 78 118 77 119 77
+      Z" fill="url(#capMetal)" stroke="#fff1c4" stroke-width="1.3"></path>
+
+    <!-- Schulter + Körper -->
+    <path d="
+      M116 104
+      C117 99 121 96 126 96
+      L130 96
+      C135 96 139 99 140 104
+      L145 121
+      C147 128 148 138 147 146
+      L145 159
+      C143.5 169 137 176 128 176
+      C119 176 112.5 169 111 159
+      L109 146
+      C108 138 109 128 111 121
+      Z" fill="url(#glassBody)" stroke="#d7c49d" stroke-width="3" stroke-linejoin="round"></path>
+
+    <!-- Dunkler Glasrand rechts -->
+    <path d="
+      M137 98
+      C142 101 144 110 146 120
+      C148 130 148 146 146 160
+      C144 169 138 175 132 176
+      " fill="none" stroke="url(#glassDark)" stroke-width="6" opacity="0.45" stroke-linecap="round"></path>
+
+    <!-- Bierfüllung -->
+    <path d="
+      M115 118
+      C117 113 121 111 126 111
+      L130 111
+      C135 111 139 113 141 118
+      L143 126
+      C145 134 145 143 144 151
+      L143 157
+      C141.8 164 136.2 169 128 169
+      C119.8 169 114.2 164 113 157
+      L112 151
+      C111 143 111 134 113 126
+      Z" fill="url(#beerFill)" opacity="0.88"></path>
+
+    <!-- Schaumkante innen -->
+    <path d="M116 119 C121 116 135 116 140 119" fill="none" stroke="#f8e9b9" stroke-width="2" opacity="0.55" stroke-linecap="round"></path>
+
+    <!-- Papierlabel -->
+    <path d="
+      M117 130
+      C117 127 119 125 122 125
+      L134 125
+      C137 125 139 127 139 130
+      L139 144
+      C139 147 137 149 134 149
+      L122 149
+      C119 149 117 147 117 144
+      Z" fill="url(#labelPaper)" stroke="#b2852e" stroke-width="2"></path>
+
+    <!-- Labelsymbol -->
+    <circle cx="128" cy="137" r="5" fill="none" stroke="#b2852e" stroke-width="2"></circle>
+    <path d="M128 132.8 L129.5 136 L133 136.4 L130.3 138.7 L131.1 142 L128 140.2 L124.9 142 L125.7 138.7 L123 136.4 L126.5 136 Z" fill="#b2852e"></path>
+
+    <!-- Glasreflex links -->
+    <path d="
+      M121 86
+      C118 98 118 116 119 138
+      C119.5 148 120.2 158 122 165" fill="none" stroke="#fff7e5" stroke-width="2.6" opacity="0.5" stroke-linecap="round"></path>
+
+    <!-- kleiner Reflex rechts -->
+    <path d="
+      M136 110
+      C137 119 137 130 136 143" fill="none" stroke="#fff7e5" stroke-width="1.3" opacity="0.22" stroke-linecap="round"></path>
+  </g>
+
+  <!-- Funken -->
+  <g fill="#f5d0fe">
+    <circle cx="95" cy="102" r="3.5"></circle>
+    <circle cx="159" cy="93" r="3"></circle>
+    <circle cx="165" cy="142" r="3.5"></circle>
+    <circle cx="91" cy="151" r="2.5"></circle>
+  </g>
+
+  <!-- Stern -->
+  <path d="M128 40l4 10 11 2-8 7 2 11-9-5-9 5 2-11-8-7 11-2z" fill="#fde68a" stroke="#fff7cc" stroke-width="1.5"></path>
 </svg>

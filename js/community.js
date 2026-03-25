@@ -79,6 +79,7 @@ const BulkPool={
       if(error)throw error;
       this._data=data||[];this._filtered=[...this._data];
       this._updateStats();this.filter();
+      App?.refreshTopbarStats?.(true);
       /* Warm card cache then backfill any price_usd=0 rows */
       const names=[...new Set((data||[]).map(r=>r.card_name))];
       Store.warmCards(names).then(()=>{
@@ -962,7 +963,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
       grid.appendChild(card);
 
       // Wire buttons
-      card.querySelector('[data-action="view-fp-deck"]').addEventListener('click',()=>CommunityNav._toggleDeckViewer(d,card));
+      card.querySelector('[data-action="view-fp-deck"]').addEventListener('click',()=>CommunityNav.openDeckPopup(d));
       card.querySelector('[data-action="import-fp-deck"]').addEventListener('click',()=>CommunityNav._importDeck(d));
       card.querySelector('[data-action="comment-fp-deck"]').addEventListener('click',()=>{
         const v=document.getElementById('fp-viewer-'+d.id);
@@ -1064,6 +1065,74 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         wEl.appendChild(wishList);
       }
     }
+  },
+
+  openDeckPopup(deck){
+    const cards=typeof deck.cards==='string'?JSON.parse(deck.cards||'[]'):deck.cards||[];
+    const roDeck={...deck,cards};
+    P._open(`ðŸ‘ ${deck.name}`,true);
+    const totalVal=cards.reduce((s,c)=>s+(parseFloat(Store.card(c.name)?.prices?.eur||0)*(c.qty||0)),0);
+    const totalCards=cards.reduce((s,c)=>s+(c.qty||0),0);
+    const avgCmc=(()=>{
+      let total=0,count=0;
+      cards.forEach(c=>{
+        const cd=Store.card(c.name)||{};
+        if((cd.type_line||'').toLowerCase().includes('land'))return;
+        total+=(cd.cmc||0)*(c.qty||1);
+        count+=c.qty||1;
+      });
+      return count?(total/count).toFixed(1):'â€”';
+    })();
+    const cmdrs=[roDeck.commander,roDeck.partner].filter(Boolean);
+    const groups=[
+      ['Commander',cards.filter(c=>cmdrs.includes(c.name))],
+      ['Creatures',cards.filter(c=>!cmdrs.includes(c.name)&&(Store.card(c.name)?.type_line||'').toLowerCase().includes('creature')&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('land'))],
+      ['Spells',cards.filter(c=>!cmdrs.includes(c.name)&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('land')&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('creature'))],
+      ['Lands',cards.filter(c=>!cmdrs.includes(c.name)&&(Store.card(c.name)?.type_line||'').toLowerCase().includes('land'))]
+    ];
+    document.getElementById('pbody').innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px">
+        <div class="kpi gold"><div class="kpi-val">${totalCards}</div><div class="kpi-lbl">Cards</div></div>
+        <div class="kpi ice"><div class="kpi-val">â‚¬${totalVal.toFixed(0)}</div><div class="kpi-lbl">Value</div></div>
+        <div class="kpi green"><div class="kpi-val">${avgCmc}</div><div class="kpi-lbl">Avg CMC</div></div>
+        <div class="kpi purple"><div class="kpi-val">${roDeck.commander?esc(roDeck.commander):'â€”'}</div><div class="kpi-lbl">Commander</div></div>
+      </div>
+      <div id="readonly-deck-groups"></div>
+    `;
+    const wrap=document.getElementById('readonly-deck-groups');
+    groups.forEach(([title,arr],groupIdx)=>{
+      if(!arr.length)return;
+      const sec=document.createElement('div');
+      sec.innerHTML=`<div class="fp-group-title">${title} (${arr.reduce((s,c)=>s+(c.qty||0),0)})</div><div class="fp-mini-grid" id="readonly-group-${groupIdx}"></div>`;
+      wrap.appendChild(sec);
+      const grid=sec.querySelector(`#readonly-group-${groupIdx}`);
+      arr.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(card=>{
+        const cd=Store.card(card.name)||{};
+        const price=parseFloat(cd.prices?.eur||0);
+        const tile=document.createElement('div');
+        tile.className='fp-mini-card';
+        tile.innerHTML=`
+          ${cd.img?.crop?`<img class="fp-mini-thumb" src="${esc(cd.img.crop)}" loading="lazy" alt="${esc(card.name)}">`:'<div class="fp-mini-thumb"></div>'}
+          ${card.qty>1?`<div class="fp-mini-badge">${card.qty}Ã—</div>`:''}
+          <div class="fp-mini-info">
+            <div class="fp-mini-name">${esc(card.name)}</div>
+            <div class="fp-mini-meta"><span>${price?'â‚¬'+price.toFixed(0):'â€”'}</span><span>${shortType(cd.type_line||'')}</span></div>
+          </div>`;
+        tile.addEventListener('click',()=>M.open({name:card.name,qty:card.qty||1},null));
+        grid.appendChild(tile);
+      });
+    });
+    const foot=document.getElementById('pfoot');
+    foot.innerHTML='';
+    const close=document.createElement('button');
+    close.className='tbtn';
+    close.textContent='Close';
+    close.onclick=()=>P.close();
+    const importBtn=document.createElement('button');
+    importBtn.className='tbtn gold';
+    importBtn.textContent='Import Copy';
+    importBtn.onclick=()=>{P.close();this._importDeck(roDeck);};
+    foot.append(close,importBtn);
   },
 
   _toggleDeckViewer(deck,cardEl){

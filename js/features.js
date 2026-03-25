@@ -1526,9 +1526,13 @@ const WishSection={
         +'<div class="bulk-pool-name" style="font-size:13px">'+esc(r.card_name)+"</div>"
         +'<div class="bulk-pool-meta">'+note+priceStr+"</div>"
         +"</div>"
-        +'<span class="trade-badge want">Wanted</span>'
-        +'<button class="alert-del" title="Remove" '
-        +'onclick="event.stopPropagation();WishSection.remove(\'"'+r.id+'\')">'+"✕</button>";
+        +'<span class="trade-badge want">Wanted</span>';
+      const delBtn=document.createElement('button');
+      delBtn.className='alert-del';
+      delBtn.title='Remove';
+      delBtn.textContent='✕';
+      delBtn.addEventListener('click',e=>{e.stopPropagation();WishSection.remove(r.id);});
+      row.appendChild(delBtn);
       row.addEventListener("click",e=>{
         if(e.target.closest(".alert-del"))return;
         M.open({name:r.card_name,qty:1},null);
@@ -1539,7 +1543,7 @@ const WishSection={
 
   onType(val){
     clearTimeout(this._acTimer);
-    const ac=document.getElementById('trade2-autocomplete');
+    const ac=document.getElementById('wish2-autocomplete');
     if(val.length<2){if(ac)ac.style.display='none';return;}
     this._acTimer=setTimeout(async()=>{
       try{
@@ -1555,7 +1559,7 @@ const WishSection={
           item.textContent=name;item.dataset.idx=i;
           item.onmouseenter=()=>{ac.querySelectorAll('[data-idx]').forEach(el=>el.style.background='');item.style.background='var(--bg3)';this._acIdx=i;};
           item.onmouseleave=()=>item.style.background='';
-          item.onmousedown=e=>{e.preventDefault();document.getElementById('trade2-add-name').value=name;ac.style.display='none';};
+          item.onmousedown=e=>{e.preventDefault();document.getElementById('wish2-add-name').value=name;ac.style.display='none';};
           ac.appendChild(item);
         });
         ac.style.display='block';
@@ -1564,7 +1568,7 @@ const WishSection={
   },
 
   onKey(e){
-    const ac=document.getElementById('trade2-autocomplete');
+    const ac=document.getElementById('wish2-autocomplete');
     const items=ac?ac.querySelectorAll('[data-idx]'):[];
     if(e.key==='ArrowDown'){e.preventDefault();this._acIdx=Math.min(this._acIdx+1,items.length-1);items.forEach((el,i)=>el.style.background=i===this._acIdx?'var(--bg3)':'');}
     else if(e.key==='ArrowUp'){e.preventDefault();this._acIdx=Math.max(this._acIdx-1,0);items.forEach((el,i)=>el.style.background=i===this._acIdx?'var(--bg3)':'');}
@@ -1676,9 +1680,13 @@ const TradeSection={
         +'<div class="bulk-pool-name" style="font-size:13px">'+esc(r.card_name)+"</div>"
         +'<div class="bulk-pool-meta">'+( r.qty||1)+"x "+(r.condition||"NM")+(priceLine?" "+priceLine:"")+"</div>"
         +"</div>"
-        +'<span style="background:rgba(58,122,74,.15);color:var(--green2);border:1px solid var(--green);border-radius:3px;padding:2px 7px;font-size:9px;white-space:nowrap;flex-shrink:0">For Trade</span>'
-        +'<button class="alert-del" title="Remove" '
-        +'onclick="event.stopPropagation();TradeSection.remove(\'"'+r.id+'\'","\'"'+esc(r.card_name)+'\'")">x</button>';
+        +'<span style="background:rgba(58,122,74,.15);color:var(--green2);border:1px solid var(--green);border-radius:3px;padding:2px 7px;font-size:9px;white-space:nowrap;flex-shrink:0">For Trade</span>';
+      const delBtn=document.createElement('button');
+      delBtn.className='alert-del';
+      delBtn.title='Remove';
+      delBtn.textContent='✕';
+      delBtn.addEventListener('click',e=>{e.stopPropagation();TradeSection.remove(r.id);});
+      row.appendChild(delBtn);
       row.addEventListener("click",e=>{
         if(e.target.closest(".alert-del"))return;
         M.open({name:r.card_name,qty:r.qty||1},null);

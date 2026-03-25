@@ -354,6 +354,7 @@ const Auth={
     this._updSyncDot('ok');
     // Pull decks from cloud on sign-in
     await DB.pullDecks();
+    App?.refreshTopbarStats?.(true);
     /* Auto-refresh Bulk Pool if it's currently visible */
     if(Menu.cur==='bulk')BulkPool.refresh();
     // Set up auto-sync: push after each save
