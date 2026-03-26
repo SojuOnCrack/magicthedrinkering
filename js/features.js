@@ -1083,14 +1083,23 @@ Object.assign(App, {
    ═══════════════════════════════════════════════════════════════ */
 async function enrichDeckCards(deck){
   if(!deck?.cards?.length)return;
-  const needsEnrich=deck.cards.filter(c=>!c.set);
+  const needsEnrich=deck.cards.filter(c=>
+    (c.set&&!c.collector_number)||
+    (c.collector_number&&!c.set)||
+    (c.scryfall_id&&(!c.set||!c.collector_number))
+  );
   if(!needsEnrich.length)return;
   await Store.warmCards(needsEnrich.map(c=>c.name));
   for(const c of needsEnrich){
     const cd=Store.card(c.name);
-    if(cd?.set)           c.set=cd.set;
-    if(cd?.collector_number)c.collector_number=cd.collector_number;
-    if(cd?.scryfall_id)   c.scryfall_id=cd.scryfall_id;
+    if(!cd)continue;
+    const sameSet=!c.set||!cd.set||c.set===cd.set;
+    const sameCollector=!c.collector_number||!cd.collector_number||c.collector_number===cd.collector_number;
+    const sameScryfall=!c.scryfall_id||!cd.scryfall_id||c.scryfall_id===cd.scryfall_id;
+    if(!(sameSet&&sameCollector&&sameScryfall))continue;
+    if(!c.set&&cd.set) c.set=cd.set;
+    if(!c.collector_number&&cd.collector_number) c.collector_number=cd.collector_number;
+    if(!c.scryfall_id&&cd.scryfall_id) c.scryfall_id=cd.scryfall_id;
   }
 }
 

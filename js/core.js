@@ -323,7 +323,15 @@ const SF={
     this.cancelBatch();
     // Normalise to objects
     const items=names.map(n=>typeof n==='string'?{name:n}:n);
-    const missing=items.filter(it=>!Store.card(it.name));
+    const missing=items.filter(it=>{
+      const cached=Store.card(it.name);
+      if(!cached)return true;
+      // Exact print requests must override a name-only cached printing.
+      if(it.set&&it.collector_number){
+        return cached.set!==it.set||cached.collector_number!==it.collector_number;
+      }
+      return false;
+    });
     if(!missing.length){onProgress&&onProgress(names.length,names.length);return Promise.resolve();}
     this._abortCtrl=new AbortController();
     const signal=this._abortCtrl.signal;
@@ -337,7 +345,10 @@ const SF={
       const fetchExact=async()=>{
         for(const it of exactPrints){
           if(signal.aborted)return;
-          if(Store.card(it.name)){done++;onProgress&&onProgress(done,total);continue;}
+          const cached=Store.card(it.name);
+          if(cached&&cached.set===it.set&&cached.collector_number===it.collector_number){
+            done++;onProgress&&onProgress(done,total);continue;
+          }
           try{
             const r=await this._fetchWithRetry(
               `${this.BASE}/cards/${encodeURIComponent(it.set)}/${encodeURIComponent(it.collector_number)}`,
