@@ -7,9 +7,9 @@
  *  • Google Fonts             → Cache-first (30 Tage)
  */
 
-const CACHE_NAME   = 'cforge-v1';
-const SHELL_CACHE  = 'cforge-shell-v1';
-const IMAGE_CACHE  = 'cforge-images-v1';
+const CACHE_NAME   = 'cforge-v2';
+const SHELL_CACHE  = 'cforge-shell-v2';
+const IMAGE_CACHE  = 'cforge-images-v2';
 const IMAGE_LIMIT  = 500;   // max gecachte Bilder
 const IMAGE_TTL    = 7 * 24 * 60 * 60 * 1000;   // 7 Tage in ms
 
