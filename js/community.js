@@ -1131,7 +1131,34 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
   openDeckPopup(deck){
     const cards=typeof deck.cards==='string'?JSON.parse(deck.cards||'[]'):deck.cards||[];
     const roDeck={...deck,cards};
-    const cardNames=this._collectCardNames({decks:[roDeck]});
+    P._open(`[Deck] ${deck.name}`,true);
+    document.getElementById('pbody').innerHTML=`
+      <div style="padding:24px;text-align:center;color:var(--text2)">
+        <div style="font-family:'Cinzel',serif;font-size:15px;color:var(--gold2);margin-bottom:8px">${esc(roDeck.name)}</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Loading deck cards...</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)" id="readonly-deck-load-status">Preparing...</div>
+      </div>
+    `;
+    const foot=document.getElementById('pfoot');
+    foot.innerHTML='';
+    const close=document.createElement('button');
+    close.className='tbtn';
+    close.textContent='Close';
+    close.onclick=()=>P.close();
+    const importBtn=document.createElement('button');
+    importBtn.className='tbtn gold';
+    importBtn.textContent='Import Copy';
+    importBtn.onclick=()=>{P.close();this._importDeck(roDeck);};
+    foot.append(close,importBtn);
+    this._ensureDeckCardData(roDeck,(done,total)=>{
+      const status=document.getElementById('readonly-deck-load-status');
+      if(status)status.textContent=`Loading ${done}/${total}`;
+    }).then(()=>{
+      const title=document.getElementById('ptitle');
+      if(title?.textContent===`[Deck] ${deck.name}`) this._renderDeckPopupContent(roDeck);
+    });
+    return;
+    const _legacyCardNames=this._collectCardNames({decks:[roDeck]});
     P._open(`[Deck] ${deck.name}`,true);
     const totalVal=cards.reduce((s,c)=>s+(parseFloat(Store.card(c.name)?.prices?.eur||0)*(c.qty||0)),0);
     const totalCards=cards.reduce((s,c)=>s+(c.qty||0),0);
@@ -1184,19 +1211,19 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         grid.appendChild(tile);
       });
     });
-    const foot=document.getElementById('pfoot');
-    foot.innerHTML='';
-    const close=document.createElement('button');
-    close.className='tbtn';
-    close.textContent='Close';
-    close.onclick=()=>P.close();
-    const importBtn=document.createElement('button');
-    importBtn.className='tbtn gold';
-    importBtn.textContent='Import Copy';
-    importBtn.onclick=()=>{P.close();this._importDeck(roDeck);};
-    foot.append(close,importBtn);
+    const _legacyFoot=document.getElementById('pfoot');
+    _legacyFoot.innerHTML='';
+    const _legacyClose=document.createElement('button');
+    _legacyClose.className='tbtn';
+    _legacyClose.textContent='Close';
+    _legacyClose.onclick=()=>P.close();
+    const _legacyImportBtn=document.createElement('button');
+    _legacyImportBtn.className='tbtn gold';
+    _legacyImportBtn.textContent='Import Copy';
+    _legacyImportBtn.onclick=()=>{P.close();this._importDeck(roDeck);};
+    _legacyFoot.append(_legacyClose,_legacyImportBtn);
 
-    this._primeCardData(cardNames,()=>{
+    this._primeCardData(_legacyCardNames,()=>{
       const title=document.getElementById('ptitle');
       if(title?.textContent===`[Deck] ${deck.name}`) this.openDeckPopup(roDeck);
     });
@@ -1205,15 +1232,22 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
   _toggleDeckViewer(deck,cardEl){
     const viewerEl=document.getElementById('fp-viewer-'+deck.id);if(!viewerEl)return;
     const isOpen=viewerEl.classList.contains('open');
-    const cardNames=this._collectCardNames({decks:[deck]});
     // Close all others
     document.querySelectorAll('.fp-deck-viewer.open').forEach(v=>{v.classList.remove('open');v.closest('.fp-deck-card')?.classList.remove('expanded');});
     if(isOpen)return;
     viewerEl.classList.add('open');
     cardEl.classList.add('expanded');
     cardEl.scrollIntoView({behavior:'smooth',block:'nearest'});
+    viewerEl.innerHTML=`<div style="padding:18px;text-align:center;color:var(--text3);font-size:12px">Loading deck...</div>`;
+    this._ensureDeckCardData(deck,(done,total)=>{
+      if(viewerEl.classList.contains('open'))viewerEl.innerHTML=`<div style="padding:18px;text-align:center;color:var(--text3);font-size:12px">Loading deck... ${done}/${total}</div>`;
+    }).then(()=>{
+      if(viewerEl.classList.contains('open')) this._buildDeckViewer(deck,viewerEl);
+    });
+    return;
+    const _legacyCardNames=this._collectCardNames({decks:[deck]});
     this._buildDeckViewer(deck,viewerEl);
-    this._primeCardData(cardNames,()=>{
+    this._primeCardData(_legacyCardNames,()=>{
       if(viewerEl.classList.contains('open')) this._buildDeckViewer(deck,viewerEl);
     });
   },
@@ -1323,6 +1357,61 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
       <div class="fp-dv-pane" id="fp-dv-comments-${deck.id}">
         <div id="fp-comments-inner-${deck.id}"><div style="color:var(--text3);font-size:12px">Loading comments…</div></div>
       </div>`;
+  },
+
+  _renderDeckPopupContent(roDeck){
+    const cards=roDeck.cards||[];
+    const totalVal=cards.reduce((s,c)=>s+(parseFloat(Store.card(c.name)?.prices?.eur||0)*(c.qty||0)),0);
+    const totalCards=cards.reduce((s,c)=>s+(c.qty||0),0);
+    const avgCmc=(()=>{
+      let total=0,count=0;
+      cards.forEach(c=>{
+        const cd=Store.card(c.name)||{};
+        if((cd.type_line||'').toLowerCase().includes('land'))return;
+        total+=(cd.cmc||0)*(c.qty||1);
+        count+=c.qty||1;
+      });
+      return count?(total/count).toFixed(1):'--';
+    })();
+    const cmdrs=[roDeck.commander,roDeck.partner].filter(Boolean);
+    const groups=[
+      ['Commander',cards.filter(c=>cmdrs.includes(c.name))],
+      ['Creatures',cards.filter(c=>!cmdrs.includes(c.name)&&(Store.card(c.name)?.type_line||'').toLowerCase().includes('creature')&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('land'))],
+      ['Spells',cards.filter(c=>!cmdrs.includes(c.name)&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('land')&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('creature'))],
+      ['Lands',cards.filter(c=>!cmdrs.includes(c.name)&&(Store.card(c.name)?.type_line||'').toLowerCase().includes('land'))]
+    ];
+    document.getElementById('pbody').innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px">
+        <div class="kpi gold"><div class="kpi-val">${totalCards}</div><div class="kpi-lbl">Cards</div></div>
+        <div class="kpi ice"><div class="kpi-val">&euro;${totalVal.toFixed(0)}</div><div class="kpi-lbl">Value</div></div>
+        <div class="kpi green"><div class="kpi-val">${avgCmc}</div><div class="kpi-lbl">Avg CMC</div></div>
+        <div class="kpi purple"><div class="kpi-val">${roDeck.commander?esc(roDeck.commander):'--'}</div><div class="kpi-lbl">Commander</div></div>
+      </div>
+      <div id="readonly-deck-groups"></div>
+    `;
+    const wrap=document.getElementById('readonly-deck-groups');
+    groups.forEach(([title,arr],groupIdx)=>{
+      if(!arr.length)return;
+      const sec=document.createElement('div');
+      sec.innerHTML=`<div class="fp-group-title">${title} (${arr.reduce((s,c)=>s+(c.qty||0),0)})</div><div class="fp-mini-grid" id="readonly-group-${groupIdx}"></div>`;
+      wrap.appendChild(sec);
+      const grid=sec.querySelector(`#readonly-group-${groupIdx}`);
+      arr.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(card=>{
+        const cd=Store.card(card.name)||{};
+        const price=parseFloat(cd.prices?.eur||0);
+        const tile=document.createElement('div');
+        tile.className='fp-mini-card';
+        tile.innerHTML=`
+          ${cd.img?.crop?`<img class="fp-mini-thumb" src="${esc(cd.img.crop)}" loading="lazy" alt="${esc(card.name)}">`:'<div class="fp-mini-thumb"></div>'}
+          ${card.qty>1?`<div class="fp-mini-badge">${card.qty}x</div>`:''}
+          <div class="fp-mini-info">
+            <div class="fp-mini-name">${esc(card.name)}</div>
+            <div class="fp-mini-meta"><span>${price?'ï¿½'+price.toFixed(0):'--'}</span><span>${shortType(cd.type_line||'')}</span></div>
+          </div>`;
+        tile.addEventListener('click',()=>M.open({name:card.name,qty:card.qty||1},null));
+        grid.appendChild(tile);
+      });
+    });
   },
 
   _fpTab(btn,paneId){
