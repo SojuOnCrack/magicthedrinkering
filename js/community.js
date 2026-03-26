@@ -705,6 +705,25 @@ const CommunityNav={
   cur:'friends',
   _viewingUser:null,
 
+  _collectCardNames({decks=[],trades=[],wishes=[]}={}){
+    return [...new Set([
+      ...decks.flatMap(d=>[d.commander,d.partner,...(d.cards||[]).map(c=>c.name)]),
+      ...trades.map(t=>t.card_name),
+      ...wishes.map(w=>w.card_name)
+    ].filter(Boolean))];
+  },
+
+  async _primeCardData(names,onComplete){
+    if(!names?.length)return false;
+    await Store.warmCards(names);
+    const missing=names.filter(n=>!Store.card(n));
+    if(!missing.length)return false;
+    SF.fetchBatch(missing,(done,total)=>{
+      if(done>=total&&typeof onComplete==='function')onComplete();
+    });
+    return true;
+  },
+
   go(page){
     this.cur=page;
     this._viewingUser=null;
@@ -897,6 +916,8 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     const trades=tradeRes.value?.data||[];
     const wishes=wishRes.value?.data||[];
     const isFriend=(friendRes.value?.data||[]).length>0;
+    const relevantNames=this._collectCardNames({decks,trades,wishes});
+    await Store.warmCards(relevantNames);
 
     // ── Header stats ──────────────────────────────────────────
     const totalCards=decks.reduce((s,d)=>s+d.cards.reduce((a,c)=>a+c.qty,0),0);
@@ -920,9 +941,6 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     if(!grid)return;
     if(decks.length){
       grid.innerHTML='';
-
-      // Preload commander art for all decks
-      decks.forEach(d=>{if(d.commander&&!Store.card(d.commander))SF.fetch(d.commander,()=>{});});
 
       for(const d of decks){
       const cards=d.cards;
@@ -970,6 +988,10 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         if(v){v.classList.toggle('open');if(v.classList.contains('open'))CommunityNav._renderViewerComments(d.id,v);}
       });
       } // end for decks
+
+      this._primeCardData(relevantNames,()=>{
+        if(this._viewingUser===userId) this.viewUser(userId,email,displayName);
+      });
     } else {
       grid.innerHTML='<div style="color:var(--text3);font-size:12px;padding:16px">No public decks.</div>';
     }
@@ -1070,6 +1092,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
   openDeckPopup(deck){
     const cards=typeof deck.cards==='string'?JSON.parse(deck.cards||'[]'):deck.cards||[];
     const roDeck={...deck,cards};
+    const cardNames=this._collectCardNames({decks:[roDeck]});
     P._open(`[Deck] ${deck.name}`,true);
     const totalVal=cards.reduce((s,c)=>s+(parseFloat(Store.card(c.name)?.prices?.eur||0)*(c.qty||0)),0);
     const totalCards=cards.reduce((s,c)=>s+(c.qty||0),0);
@@ -1133,11 +1156,17 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     importBtn.textContent='Import Copy';
     importBtn.onclick=()=>{P.close();this._importDeck(roDeck);};
     foot.append(close,importBtn);
+
+    this._primeCardData(cardNames,()=>{
+      const title=document.getElementById('ptitle');
+      if(title?.textContent===`[Deck] ${deck.name}`) this.openDeckPopup(roDeck);
+    });
   },
 
   _toggleDeckViewer(deck,cardEl){
     const viewerEl=document.getElementById('fp-viewer-'+deck.id);if(!viewerEl)return;
     const isOpen=viewerEl.classList.contains('open');
+    const cardNames=this._collectCardNames({decks:[deck]});
     // Close all others
     document.querySelectorAll('.fp-deck-viewer.open').forEach(v=>{v.classList.remove('open');v.closest('.fp-deck-card')?.classList.remove('expanded');});
     if(isOpen)return;
@@ -1145,6 +1174,9 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     cardEl.classList.add('expanded');
     cardEl.scrollIntoView({behavior:'smooth',block:'nearest'});
     this._buildDeckViewer(deck,viewerEl);
+    this._primeCardData(cardNames,()=>{
+      if(viewerEl.classList.contains('open')) this._buildDeckViewer(deck,viewerEl);
+    });
   },
 
   _buildDeckViewer(deck,el){
@@ -1252,10 +1284,6 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
       <div class="fp-dv-pane" id="fp-dv-comments-${deck.id}">
         <div id="fp-comments-inner-${deck.id}"><div style="color:var(--text3);font-size:12px">Loading comments…</div></div>
       </div>`;
-
-    // Prefetch missing card data for the viewer
-    const missingNames=[...new Set(cards.map(c=>c.name).filter(n=>!Store.card(n)))];
-    if(missingNames.length)SF.fetchBatch(missingNames,()=>{});
   },
 
   _fpTab(btn,paneId){
