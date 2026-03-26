@@ -714,11 +714,7 @@ const CommunityNav={
   },
 
   _collectProfilePreviewNames({decks=[],trades=[],wishes=[]}={}){
-    return [...new Set([
-      ...decks.flatMap(d=>[d.commander,d.partner]),
-      ...trades.slice(0,12).map(t=>t.card_name),
-      ...wishes.slice(0,12).map(w=>w.card_name)
-    ].filter(Boolean))];
+    return [...new Set(decks.flatMap(d=>[d.commander,d.partner]).filter(Boolean))];
   },
 
   async _primeCardData(names,onComplete){
@@ -730,6 +726,41 @@ const CommunityNav={
       if(done>=total&&typeof onComplete==='function')onComplete();
     });
     return true;
+  },
+
+  _deckFetchItems(deck){
+    const cmdrs=[deck.commander,deck.partner].filter(Boolean);
+    const seenNames=new Set();
+    const items=[];
+    for(const name of cmdrs){
+      if(!seenNames.has(name)){
+        seenNames.add(name);
+        const cached=Store.card(name);
+        if(!cached)items.push({name});
+      }
+    }
+    for(const c of(deck.cards||[])){
+      if(!c?.name||seenNames.has(c.name))continue;
+      seenNames.add(c.name);
+      const cached=Store.card(c.name);
+      const needsExactPrint=c.set&&cached&&cached.set&&cached.set!==c.set;
+      if(!cached||needsExactPrint){
+        const item={name:c.name};
+        if(c.set)item.set=c.set;
+        if(c.collector_number)item.collector_number=c.collector_number;
+        items.push(item);
+      }
+    }
+    return items;
+  },
+
+  async _ensureDeckCardData(deck,onProgress){
+    const items=this._deckFetchItems(deck);
+    if(!items.length)return false;
+    await Store.warmCards(items.map(it=>it.name));
+    const missing=this._deckFetchItems(deck);
+    if(!missing.length)return false;
+    return SF.fetchBatch(missing,onProgress);
   },
 
   go(page){
