@@ -134,8 +134,7 @@ const App={
       if(seenNames.has(c.name))continue;
       seenNames.add(c.name);
       const cached=Store.card(c.name);
-      const needsExactPrint=c.set&&c.collector_number&&
-        cached&&cached.set&&cached.set!==c.set; // cached is different printing
+      const needsExactPrint=c.set&&cached&&cached.set&&cached.set!==c.set;
       const notCached=!cached;
       if(notCached||needsExactPrint){
         const item={name:c.name};

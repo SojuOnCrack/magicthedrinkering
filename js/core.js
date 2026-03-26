@@ -268,7 +268,10 @@ const Parser={
     const fmt=arr=>arr.sort((a,b)=>a.name.localeCompare(b.name)).map(c=>{
       if(format==='csv') return `"${c.name}",${c.qty},${c.foil?'foil':''},${parseFloat(Store.card(c.name)?.prices?.eur||0).toFixed(2)}`;
       const flags=[c.foil&&'*F*',c.etched&&'*E*'].filter(Boolean).join(' ');
-      return `${c.qty} ${c.name}${flags?' '+flags:''}`;
+      const printInfo=c.set
+        ?` (${String(c.set).toUpperCase()})${c.collector_number?' '+c.collector_number:''}`
+        :'';
+      return `${c.qty} ${c.name}${printInfo}${flags?' '+flags:''}`;
     });
     if(format==='csv'){lines.length=0;lines.push('Name,Qty,Foil,Price_EUR');}
     if(lands.length){if(format!=='csv')lines.push('// Lands');lines.push(...fmt(lands),'');}
@@ -330,6 +333,9 @@ const SF={
       if(it.set&&it.collector_number){
         return cached.set!==it.set||cached.collector_number!==it.collector_number;
       }
+      if(it.set){
+        return cached.set!==it.set;
+      }
       return false;
     });
     if(!missing.length){onProgress&&onProgress(names.length,names.length);return Promise.resolve();}
@@ -337,9 +343,10 @@ const SF={
     const signal=this._abortCtrl.signal;
     return new Promise(resolve=>{
       let done=0;const total=missing.length;
-      // Split into exact-print (has set+collnum) vs bulk-name lookups
+      // Split into exact-print (has set+collnum) vs set-hint lookups vs name-only lookups
       const exactPrints=missing.filter(it=>it.set&&it.collector_number);
-      const bulkNames=missing.filter(it=>!(it.set&&it.collector_number));
+      const setHints=missing.filter(it=>it.set&&!it.collector_number);
+      const bulkNames=missing.filter(it=>!it.set);
       const newEntries=[];
 
       const fetchExact=async()=>{
@@ -368,9 +375,38 @@ const SF={
         }
       };
 
+      const fetchCollectionChunk=async(chunk)=>{
+        try{
+          const r=await this._fetchWithRetry(`${this.BASE}/cards/collection`,{
+            method:'POST',signal,
+            headers:{'Content-Type':'application/json','Accept':'application/json'},
+            body:JSON.stringify({
+              identifiers:chunk.map(it=>it.set?{name:it.name,set:it.set}:{name:it.name})
+            })
+          });
+          if(r&&r.ok){
+            const d=await r.json();
+            for(const card of(d.data||[])){
+              const slim=this._slim(card);
+              Store.cache[slim.name]=slim;
+              /* Also mark in _cachedNames so lazy lookup knows it's available */
+              if(Store._cachedNames)Store._cachedNames.add(slim.name);
+              newEntries.push(slim);
+              done++;onProgress&&onProgress(done,total);
+            }
+            for(const nf of(d.not_found||[])){done++;onProgress&&onProgress(done,total);}
+          }
+        }catch(e){
+          if(e.name==='AbortError')return;
+          if(location.protocol==='file:'&&!this._warnShown){this._warnShown=true;this._showFileWarning();}
+          done+=chunk.length;onProgress&&onProgress(done,total);
+        }
+      };
+
       const chunks=[];
-      for(let i=0;i<bulkNames.length;i+=this.BATCH_SIZE)
-        chunks.push(bulkNames.slice(i,i+this.BATCH_SIZE));
+      const collectionItems=[...setHints,...bulkNames];
+      for(let i=0;i<collectionItems.length;i+=this.BATCH_SIZE)
+        chunks.push(collectionItems.slice(i,i+this.BATCH_SIZE));
 
       /* Process chunks in parallel rounds — PARALLEL_CHUNKS at a time */
       const runRounds=async()=>{
@@ -381,29 +417,7 @@ const SF={
           /* Fire all chunks in this round simultaneously */
           await Promise.all(roundChunks.map(async(chunk)=>{
             if(signal.aborted)return;
-            try{
-              const r=await this._fetchWithRetry(`${this.BASE}/cards/collection`,{
-                method:'POST',signal,
-                headers:{'Content-Type':'application/json','Accept':'application/json'},
-                body:JSON.stringify({identifiers:chunk.map(it=>({name:it.name}))})
-              });
-              if(r&&r.ok){
-                const d=await r.json();
-                for(const card of(d.data||[])){
-                  const slim=this._slim(card);
-                  Store.cache[slim.name]=slim;
-                  /* Also mark in _cachedNames so lazy lookup knows it's available */
-                  if(Store._cachedNames)Store._cachedNames.add(slim.name);
-                  newEntries.push(slim);
-                  done++;onProgress&&onProgress(done,total);
-                }
-                for(const nf of(d.not_found||[])){done++;onProgress&&onProgress(done,total);}
-              }
-            }catch(e){
-              if(e.name==='AbortError')return;
-              if(location.protocol==='file:'&&!this._warnShown){this._warnShown=true;this._showFileWarning();}
-              done+=chunk.length;onProgress&&onProgress(done,total);
-            }
+            await fetchCollectionChunk(chunk);
           }));
           /* Short pause between rounds to stay under rate limit */
           if(round+P<chunks.length)
@@ -415,7 +429,7 @@ const SF={
 
       (async()=>{
         await fetchExact();
-        if(bulkNames.length)runRounds();
+        if(collectionItems.length)runRounds();
         else{if(newEntries.length)IDB.setBulk(newEntries);resolve();}
       })();
     });

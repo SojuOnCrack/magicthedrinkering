@@ -16,7 +16,9 @@ const URLImport={
       const cn=card.collectorNumber||card.collector_number||
                 card.cn||card.number||card.printing?.collectorNumber||'';
       const foil=c.finish==='foil'||c.foil?'*F* ':'';
-      return set&&cn?`${q} ${name} (${set.toUpperCase()}) ${cn}${foil?` ${foil}`:''}`:`${q} ${name}`;
+      return set
+        ? `${q} ${name} (${set.toUpperCase()})${cn?` ${cn}`:''}${foil?` ${foil}`:''}`
+        : `${q} ${name}`;
     };
     const lines=[];
     const boards=data.boards||{};
@@ -41,7 +43,9 @@ const URLImport={
       const set=(c.card?.edition?.editioncode||c.card?.setCode||'').toLowerCase();
       const cn=c.card?.collectorNumber||'';
       const cats=(c.categories||[]).map(x=>typeof x==='string'?x.toLowerCase():x.name?.toLowerCase()||'');
-      const line=set&&cn?`${c.quantity||1} ${name} (${set.toUpperCase()}) ${cn}`:`${c.quantity||1} ${name}`;
+      const line=set
+        ? `${c.quantity||1} ${name} (${set.toUpperCase()})${cn?` ${cn}`:''}`
+        : `${c.quantity||1} ${name}`;
       if(cats.some(cat=>cat.includes('commander')))cmdrs.push(name);
       else main.push(line);
     });
