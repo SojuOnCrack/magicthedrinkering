@@ -138,7 +138,7 @@ const DeckComments={
 
     }catch(e){
       el.innerHTML=`<div style="color:var(--crimson2);font-size:11px">Error: ${esc(e.message)}<br>
-        <span style="color:var(--text3);font-size:10px">Run supabase_schema.sql to create the deck_comments and deck_reactions tables.</span>
+        <span style="color:var(--text3);font-size:10px">Create the deck_comments and deck_reactions tables using supabase_schema.sql.</span>
       </div>`;
     }
   },
@@ -212,7 +212,9 @@ const DeckComments={
   _subscribe(deckId, containerId){
     if(!DB._sb||this._subs[deckId])return;
     this._subs[deckId]=DB._sb.channel('deck-comments-'+deckId)
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'deck_comments',filter:`deck_id=eq.${deckId}`},
+      .on('postgres_changes',{event:'*',schema:'public',table:'deck_comments',filter:`deck_id=eq.${deckId}`},
+        ()=>this.renderForDeck(deckId, containerId))
+      .on('postgres_changes',{event:'*',schema:'public',table:'deck_reactions',filter:`deck_id=eq.${deckId}`},
         ()=>this.renderForDeck(deckId, containerId))
       .subscribe();
   }
@@ -1113,38 +1115,7 @@ async function enrichDeckCards(deck){
    ═══════════════════════════════════════════════════════════ */
 App.init();
 
-/* ═══ SERVICE WORKER — Cloudflare Pages ════════════════════
-   Registriert sw.js für Offline-Support und Bild-Caching.
-   ═══════════════════════════════════════════════════════════ */
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      .then(reg => {
-        console.log('[SW] Registered, scope:', reg.scope);
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
-          newWorker?.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              Notify.show('Update verfügbar — Seite neu laden für die neueste Version', 'inf', 8000);
-            }
-          });
-        });
-      })
-      .catch(err => console.warn('[SW] Registration failed:', err));
-    const el = document.getElementById('cache-status');
-    if (el) {
-      navigator.serviceWorker.ready.then(reg => {
-        el.textContent = 'Service Worker: aktiv · Scope: ' + reg.scope;
-        el.style.color = 'var(--green2)';
-      });
-    }
-  });
-} else {
-  const el = document.getElementById('cache-status');
-  if (el) el.textContent = location.protocol !== 'https:' ? 'Service Worker: nur auf HTTPS verfügbar' : 'Service Worker: nicht unterstützt';
-}
-
-
+/* Service worker registration moved to js/auth.js */
 
 /* ═══════════════════════════════════════════════════════════
    CARD SEARCH 2 — standalone section (mirrors CardSearch from vault)

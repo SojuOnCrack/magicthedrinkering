@@ -312,24 +312,24 @@ const App={
 
   async refreshTopbarStats(force=false){
     const totalLabel=document.getElementById('s-total-label');
-    const landsLabel=document.getElementById('s-lands-label');
-    const priceLabel=document.getElementById('s-price-label');
+    const collectionLabel=document.getElementById('s-collection-label');
+    const bulkLabel=document.getElementById('s-bulk-label');
     const totalEl=document.getElementById('s-total');
-    const landsEl=document.getElementById('s-lands');
-    const priceEl=document.getElementById('s-price');
+    const collectionEl=document.getElementById('s-collection');
+    const bulkEl=document.getElementById('s-bulk');
     const cmdrName=document.getElementById('cmdr-name-1');
     const ciPips=document.getElementById('ci-pips-1');
     const partnerPlus=document.getElementById('partner-plus');
-    if(!totalEl||!landsEl||!priceEl)return;
+    if(!totalEl||!collectionEl||!bulkEl)return;
 
     const sum=this._collectionSummary();
     const bulk=await this._refreshBulkPoolSummary(force);
     totalEl.textContent=sum.copies;
-    landsEl.textContent='€'+sum.value.toFixed(0);
-    priceEl.textContent='€'+(bulk.value||0).toFixed(0);
+    collectionEl.textContent='\u20AC'+sum.value.toFixed(0);
+    bulkEl.textContent='\u20AC'+(bulk.value||0).toFixed(0);
     if(totalLabel)totalLabel.textContent='Cards';
-    if(landsLabel)landsLabel.textContent='Collection';
-    if(priceLabel)priceLabel.textContent='Bulk Pool';
+    if(collectionLabel)collectionLabel.textContent='Collection';
+    if(bulkLabel)bulkLabel.textContent='Bulk Pool';
     if(cmdrName)cmdrName.textContent='Collection Overview';
     if(ciPips)ciPips.innerHTML='';
     if(partnerPlus)partnerPlus.style.display='none';
@@ -445,61 +445,6 @@ const App={
     const topbarTagBar=document.getElementById('deck-mechanic-chips');
     if(topbarTagBar)topbarTagBar.innerHTML='';
     this.refreshTopbarStats(!deck);
-    return;
-
-    if(!deck){
-      document.getElementById('cmdr-name-1').textContent='No Commander';
-      document.getElementById('ci-pips-1').innerHTML='';
-      document.getElementById('partner-plus').style.display='none';
-      document.getElementById('s-total').textContent='0';
-      document.getElementById('s-lands').textContent='0';
-      document.getElementById('s-price').textContent='€0';
-      document.getElementById('s-total-label').textContent='Cards';
-      document.getElementById('s-lands-label').textContent='Lands';
-      document.getElementById('s-price-label').textContent='Value';
-      return;
-    }
-    // Commander 1
-    document.getElementById('cmdr-name-1').textContent=deck.commander||'No Commander';
-    const cd1=Store.card(deck.commander||'');
-    const ci1=cd1?.color_identity||[];
-    document.getElementById('ci-pips-1').innerHTML=ci1.map(c=>`<div class="pip ${c}">${c}</div>`).join('');
-
-    // Partner / Commander 2
-    const partnerPlus=document.getElementById('partner-plus');
-    if(deck.partner){
-      partnerPlus.style.display='flex';
-      document.getElementById('cmdr-name-2').textContent=deck.partner;
-      const cd2=Store.card(deck.partner||'');
-      const ci2=cd2?.color_identity||[];
-      document.getElementById('ci-pips-2').innerHTML=ci2.map(c=>`<div class="pip ${c}">${c}</div>`).join('');
-    } else {
-      partnerPlus.style.display='none';
-    }
-
-    const total=deck.cards.reduce((s,c)=>s+c.qty,0);
-    const lands=deck.cards.filter(c=>(Store.card(c.name)?.type_line||'').toLowerCase().includes('land')).reduce((s,c)=>s+c.qty,0);
-    const price=deck.cards.reduce((s,c)=>s+(parseFloat(Store.card(c.name)?.prices?.eur||0)*c.qty),0);
-    document.getElementById('s-total').textContent=total;
-    document.getElementById('s-lands').textContent=lands;
-    document.getElementById('s-price').textContent='€'+price.toFixed(0);
-    document.getElementById('s-total-label').textContent='Cards';
-    document.getElementById('s-lands-label').textContent='Lands';
-    document.getElementById('s-price-label').textContent='Value';
-
-    // Show mechanics + tags chips under the deck name in topbar
-    const mechs=(deck.mechanics||[]);
-    const tags=(deck.tags||[]);
-    let tagBar=document.getElementById('deck-mechanic-chips');
-    if(!tagBar){
-      tagBar=document.createElement('div');tagBar.id='deck-mechanic-chips';
-      tagBar.style.cssText='display:flex;flex-wrap:wrap;gap:3px;padding:0 2px';
-      const statsEl=document.getElementById('deck-stats');
-      if(statsEl)statsEl.parentNode.insertBefore(tagBar,statsEl);
-    }
-    const chips=[...mechs,...tags].slice(0,5);
-    tagBar.innerHTML=chips.map(t=>`<span style="font-family:'JetBrains Mono',monospace;font-size:8px;padding:1px 6px;border-radius:3px;background:var(--bg4);border:1px solid var(--border2);color:var(--text3)">${esc(t)}</span>`).join('');
-    tagBar.style.display=chips.length?'flex':'none';
   },
 
   renderSidebar(){

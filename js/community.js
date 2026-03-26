@@ -1,5 +1,5 @@
 /* CommanderForge — community: BulkPool, TradeMgr, WishlistMgr, CommunityNav,
-   TradeMatch, DeckHealth */
+   TradeMatch */
 
 function communityDisplayName(username,email){
   return username||email?.split('@')[0]||'User';
@@ -515,7 +515,7 @@ const WishlistMgr={
       const isMissing=error.message?.includes('does not exist')||error.message?.includes('relation');
       if(listEl)listEl.innerHTML='<div style="padding:16px;color:var(--crimson2);font-size:12px">'
         +(isMissing
-          ? '<b>wishlist table missing.</b> Run <b>supabase_schema.sql</b> in your Supabase SQL Editor to create all required tables.'
+          ? '<b>wishlist table missing.</b> Run <b>supabase_schema.sql</b> in your Supabase SQL Editor to create the required tables.'
           : esc(error.message))
         +'</div>';
       return;
@@ -779,7 +779,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     }catch(e){
       el.innerHTML=`<div style="color:var(--crimson2);padding:12px;font-family:'JetBrains Mono',monospace;font-size:11px">
         Error: ${esc(e.message)}<br>
-        <span style="color:var(--text3);font-size:10px">Make sure you ran supabase_schema.sql and the profiles table exists.</span>
+        <span style="color:var(--text3);font-size:10px">Make sure you ran supabase_schema.sql and that the profiles table exists.</span>
       </div>`;
     }
   },
@@ -995,7 +995,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
             <span class="fp-card-name">${esc(t.card_name)}</span>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${t.qty}× ${t.condition||'NM'}</span>
             ${iHave?'<span class="fp-have-badge">✓ Have</span>':''}
-            ${cd.prices?.eur?`<span class="fp-card-price">$${parseFloat(cd.prices.eur).toFixed(2)}</span>`:''}
+            ${cd.prices?.eur?`<span class="fp-card-price">&euro;${parseFloat(cd.prices.eur).toFixed(2)}</span>`:''}
           `;
           if(!alreadyWanted){
             const wantBtn=document.createElement('button');
@@ -1035,7 +1035,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           row.innerHTML=`
             ${cd.img?.crop?`<img class="fp-card-thumb" src="${esc(cd.img.crop)}" loading="lazy">`:'<div class="fp-card-thumb" style="background:var(--bg3)"></div>'}
             <span class="fp-card-name">${esc(w.card_name)}</span>
-            ${cd.prices?.eur?`<span class="fp-card-price">$${parseFloat(cd.prices.eur).toFixed(2)}</span>`:''}
+            ${cd.prices?.eur?`<span class="fp-card-price">&euro;${parseFloat(cd.prices.eur).toFixed(2)}</span>`:''}
           `;
           if(iHave){
             /* I own this card they want — offer it */
@@ -1070,7 +1070,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
   openDeckPopup(deck){
     const cards=typeof deck.cards==='string'?JSON.parse(deck.cards||'[]'):deck.cards||[];
     const roDeck={...deck,cards};
-    P._open(`ðŸ‘ ${deck.name}`,true);
+    P._open(`[Deck] ${deck.name}`,true);
     const totalVal=cards.reduce((s,c)=>s+(parseFloat(Store.card(c.name)?.prices?.eur||0)*(c.qty||0)),0);
     const totalCards=cards.reduce((s,c)=>s+(c.qty||0),0);
     const avgCmc=(()=>{
@@ -1081,7 +1081,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         total+=(cd.cmc||0)*(c.qty||1);
         count+=c.qty||1;
       });
-      return count?(total/count).toFixed(1):'â€”';
+      return count?(total/count).toFixed(1):'--';
     })();
     const cmdrs=[roDeck.commander,roDeck.partner].filter(Boolean);
     const groups=[
@@ -1093,9 +1093,9 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     document.getElementById('pbody').innerHTML=`
       <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px">
         <div class="kpi gold"><div class="kpi-val">${totalCards}</div><div class="kpi-lbl">Cards</div></div>
-        <div class="kpi ice"><div class="kpi-val">â‚¬${totalVal.toFixed(0)}</div><div class="kpi-lbl">Value</div></div>
+        <div class="kpi ice"><div class="kpi-val">&euro;${totalVal.toFixed(0)}</div><div class="kpi-lbl">Value</div></div>
         <div class="kpi green"><div class="kpi-val">${avgCmc}</div><div class="kpi-lbl">Avg CMC</div></div>
-        <div class="kpi purple"><div class="kpi-val">${roDeck.commander?esc(roDeck.commander):'â€”'}</div><div class="kpi-lbl">Commander</div></div>
+        <div class="kpi purple"><div class="kpi-val">${roDeck.commander?esc(roDeck.commander):'--'}</div><div class="kpi-lbl">Commander</div></div>
       </div>
       <div id="readonly-deck-groups"></div>
     `;
@@ -1113,10 +1113,10 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         tile.className='fp-mini-card';
         tile.innerHTML=`
           ${cd.img?.crop?`<img class="fp-mini-thumb" src="${esc(cd.img.crop)}" loading="lazy" alt="${esc(card.name)}">`:'<div class="fp-mini-thumb"></div>'}
-          ${card.qty>1?`<div class="fp-mini-badge">${card.qty}Ã—</div>`:''}
+          ${card.qty>1?`<div class="fp-mini-badge">${card.qty}x</div>`:''}
           <div class="fp-mini-info">
             <div class="fp-mini-name">${esc(card.name)}</div>
-            <div class="fp-mini-meta"><span>${price?'â‚¬'+price.toFixed(0):'â€”'}</span><span>${shortType(cd.type_line||'')}</span></div>
+            <div class="fp-mini-meta"><span>${price?'�'+price.toFixed(0):'--'}</span><span>${shortType(cd.type_line||'')}</span></div>
           </div>`;
         tile.addEventListener('click',()=>M.open({name:card.name,qty:card.qty||1},null));
         grid.appendChild(tile);
@@ -1198,7 +1198,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           ${card.qty>1?`<div class="fp-mini-badge">${card.qty}×</div>`:''}
           <div class="fp-mini-info">
             <div class="fp-mini-name">${esc(card.name)}</div>
-            <div class="fp-mini-meta"><span>${price?'€'+price.toFixed(0):'—'}</span><span>${shortType(cd.type_line||'')}</span></div>
+            <div class="fp-mini-meta"><span>${price?'�'+price.toFixed(0):'--'}</span><span>${shortType(cd.type_line||'')}</span></div>
             <div style="margin-top:4px;display:flex;justify-content:flex-end">${wantBtn}</div>
           </div>
         </div>`;
@@ -1488,640 +1488,11 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
    TRADE MATCHING
    Cross-references all wishlists vs trade lists automatically
    ═══════════════════════════════════════════════════════════ */
-const TradeMatch={
-  _running:false,
+/* TradeMatch moved to js/trade-match.js */
 
-  render(){
-    // Populate nothing on load — user clicks Find Matches
-    const sel=document.getElementById('health-deck-select');
-  },
-
-  async run(){
-    if(this._running)return;
-    if(!DB._sb||!DB._user){Notify.show('Sign in to use Trade Matching','err');return;}
-    this._running=true;
-    const statusEl=document.getElementById('trade-match-status');
-    const btn=document.getElementById('trade-match-refresh');
-    if(btn)btn.textContent='🔄 Scanning…';
-    if(statusEl)statusEl.textContent='Loading trade lists and wishlists…';
-    this._hide(['tm-empty','tm-sec-want','tm-sec-have','tm-sec-mutual']);
-    ['tm-want-list','tm-have-list','tm-mutual-list'].forEach(id=>{
-      const el=document.getElementById(id);if(el)el.innerHTML='';
-    });
-
-    try{
-      // Load ALL trade lists and wishlists from all users
-      const[{data:allTrades,error:te},{data:allWishes,error:we}]=await Promise.all([
-        DB._sb.from('trade_list').select('user_id,user_email,card_name,qty,condition'),
-        DB._sb.from('wishlist').select('user_id,user_email,card_name,note')
-      ]);
-      if(te)throw te;if(we)throw we;
-
-      // Load profile names
-      const userIds=new Set([...(allTrades||[]).map(t=>t.user_id),...(allWishes||[]).map(w=>w.user_id)]);
-      const{data:profiles}=await DB._sb.from('profiles').select('id,username,email').in('id',[...userIds]);
-      const profileMap={};(profiles||[]).forEach(p=>{profileMap[p.id]={username:communityDisplayName(p.username,p.email),email:p.email||''};});
-
-      const myId=DB._user.id;
-      const myWishCards=new Set((allWishes||[]).filter(w=>w.user_id===myId).map(w=>w.card_name.toLowerCase()));
-      const myTradeCards=new Set((allTrades||[]).filter(t=>t.user_id===myId).map(t=>t.card_name.toLowerCase()));
-      // Also include all cards across my decks as "cards I have"
-      const myDeckCards=new Set(Store.decks.flatMap(d=>d.cards.map(c=>c.name.toLowerCase())));
-
-      // ── They have what I want ──
-      // Group other users' trade lists, find overlap with my wishlist
-      const theyHaveMap={};
-      for(const t of (allTrades||[])){
-        if(t.user_id===myId)continue;
-        if(!myWishCards.has(t.card_name.toLowerCase()))continue;
-        if(!theyHaveMap[t.user_id])theyHaveMap[t.user_id]=[];
-        theyHaveMap[t.user_id].push(t);
-      }
-
-      // ── They want what I have ──
-      const theyWantMap={};
-      for(const w of (allWishes||[])){
-        if(w.user_id===myId)continue;
-        const cardLow=w.card_name.toLowerCase();
-        if(!myTradeCards.has(cardLow)&&!myDeckCards.has(cardLow))continue;
-        if(!theyWantMap[w.user_id])theyWantMap[w.user_id]=[];
-        theyWantMap[w.user_id].push(w);
-      }
-
-      // ── Mutual matches (both directions) ──
-      const mutualIds=new Set([...Object.keys(theyHaveMap)].filter(id=>theyWantMap[id]));
-
-      const wantEntries=Object.entries(theyHaveMap).sort((a,b)=>b[1].length-a[1].length);
-      const haveEntries=Object.entries(theyWantMap).sort((a,b)=>b[1].length-a[1].length);
-
-      // Render "they have what you want"
-      if(wantEntries.length){
-        this._show('tm-sec-want');
-        const cntEl=document.getElementById('tm-want-count');
-        if(cntEl)cntEl.textContent=`(${wantEntries.length} user${wantEntries.length>1?'s':''})`;
-        const listEl=document.getElementById('tm-want-list');
-        for(const[uid,cards] of wantEntries){
-          const prof=profileMap[uid]||{username:'Unknown',email:''};
-          const hue=(uid.charCodeAt(0)*17)%360;
-          const card=document.createElement('div');card.className='match-card';
-          card.innerHTML=`
-            <div class="match-hdr">
-              <div class="match-avatar" style="background:hsl(${hue},35%,22%);border:2px solid hsl(${hue},50%,42%)">${esc(prof.username.slice(0,1).toUpperCase())}</div>
-              <div style="flex:1;min-width:0">
-                <div class="match-username">${esc(prof.username)}</div>
-                <div class="match-sub">Has ${cards.length} card${cards.length>1?'s':''} you want</div>
-              </div>
-              <div class="match-score">${cards.length} match${cards.length>1?'es':''}</div>
-            </div>
-            <div class="match-pills">
-              ${cards.map(t=>{
-                const cd=Store.card(t.card_name)||{};
-                return `<span class="match-pill they-have">
-                  <span class="match-pill-label">HAVE</span>${esc(t.card_name)}${cd.prices?.eur?' · $'+cd.prices.eur:''}
-                </span>`;
-              }).join('')}
-            </div>
-            <div style="margin-top:10px;display:flex;gap:8px">
-              <button class="tbtn sm gold" onclick="CommunityNav.viewUser('${uid}','${esc(prof.email)}','${esc(prof.username)}')">View Profile →</button>
-              ${mutualIds.has(uid)?'<span class="trade-badge have" style="align-self:center">⚡ Mutual match</span>':''}
-            </div>
-          `;
-          listEl.appendChild(card);
-        }
-      }
-
-      // Render "they want what you have"
-      if(haveEntries.length){
-        this._show('tm-sec-have');
-        const cntEl=document.getElementById('tm-have-count');
-        if(cntEl)cntEl.textContent=`(${haveEntries.length} user${haveEntries.length>1?'s':''})`;
-        const listEl=document.getElementById('tm-have-list');
-        for(const[uid,wishes] of haveEntries){
-          if(mutualIds.has(uid))continue; // shown in mutual section instead
-          const prof=profileMap[uid]||{username:'Unknown',email:''};
-          const hue=(uid.charCodeAt(0)*17)%360;
-          const card=document.createElement('div');card.className='match-card';
-          card.innerHTML=`
-            <div class="match-hdr">
-              <div class="match-avatar" style="background:hsl(${hue},35%,22%);border:2px solid hsl(${hue},50%,42%)">${esc(prof.username.slice(0,1).toUpperCase())}</div>
-              <div style="flex:1;min-width:0">
-                <div class="match-username">${esc(prof.username)}</div>
-                <div class="match-sub">Wants ${wishes.length} card${wishes.length>1?'s':''} you have</div>
-              </div>
-              <div class="match-score">${wishes.length} match${wishes.length>1?'es':''}</div>
-            </div>
-            <div class="match-pills">
-              ${wishes.map(w=>{
-                const cd=Store.card(w.card_name)||{};
-                const inTrade=myTradeCards.has(w.card_name.toLowerCase());
-                return `<span class="match-pill you-have">
-                  <span class="match-pill-label">${inTrade?'TRADE':'HAVE'}</span>${esc(w.card_name)}${cd.prices?.eur?' · $'+cd.prices.eur:''}
-                </span>`;
-              }).join('')}
-            </div>
-            <button class="tbtn sm" style="margin-top:10px" onclick="CommunityNav.viewUser('${uid}','${esc(prof.email)}','${esc(prof.username)}')">View Profile →</button>
-          `;
-          listEl.appendChild(card);
-        }
-      }
-
-      // Render mutual matches
-      if(mutualIds.size){
-        this._show('tm-sec-mutual');
-        const cntEl=document.getElementById('tm-mutual-count');
-        if(cntEl)cntEl.textContent=`(${mutualIds.size} user${mutualIds.size>1?'s':''})`;
-        const listEl=document.getElementById('tm-mutual-list');
-        for(const uid of mutualIds){
-          const prof=profileMap[uid]||{username:'Unknown',email:''};
-          const theyHave=theyHaveMap[uid]||[];
-          const theyWant=theyWantMap[uid]||[];
-          const hue=(uid.charCodeAt(0)*17)%360;
-          const card=document.createElement('div');
-          card.className='match-card';
-          card.style.border='1px solid var(--green2)';
-          card.style.background='rgba(58,122,74,.06)';
-          card.innerHTML=`
-            <div class="match-hdr">
-              <div class="match-avatar" style="background:hsl(${hue},35%,22%);border:2px solid hsl(${hue},50%,42%)">${esc(prof.username.slice(0,1).toUpperCase())}</div>
-              <div style="flex:1;min-width:0">
-                <div class="match-username">${esc(prof.username)}</div>
-                <div class="match-sub">Mutual trade partner</div>
-              </div>
-              <span class="trade-badge have" style="font-size:11px">⚡ Mutual — ${theyHave.length+theyWant.length} cards</span>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
-              <div>
-                <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--green2);margin-bottom:5px;text-transform:uppercase">They have → you want</div>
-                <div class="match-pills">${theyHave.map(t=>`<span class="match-pill they-have">${esc(t.card_name)}</span>`).join('')}</div>
-              </div>
-              <div>
-                <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold2);margin-bottom:5px;text-transform:uppercase">They want → you have</div>
-                <div class="match-pills">${theyWant.map(w=>`<span class="match-pill you-have">${esc(w.card_name)}</span>`).join('')}</div>
-              </div>
-            </div>
-            <button class="tbtn sm gold" style="margin-top:10px" onclick="CommunityNav.viewUser('${uid}','${esc(prof.email)}','${esc(prof.username)}')">View Profile &amp; Initiate Trade →</button>
-          `;
-          listEl.appendChild(card);
-        }
-      }
-
-      const total=wantEntries.length+haveEntries.length;
-      if(!total){
-        this._show('tm-empty');
-        const emptyEl=document.getElementById('tm-empty');
-        if(emptyEl)emptyEl.innerHTML=`<div class="match-empty">
-          No matches found yet.<br>
-          <span style="font-size:11px;color:var(--text3)">
-            Add cards to your <strong style="color:var(--text2)">Wishlist</strong> (cards you want) and
-            <strong style="color:var(--text2)">Trade Tracker</strong> (cards you have), then ask friends to do the same.
-          </span>
-        </div>`;
-      }else{
-        const emptyEl=document.getElementById('tm-empty');
-        if(emptyEl)emptyEl.style.display='none';
-      }
-
-      if(statusEl)statusEl.textContent=`Found ${total} potential trade partner${total>1?'s':''} · ${mutualIds.size} mutual`;
-    }catch(e){
-      if(statusEl)statusEl.innerHTML=`<span style="color:var(--crimson2)">Error: ${esc(e.message)}</span>`;
-    }
-
-    if(btn)btn.textContent='🔍 Find Matches';
-    this._running=false;
-  },
-
-  _show(id){const el=document.getElementById(id);if(el)el.style.display='block';},
-  _hide(ids){ids.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
-};
-
-/* ═══════════════════════════════════════════════════════════
-   DECK HEALTH SCORE
-   Scores decks 0-100 across 8 categories with suggestions
-   ═══════════════════════════════════════════════════════════ */
-const DeckHealth={
-
-  /* ── Archetype detection ─────────────────────────────────────
-     Analyses commander oracle + deck composition to label strategy.
-     Returns one of: aggro | control | combo | voltron | tribal |
-                     artifacts | enchantress | lands | goodstuff
-     ─────────────────────────────────────────────────────────── */
-  _detectArchetype(deck){
-    const cmdr=Store.card(deck.commander)||{};
-    const oracle=(cmdr.oracle_text||'').toLowerCase();
-    const type=(cmdr.type_line||'').toLowerCase();
-    const allOracle=deck.cards.map(c=>(Store.card(c.name)||{}).oracle_text||'').join(' ').toLowerCase();
-    const allTypes=deck.cards.map(c=>(Store.card(c.name)||{}).type_line||'').join(' ').toLowerCase();
-
-    const counts={
-      creatures:deck.cards.filter(c=>allTypes.includes('creature')).length,
-      artifacts:deck.cards.filter(c=>(Store.card(c.name)||{}).type_line?.toLowerCase().includes('artifact')).length,
-      enchants:deck.cards.filter(c=>(Store.card(c.name)||{}).type_line?.toLowerCase().includes('enchantment')).length,
-      instants:deck.cards.filter(c=>(Store.card(c.name)||{}).type_line?.toLowerCase().includes('instant')).length,
-      sorceries:deck.cards.filter(c=>(Store.card(c.name)||{}).type_line?.toLowerCase().includes('sorcery')).length
-    };
-
-    /* Voltron: commander has keywords for combat power, or deck has lots of equipment/auras */
-    const equipCount=deck.cards.filter(c=>(Store.card(c.name)||{}).type_line?.toLowerCase().includes('equipment')).length;
-    const auraCount=deck.cards.filter(c=>(Store.card(c.name)||{}).type_line?.toLowerCase().includes('aura')).length;
-    if(equipCount>=8||auraCount>=8) return'voltron';
-    if(oracle.includes('equipment')||oracle.includes('equipped')||oracle.includes('aura')) return'voltron';
-
-    /* Tribal: commander cares about a creature type */
-    if(/whenever (a|another) \w+ (you control|enters)/.test(oracle)) return'tribal';
-    if(/\w+ (creatures|spells) (you control|you cast) (get|cost|have)/.test(oracle)) return'tribal';
-
-    /* Artifacts: commander cares about artifacts */
-    if(counts.artifacts>=20||(oracle.includes('artifact')&&type.includes('artifact'))) return'artifacts';
-
-    /* Enchantress: commander cares about enchantments */
-    if(counts.enchants>=15||oracle.includes('enchantment')&&oracle.includes('draw')) return'enchantress';
-
-    /* Lands: commander cares about lands */
-    if(oracle.includes('land')&&(oracle.includes('landfall')||oracle.includes('put a land'))) return'lands';
-
-    /* Combo: tutors or specific win-cons in deck */
-    const tutorCount=deck.cards.filter(c=>{const o=(Store.card(c.name)||{}).oracle_text||'';return /search your library/i.test(o);}).length;
-    if(tutorCount>=5) return'combo';
-
-    /* Control: high counterspell + draw */
-    const counterCount=deck.cards.filter(c=>{const o=(Store.card(c.name)||{}).oracle_text||'';return /counter target spell/i.test(o);}).length;
-    if(counterCount>=6) return'control';
-
-    /* Aggro: low avg CMC, many creatures */
-    const nonLand=deck.cards.filter(c=>!(Store.card(c.name)||{}).type_line?.toLowerCase().includes('land'));
-    const avgCmc=nonLand.length?nonLand.reduce((s,c)=>s+(Store.card(c.name)||{}).cmc*c.qty,0)/nonLand.reduce((s,c)=>s+c.qty,0):0;
-    if(avgCmc<2.5&&counts.creatures>=25) return'aggro';
-
-    return'goodstuff';
-  },
-
-  /* Archetype labels for display */
-  ARCHETYPE_LABELS:{
-    aggro:'⚔ Aggro',control:'🛡 Control',combo:'♾ Combo',voltron:'⚡ Voltron',
-    tribal:'🐉 Tribal',artifacts:'⚙ Artifacts',enchantress:'✨ Enchantress',
-    lands:'🌍 Lands',goodstuff:'🌟 Goodstuff'
-  },
-
-  /* Archetype-specific targets — {ramp, draw, removal, interaction, lands_base, lands_range} */
-  TARGETS:{
-    aggro:    {ramp:7, draw:8,  removal:8,  interaction:2,  lands_base:33, desc:"Low curve, lots of threats"},
-    control:  {ramp:8, draw:14, removal:10, interaction:10, lands_base:37, desc:"Draw, counter, control"},
-    combo:    {ramp:10,draw:10, removal:6,  interaction:6,  lands_base:35, desc:"Tutor, assemble, win"},
-    voltron:  {ramp:9, draw:8,  removal:5,  interaction:3,  lands_base:36, desc:"Suit up commander, attack"},
-    tribal:   {ramp:9, draw:9,  removal:8,  interaction:4,  lands_base:36, desc:"Synergy through creature type"},
-    artifacts:{ramp:10,draw:9,  removal:8,  interaction:5,  lands_base:34, desc:"Artifact synergies"},
-    enchantress:{ramp:8,draw:10,removal:7,  interaction:4,  lands_base:36, desc:"Enchantment synergies"},
-    lands:    {ramp:12,draw:8,  removal:7,  interaction:3,  lands_base:40, desc:"Play extra lands, landfall"},
-    goodstuff:{ramp:10,draw:10, removal:10, interaction:5,  lands_base:36, desc:"Efficient cards in all categories"}
-  },
-
-  /* Card keywords for classification */
-  RAMP_KEYS:['add {','produces mana','search your library for a','basic land','land card','land put',
-             'sol ring','arcane signet',"commander's sphere",'cultivate',"kodama's reach",
-             'rampant growth','farseek','three visits',"nature's lore",'skyshroud claim',
-             'explosive vegetation','mana crypt','mana vault','dark ritual','cabal ritual',
-             'worn powerstone','gilded lotus','thran dynamo','basalt monolith'],
-
-  DRAW_KEYS:['draw a card','draw two','draw three','draw cards','draws a card','draw {',
-             'wheel of fortune','rhystic study','mystic remora','phyrexian arena','necropotence',
-             'sylvan library',"sensei's divining top",'skullclamp','mentor of the meek',
-             'consecrated sphinx','fact or fiction','night\'s whisper','read the bones',
-             'sign in blood','ancient craving','ambition\'s cost','painful truths',
-             'urban evolution','growth spiral','brainstorm','ponder','preordain'],
-
-  REMOVAL_KEYS:['destroy target','exile target','return target','counter target',
-                'deal damage to any target','swords to plowshares','path to exile',
-                'beast within','generous gift','chaos warp','cyclonic rift',
-                'toxic deluge','damnation','wrath of god','blasphemous act',
-                'vandalblast','austere command','farewell','damn','balefire dragon',
-                'decree of pain','dark impostor'],
-
-  COUNTER_KEYS:['counter target spell','counter that spell','counter target activated',
-                'counter target triggered','negate','counterspell','force of will',
-                'mana drain','pact of negation','swan song','flusterstorm',
-                'an offer you can\'t refuse','fierce guardianship'],
-
-  PROTECTION_KEYS:['hexproof','shroud','indestructible','ward','protection from',
-                   "champion's helm","swiftfoot boots","lightning greaves",
-                   "darksteel plate",'regenerate','totem armor'],
-
-  WIN_CON_KEYS:['win the game','deal combat damage to a player','infect',
-                'poison counter','you win the game','each opponent loses',
-                "alt win",'thassa\'s oracle','laboratory maniac',
-                'jace, wielder of mysteries'],
-
-  /* Basic land names for fallback when card data not yet cached */
-  BASIC_LAND_NAMES:new Set(['plains','island','swamp','mountain','forest',
-    'snow-covered plains','snow-covered island','snow-covered swamp',
-    'snow-covered mountain','snow-covered forest','wastes']),
-
-  _classify(deck){
-    const res={ramp:[],draw:[],removal:[],interaction:[],lands:[],
-               protection:[],win_cons:[],basics:0,nonbasics:0};
-    for(const c of deck.cards){
-      const cd=Store.card(c.name)||{};
-      const oracle=(cd.oracle_text||'').toLowerCase();
-      const type=(cd.type_line||'').toLowerCase();
-      const name=c.name.toLowerCase();
-      const isLand=type.includes('land')||
-        (!type&&(this.BASIC_LAND_NAMES.has(name)||
-          /(plains|island|swamp|mountain|forest)/.test(name)||
-          oracle.includes('{t}: add ')));
-      if(isLand){
-        res.lands.push(c.name);
-        const isBasic=type.includes('basic')||this.BASIC_LAND_NAMES.has(name);
-        if(isBasic)res.basics+=c.qty;
-        else res.nonbasics+=c.qty;
-        continue;
-      }
-      if(this.RAMP_KEYS.some(k=>oracle.includes(k)||name.includes(k)))   res.ramp.push(c.name);
-      if(this.DRAW_KEYS.some(k=>oracle.includes(k)||name.includes(k)))   res.draw.push(c.name);
-      if(this.REMOVAL_KEYS.some(k=>oracle.includes(k)||name.includes(k)))res.removal.push(c.name);
-      if(this.COUNTER_KEYS.some(k=>oracle.includes(k)))                  res.interaction.push(c.name);
-      if(this.PROTECTION_KEYS.some(k=>oracle.includes(k)||name.includes(k)))res.protection.push(c.name);
-      if(this.WIN_CON_KEYS.some(k=>oracle.includes(k)||name.includes(k)))res.win_cons.push(c.name);
-    }
-    return res;
-  },
-
-  async _analyse(deck){
-    /* Warm card data before classify — ensures type_line available for land detection */
-    const names=[deck.commander,deck.partner,...deck.cards.map(c=>c.name)].filter(Boolean);
-    await Store.warmCards(names);
-    const archetype=this._detectArchetype(deck);
-    const targets=this.TARGETS[archetype];
-    const cls=this._classify(deck);
-    const allCards=deck.cards;
-    const totalNonLand=allCards.filter(c=>!(Store.card(c.name)||{}).type_line?.toLowerCase().includes('land'));
-    const avgCmc=totalNonLand.length?
-      totalNonLand.reduce((s,c)=>s+((Store.card(c.name)||{}).cmc||0)*c.qty,0)/
-      totalNonLand.reduce((s,c)=>s+c.qty,0):0;
-
-    const totalCards=allCards.reduce((s,c)=>s+c.qty,0);
-    /* Count total land copies (cls.lands stores one entry per unique name,
-       so we need to sum actual qty from deck.cards)                    */
-    const landCount=deck.cards.reduce((s,c)=>{
-      const cd=Store.card(c.name)||{};
-      const type=(cd.type_line||'').toLowerCase();
-      const name=c.name.toLowerCase();
-      const isLand=type.includes('land')||
-        (!type&&(DeckHealth.BASIC_LAND_NAMES.has(name)||
-          /(plains|island|swamp|mountain|forest)/.test(name)||
-          (cd.oracle_text||'').toLowerCase().includes('{t}: add ')));
-      return s+(isLand?c.qty:0);
-    },0);
-    const cmdrs=[deck.commander,deck.partner].filter(Boolean);
-    const cmdrCount=cmdrs.length;
-
-    /* Ideal lands: archetype base + CMC adjustment */
-    const cmcAdj=Math.round((avgCmc-3)*2);
-    const idealLands=Math.max(30,Math.min(42,targets.lands_base+cmcAdj));
-
-    /* Mana-fixing: how many non-basics are dual/fetch/utility lands */
-    const colorCount=(Store.card(deck.commander)||{}).color_identity?.length||1;
-    const fixingTarget=Math.max(0,(colorCount-1)*5);
-
-    /* Check: commander has protection in deck? */
-    const cmdrProtected=cls.protection.length>=2;
-
-    /* Check: deck has a win condition? */
-    const hasWinCon=cls.win_cons.length>=1||
-      deck.cards.some(c=>c.name===deck.commander&&
-        (Store.card(c.name)||{}).oracle_text?.toLowerCase().includes('damage'));
-
-    const checks=[
-      {
-        id:'ramp',label:'Ramp & Mana',ico:'⚡',weight:15,
-        count:cls.ramp.length,target:targets.ramp,
-        desc:`${cls.ramp.length} ramp pieces (target for ${archetype}: ${targets.ramp}+)`,
-        fix:cls.ramp.length<targets.ramp?`Add ${targets.ramp-cls.ramp.length} more ramp. Prioritise: Sol Ring, Arcane Signet, Cultivate, Kodama's Reach.`:null,
-        examples:['Sol Ring','Arcane Signet','Cultivate',"Kodama's Reach",'Rampant Growth']
-      },
-      {
-        id:'draw',label:'Card Draw & Advantage',ico:'🃏',weight:15,
-        count:cls.draw.length,target:targets.draw,
-        desc:`${cls.draw.length} draw effects (target for ${archetype}: ${targets.draw}+)`,
-        fix:cls.draw.length<targets.draw?`Add ${targets.draw-cls.draw.length} more draw. Try: Rhystic Study, Sylvan Library, Phyrexian Arena, Skullclamp.`:null,
-        examples:['Rhystic Study','Sylvan Library','Skullclamp','Phyrexian Arena']
-      },
-      {
-        id:'removal',label:'Targeted Removal',ico:'⚔',weight:12,
-        count:cls.removal.length,target:targets.removal,
-        desc:`${cls.removal.length} removal spells (target for ${archetype}: ${targets.removal}+)`,
-        fix:cls.removal.length<targets.removal?`Add ${targets.removal-cls.removal.length} more removal. Prioritise: Swords to Plowshares, Beast Within, Generous Gift.`:null,
-        examples:['Swords to Plowshares','Beast Within','Generous Gift','Chaos Warp']
-      },
-      {
-        id:'interaction',label:`Counterspells & Protection`,ico:'🛡',weight:10,
-        count:cls.interaction.length,target:targets.interaction,
-        desc:`${cls.interaction.length} interaction spells (target for ${archetype}: ${targets.interaction}+)`,
-        fix:cls.interaction.length<targets.interaction&&targets.interaction>2?
-          `Add ${targets.interaction-cls.interaction.length} more counterspells or responses.`:null,
-        examples:['Counterspell','Negate','Swan Song','Force of Will']
-      },
-      {
-        id:'lands',label:'Land Count',ico:'🌍',weight:18,
-        count:landCount,target:idealLands,
-        desc:`${landCount} lands (target: ~${idealLands} for ${archetype} with avg CMC ${avgCmc.toFixed(1)})`,
-        fix:landCount<idealLands-1?`Add ${idealLands-landCount} more lands. Your avg CMC is ${avgCmc.toFixed(1)}.`:
-            landCount>idealLands+2?`Consider cutting ${landCount-idealLands} lands — add more ramp instead.`:null,
-        examples:['Command Tower','Exotic Orchard','Arcane Sanctum']
-      },
-      {
-        id:'fixing',label:'Mana Fixing',ico:'🎨',weight:8,
-        count:cls.nonbasics,target:fixingTarget,
-        desc:`${colorCount}-color deck: ${cls.nonbasics} non-basics (target: ${fixingTarget}+ dual/fetch/utility lands)`,
-        fix:colorCount>=3&&cls.nonbasics<fixingTarget?`Add ${fixingTarget-cls.nonbasics} more dual or fetch lands for ${colorCount}-color consistency.`:null,
-        examples:['Command Tower','Exotic Orchard','Evolving Wilds','Terramorphic Expanse']
-      },
-      {
-        id:'protection',label:'Commander Protection',ico:'🔰',weight:8,
-        pass:cmdrProtected,
-        desc:cmdrProtected?`✓ ${cls.protection.length} protection effects for your commander`:`Only ${cls.protection.length} protection effects — commander is vulnerable`,
-        fix:!cmdrProtected?`Add Lightning Greaves, Swiftfoot Boots, or hexproof/indestructible equipment to protect your commander.`:null,
-        examples:["Lightning Greaves","Swiftfoot Boots","Darksteel Plate","Champion's Helm"]
-      },
-      {
-        id:'wincon',label:'Win Condition',ico:'🏆',weight:8,
-        pass:hasWinCon,
-        desc:hasWinCon?`✓ Win condition detected`:`No clear win condition found`,
-        fix:!hasWinCon?`Identify how you plan to win. Add a finisher, combo, or damage outlet.`:null,
-        examples:[]
-      },
-      {
-        id:'cardcount',label:'Deck Size',ico:'📦',weight:8,
-        count:totalCards,target:100,
-        desc:`${totalCards} cards total (must be exactly 100 including commander${deck.partner?'s':''})`,
-        fix:totalCards!==100?`Your deck has ${totalCards} cards. Adjust by ${totalCards>100?'removing':'adding'} ${Math.abs(totalCards-100)} card${Math.abs(totalCards-100)!==1?'s':''}.`:null,
-        examples:[]
-      },
-      {
-        id:'curve',label:'Mana Curve Balance',ico:'📊',weight:8,
-        _avgCmc:avgCmc,
-        desc:`Avg CMC: ${avgCmc.toFixed(2)} — ${archetype==='aggro'?'target: 2.0-2.8':archetype==='control'?'target: 2.5-3.5':'target: 2.5-3.5'}`,
-        fix:avgCmc>3.8?`High curve (${avgCmc.toFixed(1)}) for ${archetype}. Cut expensive cards or add ramp.`:
-            archetype==='aggro'&&avgCmc>2.8?`Aggro decks want avg CMC under 2.8 (currently ${avgCmc.toFixed(1)}).`:null,
-        examples:[]
-      },
-      {
-        id:'singleton',label:'Singleton Rule',ico:'✦',weight:8,
-        _check:()=>{
-          const violations=allCards.filter(c=>{
-            const cd=Store.card(c.name)||{};
-            const isBasic=(cd.type_line||'').toLowerCase().includes('basic');
-            return c.qty>1&&!isBasic;
-          });
-          return violations.length===0?
-            {ok:true,desc:'✓ All non-basic cards are singleton'}:
-            {ok:false,desc:`${violations.length} card${violations.length>1?'s':''} with qty>1: ${violations.slice(0,3).map(c=>c.name).join(', ')}${violations.length>3?'…':''}`,
-             fix:`Remove duplicates: ${violations.map(c=>c.name).join(', ')}`};
-        }
-      }
-    ];
-
-    /* ── Score calculation ── */
-    let totalScore=0,totalWeight=0;
-    const processedChecks=checks.map(chk=>{
-      let pct=0,statusClass='fail',pass=false,desc=chk.desc,fix=chk.fix;
-
-      if(chk.id==='singleton'){
-        const res=chk._check();
-        pass=res.ok;pct=pass?100:0;statusClass=pass?'pass':'fail';
-        desc=res.desc;fix=res.fix||null;
-      } else if(chk.id==='protection'||chk.id==='wincon'){
-        pass=chk.pass||false;pct=pass?100:0;statusClass=pass?'pass':'warn';
-      } else if(chk.id==='curve'){
-        const cv=chk._avgCmc;
-        const tgt=archetype==='aggro'?{lo:1.8,hi:2.8}:{lo:2.3,hi:3.6};
-        if(cv>=tgt.lo&&cv<=tgt.hi){pct=100;statusClass='pass';pass=true;}
-        else if(cv>=tgt.lo-0.4&&cv<=tgt.hi+0.5){pct=65;statusClass='warn';}
-        else{pct=30;statusClass='fail';}
-      } else if(chk.id==='cardcount'){
-        pass=chk.count===100;pct=pass?100:Math.max(0,100-Math.abs(chk.count-100)*5);
-        statusClass=pass?'pass':Math.abs(chk.count-100)<=2?'warn':'fail';
-      } else if(chk.id==='fixing'){
-        if(colorCount<=1){pass=true;pct=100;statusClass='pass';desc='Mono-color: no fixing needed';}
-        else{
-          pct=chk.target>0?Math.min(100,(chk.count/chk.target)*100):100;
-          pass=chk.count>=chk.target;
-          statusClass=pass?'pass':pct>=60?'warn':'fail';
-        }
-      } else {
-        const ratio=chk.count/chk.target;
-        pct=Math.min(100,ratio*100);
-        pass=chk.count>=chk.target;
-        statusClass=pass?'pass':pct>=65?'warn':'fail';
-      }
-
-      totalWeight+=chk.weight;
-      totalScore+=Math.round((pct/100)*chk.weight);
-      return{...chk,pct,statusClass,pass,desc,fix};
-    });
-
-    const score=Math.round((totalScore/totalWeight)*100);
-
-    /* ── Grade ── */
-    let grade,gradeColor;
-    if(score>=90){grade='S — Optimal';gradeColor='var(--green2)';}
-    else if(score>=80){grade='A — Excellent';gradeColor='var(--green2)';}
-    else if(score>=70){grade='B — Good';gradeColor='var(--ice)';}
-    else if(score>=60){grade='C — Decent';gradeColor='var(--gold)';}
-    else if(score>=45){grade='D — Needs Work';gradeColor='var(--gold3)';}
-    else{grade='F — Critical Issues';gradeColor='var(--crimson2)';}
-
-    /* ── Render score ring ── */
-    const numEl=document.getElementById('health-score-num');
-    const gradeEl=document.getElementById('health-score-grade');
-    if(numEl){numEl.textContent=score;numEl.style.fill=gradeColor;}
-    if(gradeEl){gradeEl.textContent=grade.split(' ')[0];gradeEl.setAttribute('fill',gradeColor);}
-    const arc=document.getElementById('health-ring-arc');
-    if(arc){
-      const circ=2*Math.PI*66;
-      setTimeout(()=>{
-        arc.style.strokeDashoffset=circ*(1-score/100);
-        arc.style.stroke=score>=80?'#5aaa6a':score>=60?'#c8a84b':score>=40?'#e8703a':'#c22b3e';
-      },80);
-    }
-
-    /* ── Archetype badge ── */
-    const archetypeBadge=document.getElementById('health-archetype-badge');
-    if(archetypeBadge){
-      archetypeBadge.textContent=this.ARCHETYPE_LABELS[archetype]||archetype;
-      archetypeBadge.style.display='inline-block';
-    }
-
-    /* ── Render checklist ── */
-    const checksEl=document.getElementById('health-checks');
-    if(checksEl){
-      checksEl.innerHTML='';
-      for(const chk of processedChecks){
-        const barColor=chk.statusClass==='pass'?'var(--green2)':chk.statusClass==='warn'?'var(--gold)':'var(--crimson2)';
-        const row=document.createElement('div');row.className='health-check';
-        row.innerHTML=`
-          <div class="health-check-ico">${chk.ico}</div>
-          <div class="health-check-info">
-            <div class="health-check-label">${chk.label}</div>
-            <div class="health-check-detail">${chk.desc}</div>
-            <div class="health-bar-wrap" style="margin-top:4px">
-              <div class="health-bar" style="width:${chk.pct}%;background:${barColor};transition:width .6s"></div>
-            </div>
-          </div>
-          <div class="health-check-score ${chk.statusClass}">${chk.statusClass==='pass'?'✓':chk.pct+'%'}</div>`;
-        checksEl.appendChild(row);
-      }
-    }
-
-    /* ── Suggestions ── */
-    const fixes=processedChecks.filter(c=>c.fix&&!c.pass);
-    const sugEl=document.getElementById('health-suggestions');
-    if(sugEl){
-      if(!fixes.length){sugEl.style.display='none';return;}
-      sugEl.style.display='block';
-      const sugList=document.getElementById('health-sug-list');
-      if(sugList){
-        sugList.innerHTML='';
-        fixes.sort((a,b)=>(b.weight||0)-(a.weight||0)).forEach(chk=>{
-          const item=document.createElement('div');item.className='health-sug-item';
-          item.innerHTML=`
-            <div class="health-sug-ico">${chk.ico}</div>
-            <div class="health-sug-text">${chk.fix}${chk.examples?.length?
-              '<br><span style="color:var(--text3);font-size:10px">e.g. '+chk.examples.slice(0,3).join(', ')+'</span>':''}
-            </div>`;
-          sugList.appendChild(item);
-        });
-      }
-    }
-  },
-
-  render(){
-    const sel=document.getElementById('health-deck-select');
-    if(!sel)return;
-    const prev=sel.value;
-    sel.innerHTML='<option value="">— Select a deck to analyse —</option>';
-    Store.decks.forEach(d=>{
-      const opt=document.createElement('option');
-      opt.value=d.id;
-      opt.textContent=d.name+(d.commander?' · '+d.commander:'');
-      sel.appendChild(opt);
-    });
-    const best=prev||App.curId||'';
-    if(best){sel.value=best;if(sel.value)this.select(sel.value);}
-    else{document.getElementById('health-content').style.display='none';document.getElementById('health-empty').style.display='block';}
-  },
-
-  select(id){
-    const deck=Store.getDeck(id);
-    const content=document.getElementById('health-content');
-    const empty=document.getElementById('health-empty');
-    if(!deck){if(content)content.style.display='none';if(empty)empty.style.display='block';return;}
-    if(content)content.style.display='block';
-    if(empty)empty.style.display='none';
-    this._analyse(deck).catch(()=>{});
-  }
-};
-
-
+/* DeckHealth moved to js/deck-health.js */
 
 /* ═══════════════════════════════════════════════════════════
    URL IMPORT — Moxfield / Archidekt / TappedOut
    ═══════════════════════════════════════════════════════════ */
+

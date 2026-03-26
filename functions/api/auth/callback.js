@@ -1,6 +1,6 @@
 /**
  * CommanderForge — Cloudflare Pages Function
- * /auth/callback  — Supabase OAuth-Redirect-Handler
+ * /api/auth/callback  — Supabase OAuth-Redirect-Handler
  *
  * Supabase leitet OAuth-Logins (z.B. Google) an diese URL zurück.
  * Der Hash-Fragment (#access_token=...) wird vom Supabase-Client
@@ -8,8 +8,8 @@
  *
  * Eintrag in Supabase Dashboard:
  *   Authentication → URL Configuration → Redirect URLs
- *   → https://deine-domain.pages.dev/auth/callback
- *     https://deine-custom-domain.com/auth/callback
+ *   → https://deine-domain.pages.dev/api/auth/callback
+ *     https://deine-custom-domain.com/api/auth/callback
  */
 
 export async function onRequest(context) {

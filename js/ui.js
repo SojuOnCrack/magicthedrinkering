@@ -1,4 +1,4 @@
-/* CommanderForge — ui: Menu, CardSearch, VaultNav, M (modal), P (panels),
+/* CommanderForge - ui: Menu, CardSearch, VaultNav, M (modal), P (panels),
    fmtMana, Notify, PrintPicker, Charts, Dashboard, CollView, PriceView, AlertMgr */
 
 const Menu={
@@ -32,25 +32,25 @@ const Menu={
 /* ═══ VAULT NAV ═════════════════════════════════════════════ */
 
 const CardSearch={
-  _page:null,      /* Scryfall next page URL */
+  _page:null,
   _query:'',
   _acTimer:null,
   _lastSearch:0,
 
   init(){
     this._populateDeckSel();
-    /* Only auto-search if already had a query */
-    if(document.getElementById('cs-query')?.value) this.search();
+    if(document.getElementById('cs-query')?.value)this.search();
   },
 
   _populateDeckSel(){
     const sel=document.getElementById('cs-target-deck');
     if(!sel)return;
     const prev=sel.value;
-    sel.innerHTML='<option value="">— Add to deck —</option>';
+    sel.innerHTML='<option value="">- Add to deck -</option>';
     Store.decks.forEach(d=>{
       const o=document.createElement('option');
-      o.value=d.id;o.textContent=d.name+(d.commander?' · '+d.commander.split(',')[0]:'');
+      o.value=d.id;
+      o.textContent=d.name+(d.commander?' - '+d.commander.split(',')[0]:'');
       sel.appendChild(o);
     });
     if(prev)sel.value=prev;
@@ -69,30 +69,28 @@ const CardSearch={
     const rarity=document.getElementById('cs-rarity')?.value||'';
     const cmc=document.getElementById('cs-cmc')?.value||'';
 
-    let parts=[];
-    if(q) parts.push(q);
-    if(color) parts.push(`color:${color}`);
-    if(type) parts.push(`t:${type}`);
-    if(rarity) parts.push(`r:${rarity}`);
+    const parts=[];
+    if(q)parts.push(q);
+    if(color)parts.push(`color:${color}`);
+    if(type)parts.push(`t:${type}`);
+    if(rarity)parts.push(`r:${rarity}`);
     if(cmc){
-      if(cmc==='6') parts.push('cmc>=6');
+      if(cmc==='6')parts.push('cmc>=6');
       else parts.push(`cmc:${cmc}`);
     }
-    if(!parts.length) parts.push('is:commander');
-    /* Always exclude tokens + extra cards for cleaner results */
+    if(!parts.length)parts.push('is:commander');
     parts.push('-is:extra');
     return parts.join(' ');
   },
 
   async search(){
-    const query=this._buildQuery();
-    this._query=query;
+    this._query=this._buildQuery();
     this._page=null;
     const el=document.getElementById('cs-results');
     const status=document.getElementById('cs-status');
     const more=document.getElementById('cs-load-more');
     if(!el)return;
-    if(status)status.textContent='Searching…';
+    if(status)status.textContent='Searching...';
     if(more)more.style.display='none';
     el.innerHTML='';
     this._populateDeckSel();
@@ -108,12 +106,10 @@ const CardSearch={
     const el=document.getElementById('cs-results');
     const status=document.getElementById('cs-status');
     const more=document.getElementById('cs-load-more');
-    const query=this._query;
 
     try{
-      const url=this._page||
-        `/api/scryfall/cards/search?q=${encodeURIComponent(query)}&order=edhrec&unique=cards`;
-      const res=await fetch(url,{headers:{'Accept':'application/json'}});
+      const url=this._page||`/api/scryfall/cards/search?q=${encodeURIComponent(this._query)}&order=edhrec&unique=cards`;
+      const res=await fetch(url,{headers:{Accept:'application/json'}});
 
       if(res.status===404){
         if(status)status.textContent='No cards found.';
@@ -130,22 +126,19 @@ const CardSearch={
         return;
       }
 
-      if(status)status.textContent=
-        `${data.total_cards?.toLocaleString()||cards.length} cards found${data.total_cards>cards.length?' — showing first '+cards.length:''}`;
+      if(status){
+        status.textContent=`${data.total_cards?.toLocaleString()||cards.length} cards found${data.total_cards>cards.length?' - showing first '+cards.length:''}`;
+      }
 
-      /* Render cards */
       for(const card of cards){
-        const tile=this._makeTile(card);
-        el.appendChild(tile);
+        el.appendChild(this._makeTile(card));
       }
 
       if(more)more.style.display=this._page?'block':'none';
 
-      /* Cache all returned cards in IDB */
       const slimmed=cards.map(d=>SF._slim(d)).filter(Boolean);
       for(const s of slimmed)Store.cache[s.name]=s;
       if(slimmed.length)IDB.setBulk(slimmed);
-
     }catch(e){
       if(status)status.textContent='Error: '+e.message;
       console.error('[CardSearch]',e);
@@ -154,18 +147,17 @@ const CardSearch={
 
   _makeTile(card){
     const img=card.image_uris?.normal||card.card_faces?.[0]?.image_uris?.normal||'';
-    const price=card.prices?.eur?'€'+card.prices.eur:'—';
+    const price=card.prices?.eur?'&euro;'+card.prices.eur:'-';
     const rarity=card.rarity||'common';
     const rarityClass={common:'cs-rarity-c',uncommon:'cs-rarity-u',rare:'cs-rarity-r',mythic:'cs-rarity-m'}[rarity]||'';
     const setInfo=`${(card.set||'').toUpperCase()} #${card.collector_number||'?'}`;
-    const inDeck=Store.decks.some(d=>d.cards.some(cc=>cc.name===card.name));
     const inWish=WishlistMgr._data?.some(w=>w.card_name===card.name);
+    const safeNameJs=JSON.stringify(card.name);
 
     const tile=document.createElement('div');
     tile.className='cs-card';
     tile.innerHTML=`
-      ${img?`<img class="cs-card-img" src="${esc(img)}" loading="lazy" alt="${esc(card.name)}">`
-           :`<div class="cs-card-img" style="display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px">No image</div>`}
+      ${img?`<img class="cs-card-img" src="${esc(img)}" loading="lazy" alt="${esc(card.name)}">`:`<div class="cs-card-img" style="display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px">No image</div>`}
       <div class="cs-card-body">
         <div class="cs-card-name" title="${esc(card.name)}">${esc(card.name)}</div>
         <div class="cs-card-meta">
@@ -174,18 +166,17 @@ const CardSearch={
         </div>
       </div>
       <div class="cs-actions">
-        <button class="cs-action-btn purple${inWish?' on':''}" data-cs-name="${esc(card.name)}" onclick="CardSearch._addWish(this,'${esc(card.name).replace(/'/g,"\\'")}')">
-          ${inWish?'⭐ Wished':'⭐ Wish'}
+        <button class="cs-action-btn purple${inWish?' on':''}" data-cs-name="${esc(card.name)}" onclick='CardSearch._addWish(this,${safeNameJs})'>
+          ${inWish?'Wished':'Wish'}
         </button>
-        <button class="cs-action-btn gold" data-cs-deck onclick="CardSearch._addToDeck('${esc(card.name).replace(/'/g,"\\'")}',this)">
+        <button class="cs-action-btn gold" data-cs-deck onclick='CardSearch._addToDeck(${safeNameJs},this)'>
           + Deck
         </button>
-        <button class="cs-action-btn" onclick="CardSearch._addTrade('${esc(card.name).replace(/'/g,"\\'")}',this)">
-          🤝 Trade
+        <button class="cs-action-btn" onclick='CardSearch._addTrade(${safeNameJs},this)'>
+          Trade
         </button>
       </div>`;
 
-    /* Click tile = open modal */
     tile.querySelector('.cs-card-img').onclick=()=>{
       const slim=SF._slim(card);
       Store.cache[slim.name]=slim;
@@ -196,7 +187,7 @@ const CardSearch={
 
   _addWish(btn,name){
     WishlistMgr.addByName(name);
-    btn.textContent='⭐ Wished';
+    btn.textContent='Wished';
     btn.classList.add('on');
     btn.disabled=true;
   },
@@ -217,7 +208,7 @@ const CardSearch={
     }
     Store.updDeck(deck);
     if(App.curId===deckId)App.render();
-    btn.textContent='✓ Added';
+    btn.textContent='Added';
     btn.style.color='var(--green2)';
     btn.style.borderColor='var(--green2)';
     setTimeout(()=>{btn.textContent='+ Deck';btn.style.color='';btn.style.borderColor='';},2000);
@@ -225,11 +216,10 @@ const CardSearch={
 
   _addTrade(name,btn){
     TradeMgr.toggleCard(name);
-    btn.textContent='🤝 Listed';
+    btn.textContent='Listed';
     btn.disabled=true;
   }
 };
-
 const VaultNav={
   cur:'dashboard',
   VPAGE_KEY:'cforge_vpage',

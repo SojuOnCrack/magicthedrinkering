@@ -174,8 +174,12 @@ const Store={
   addDeck(d){this.decks.push(d);this.saveDecks();Bus.emit('decks:changed');if(typeof Dashboard!=='undefined')Dashboard.markDirty();},
   updDeck(d){const i=this.decks.findIndex(x=>x.id===d.id);if(i>=0){this.decks[i]=d;this.saveDecks();Bus.emit('decks:changed');if(typeof Dashboard!=='undefined')Dashboard.markDirty();}},
   delDeck(id){this.decks=this.decks.filter(d=>d.id!==id);this.saveDecks();Bus.emit('decks:changed');},
-  card(n){return this.cache[n]||null},
-  setCard(n,d){this.cache[n]=d;IDB.set(n,d);},
+  setCard(n,d){
+    this.cache[n]=d;
+    if(this._cachedNames)this._cachedNames.add(n);
+    if(d?.name&&this._cachedNames)this._cachedNames.add(d.name);
+    IDB.set(n,d);
+  },
   uid(){return 'd'+Date.now()+Math.random().toString(36).slice(2,6)}
 };
 
@@ -210,7 +214,7 @@ const Parser={
     if(!line||/^(\/\/|SB:)/i.test(line.trim()))return null;
     const l=line.trim();
     // Format: "1x Card Name (SET) 123 *F*"  or  "1 Card Name (SET) *F*"  or  "1 Card Name"
-    const m=l.match(/^(\d+)[x×]?\s+(.+?)(?:\s+\(([A-Z0-9]{2,6})\)(?:\s+(\S+))?)?(?:\s+\*[EF]\*)*\s*$/i);
+    const m=l.match(/^(\d+)[x\u00D7]?\s+(.+?)(?:\s+\(([A-Z0-9]{2,6})\)(?:\s+(\S+))?)?(?:\s+\*[EF]\*)*\s*$/i);
     if(!m)return null;
     const qty=parseInt(m[1],10)||1;
     let name=m[2].trim();

@@ -1,5 +1,4 @@
-/* CommanderForge — auth: Config, DB (Supabase), Auth, ShareMgr, SettingsMgr,
-   PriceProxy, MobileNav, registerSW */
+/* CommanderForge - auth: Config, DB (Supabase), Auth, registerSW */
 
 const SUPABASE_URL='https://pwrpvtzocycnemgnsooz.supabase.co';
 const SUPABASE_KEY='sb_publishable_doroVk7_Pblbapi7z9njyQ_zfVTZOmG';
@@ -98,7 +97,7 @@ const DB={
     if(!this._sb)return{error:'Not configured'};
     /* emailRedirectTo muss in Supabase Dashboard unter
        Authentication → URL Configuration → Redirect URLs stehen */
-    const redirectTo=window.location.origin+'/auth/callback';
+    const redirectTo=window.location.origin+'/api/auth/callback';
     const{data,error}=await this._sb.auth.signUp({
       email,
       password,
@@ -115,7 +114,7 @@ const DB={
     if(!this._sb)return{error:'Not configured'};
     return this._sb.auth.signInWithOAuth({
       provider:'google',
-      options:{redirectTo:window.location.origin+'/auth/callback'}
+      options:{redirectTo:window.location.origin+'/api/auth/callback'}
     });
   },
 
@@ -167,7 +166,7 @@ const DB={
         if(error)throw error;
       }
       Auth._updSyncDot('ok');
-      Notify.show('Synced to cloud ☁','ok');
+      Notify.show('Synced to cloud','ok');
     }catch(e){
       Auth._updSyncDot('err');
       Notify.show('Sync failed: '+e.message,'err');
@@ -303,10 +302,10 @@ const Auth={
       : await DB.signUp(email,pass,nickname);
 
     if(error){
-      /* Supabase 500 → nutzerfreundliche Fehlermeldung */
+      /* Supabase 500: user-friendly error message. */
       const msg = error.status===500
-        ? 'Server-Fehler — Supabase-Projekt möglicherweise pausiert oder E-Mail-Limit erreicht. Bitte im Supabase-Dashboard prüfen.'
-        : (error.message||'Unbekannter Fehler');
+        ? 'Server error. The Supabase project may be paused or rate-limited. Check the Supabase dashboard.'
+        : (error.message||'Unknown error');
       this._setErr(msg);
       if(btn)btn.textContent=this._mode==='login'?'Sign In':'Create Account';
       return;
@@ -432,7 +431,7 @@ const Auth={
       if(session2?.user){this._onSignedIn(session2.user);return;}
     }
 
-    // Not signed in — show login overlay automatically
+    // Not signed in - show login overlay automatically
     const dismissed=Config.get('auth_dismissed');
     if(!dismissed){
       setTimeout(()=>this.show(),800);
@@ -440,273 +439,48 @@ const Auth={
   }
 };
 
-/* ═══════════════════════════════════════════════════════════
-   SHARE MANAGER
-   ═══════════════════════════════════════════════════════════ */
-const ShareMgr={
-  _deck:null,
-  _token:null,
 
-  async open(){
-    const deck=Store.getDeck(App.curId);
-    if(!deck){Notify.show('No deck loaded','err');return;}
-    this._deck=deck;
-    document.getElementById('share-deck-name').textContent=deck.name+(deck.commander?' · '+deck.commander:'');
-    document.getElementById('share-url-inp').value='Generating link…';
-    document.getElementById('share-modal').classList.add('show');
-    await this._generate(deck);
-  },
+/* ShareMgr moved to js/share.js */
 
-  close(){document.getElementById('share-modal').classList.remove('show');},
+/* SettingsMgr moved to js/settings.js */
 
-  async _generate(deck){
-    try{
-      if(DB._sb&&DB._user){
-        this._token=await DB.shareDeck(deck);
-        const url=`${window.location.origin}?share=${this._token}`;
-        document.getElementById('share-url-inp').value=url;
-        this._showQR(url);
-      } else {
-        // Fallback: encode deck in URL (works without auth)
-        const url=this._encodeLocal(deck);
-        document.getElementById('share-url-inp').value=url;
-        this._showQR(url);
-      }
-    }catch(e){
-      document.getElementById('share-url-inp').value='Error: '+e.message;
-    }
-  },
+/* PriceProxy moved to js/price-proxy.js */
 
-  _encodeLocal(deck){
-    const minimal={n:deck.name,c:deck.commander,p:deck.partner||'',
-      cards:deck.cards.map(c=>c.qty+'x'+c.name+(c.foil?'*F*':''))};
-    const encoded=btoa(unescape(encodeURIComponent(JSON.stringify(minimal)))).replace(/=/g,'');
-    return `${window.location.origin}${window.location.pathname}?deck=${encoded}`;
-  },
+/* MobileNav moved to js/mobile-nav.js */
 
-  _showQR(url){
-    // Simple QR via free API
-    const qrEl=document.getElementById('share-qr');
-    if(qrEl){
-      qrEl.innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(url)}&bgcolor=0c1220&color=c8a84b&format=png" alt="QR Code" style="border-radius:6px;border:1px solid var(--border2)">`;
-    }
-  },
-
-  copyLink(){
-    const val=document.getElementById('share-url-inp')?.value||'';
-    navigator.clipboard.writeText(val).then(()=>Notify.show('Link copied!','ok'));
-  },
-
-  openLink(){
-    const val=document.getElementById('share-url-inp')?.value||'';
-    if(val&&val.startsWith('http'))window.open(val,'_blank');
-  },
-
-  copyMoxfield(){
-    const deck=this._deck;if(!deck)return;
-    const txt=Parser.exportTxt(deck,'moxfield');
-    navigator.clipboard.writeText(txt).then(()=>Notify.show('Moxfield text copied!','ok'));
-  },
-
-  async regenerate(){
-    if(this._deck)await this._generate(this._deck);
-  },
-
-  async loadShared(token){
-    // Try Supabase first, then URL-encoded fallback
-    let deck=null;
-    if(DB._sb){deck=await DB.getSharedDeck(token);}
-    if(!deck){
-      // Try URL-encoded deck param
-      const params=new URLSearchParams(window.location.search);
-      const encoded=params.get('deck');
-      if(encoded){
-        try{
-          const str=decodeURIComponent(escape(atob(encoded)));
-          const obj=JSON.parse(str);
-          deck={name:obj.n,commander:obj.c,partner:obj.p||'',
-            cards:obj.cards.map(s=>{
-              const m=s.match(/^(\d+)x(.+?)(\*F\*)?$/);
-              return m?{name:m[2],qty:parseInt(m[1]),foil:!!m[3],etched:false}:null;
-            }).filter(Boolean)};
-        }catch{}
-      }
-    }
-    if(!deck){Notify.show('Shared deck not found','err');return;}
-    // Show read-only deck view
-    deck.id='shared_'+token;deck.created=Date.now();deck.readOnly=true;
-    Store.decks=[deck];Store.saveDecks();
-    App.renderSidebar();App.loadDeck(deck.id);
-    Notify.show('Viewing shared deck: '+deck.name,'inf',4000);
-    // Clean URL
-    history.replaceState(null,'',window.location.pathname);
-  }
-};
-
-/* ═══════════════════════════════════════════════════════════
-   SETTINGS MANAGER
-   ═══════════════════════════════════════════════════════════ */
-const SettingsMgr={
-  open(){
-    document.getElementById('settings-panel').classList.add('show');
-    ScryfallBulk._updateSettingsStatus();
-    // Load current values
-    document.getElementById('cfg-tcp-pub').value=Config.get('tcp_pub');
-    document.getElementById('cfg-tcp-priv').value=Config.get('tcp_priv');
-    document.getElementById('cfg-mkm-tok').value=Config.get('mkm_tok');
-    document.getElementById('cfg-mkm-sec').value=Config.get('mkm_sec');
-    this._checkSWStatus();
-  },
-  close(){document.getElementById('settings-panel').classList.remove('show');},
-
-  saveSupabase(){/* no-op — credentials are hardcoded */},
-
-  savePriceKeys(){
-    Config.set('tcp_pub',document.getElementById('cfg-tcp-pub')?.value||'');
-    Config.set('tcp_priv',document.getElementById('cfg-tcp-priv')?.value||'');
-    Config.set('mkm_tok',document.getElementById('cfg-mkm-tok')?.value||'');
-    Config.set('mkm_sec',document.getElementById('cfg-mkm-sec')?.value||'');
-    Notify.show('Price API keys saved','ok');
-    // Update price provider status in Price Analysis
-    PriceProxy.keysUpdated();
-  },
-
-  exportAll(){
-    const data={decks:Store.decks,alerts:Store.alerts,config:Config.data,exported:new Date().toISOString()};
-    const a=document.createElement('a');
-    a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,2));
-    a.download='magicthedrinkering-backup-'+new Date().toISOString().slice(0,10)+'.json';
-    a.click();Notify.show('Backup exported','ok');
-  },
-
-  importAll(){document.getElementById('import-file')?.click();},
-
-  _doImport(e){
-    const file=e.target.files[0];if(!file)return;
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      try{
-        const data=JSON.parse(ev.target.result);
-        if(data.decks){Store.decks=data.decks;Store.saveDecks();}
-        if(data.alerts){Store.alerts=data.alerts;Store.saveAlerts();}
-        if(data.config){Config.data=data.config;Config.save();}
-        App.renderSidebar();Notify.show('Backup imported — '+(data.decks?.length||0)+' decks','ok');
-      }catch{Notify.show('Invalid backup file','err');}
-    };
-    reader.readAsText(file);
-  },
-
-  clearImageCache(){
-    if(navigator.serviceWorker?.controller){
-      const ch=new MessageChannel();
-      ch.port1.onmessage=e=>{Notify.show(e.data,'ok');};
-      navigator.serviceWorker.controller.postMessage('CLEAR_IMAGE_CACHE',[ch.port2]);
-    } else {
-      Notify.show('Service worker not active','inf');
-    }
-  },
-
-  _checkSWStatus(){
-    const el=document.getElementById('cache-status');if(!el)return;
-    if('serviceWorker' in navigator){
-      navigator.serviceWorker.getRegistration().then(reg=>{
-        el.textContent=reg?'Service worker: active ✓ — images cached offline':'Service worker: not yet registered (open the app online once)';
-      });
-    } else {
-      el.textContent='Service worker: not supported in this browser';
-    }
-  }
-};
-
-/* ═══════════════════════════════════════════════════════════
-   PRICE PROXY — wraps Netlify Edge Function
-   ═══════════════════════════════════════════════════════════ */
-const PriceProxy={
-  _available:{tcgplayer:false,mkm:false},
-
-  keysUpdated(){
-    // Keys are set in env vars on Netlify — always attempt on a real deployment
-    this._available.tcgplayer=true;
-    this._available.mkm=true;
-  },
-
-  async fetch(cardName,provider){
-    // Only works when deployed — on localhost returns simulated
-    if(location.hostname==='localhost'||location.protocol==='file:'){
-      return this._simulate(provider);
-    }
-    try{
-      const url=`/api/prices?provider=${provider}&name=${encodeURIComponent(cardName)}`;
-      const r=await fetch(url);
-      if(!r.ok)return null;
-      return await r.json();
-    }catch{return null;}
-  },
-
-  _simulate(provider){
-    const base=(Math.random()*15+0.5).toFixed(2);
-    if(provider==='tcgplayer')return{provider:'tcgplayer',usd:base,eur_foil:(parseFloat(base)*2.2).toFixed(2),simulated:true};
-    if(provider==='mkm')return{provider:'mkm',eur:(parseFloat(base)*0.9).toFixed(2),eur_foil:(parseFloat(base)*1.9).toFixed(2),simulated:true};
-    return null;
-  },
-
-  // Fetch prices for all providers for a card
-  async fetchAll(cardName){
-    const [tcg,mkm]=await Promise.all([
-      this.fetch(cardName,'tcgplayer'),
-      this.fetch(cardName,'mkm')
-    ]);
-    return{tcgplayer:tcg,mkm};
-  }
-};
-
-/* ═══════════════════════════════════════════════════════════
-   MOBILE NAV
-   ═══════════════════════════════════════════════════════════ */
-const MobileNav={
-  go(section){
-    document.querySelectorAll('.mn-btn').forEach(b=>b.classList.remove('on'));
-    const btn=document.getElementById('mn-'+section);
-    if(btn)btn.classList.add('on');
-    Menu.go(section);
-    this.closeDecks();
-    // When entering vault, make sure a page is visible
-    if(section==='vault'){
-      VaultNav.go(VaultNav.cur||'dashboard');
-    }
-  },
-  openDecks(){
-    // Sync mobile deck list with main deck list
-    const src=document.getElementById('deck-list');
-    const dest=document.getElementById('mobile-deck-list');
-    if(src&&dest)dest.innerHTML=src.innerHTML;
-    // Re-wire click events
-    dest?.querySelectorAll('.di').forEach((item,i)=>{
-      const realItem=src?.querySelectorAll('.di')[i];
-      if(realItem)item.onclick=()=>{realItem.click();this.closeDecks();};
-    });
-    document.getElementById('mobile-deck-drawer').classList.add('open');
-  },
-  closeDecks(){document.getElementById('mobile-deck-drawer').classList.remove('open');}
-};
-
-/* ═══════════════════════════════════════════════════════════
-   SERVICE WORKER REGISTRATION
-   ═══════════════════════════════════════════════════════════ */
+/* Service worker registration */
 function registerSW(){
+  const statusEl=document.getElementById('cache-status');
   if('serviceWorker' in navigator&&location.protocol!=='file:'){
-    // Register external sw.js — caches app shell + Scryfall images
+    // Register external sw.js - caches app shell and Scryfall images.
     navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(reg=>{
       console.log('[SW] registered, scope:',reg.scope);
+      navigator.serviceWorker.ready.then(readyReg=>{
+        if(statusEl){
+          statusEl.textContent='Service worker active - scope: '+readyReg.scope;
+          statusEl.style.color='var(--green2)';
+        }
+      });
       reg.addEventListener('updatefound',()=>{
         reg.installing?.addEventListener('statechange',e=>{
           if(e.target.state==='installed'&&navigator.serviceWorker.controller)
-            Notify.show('App updated — refresh for the latest version','inf',6000);
+            Notify.show('App updated - refresh for the latest version','inf',6000);
         });
       });
-    }).catch(e=>console.warn('[SW] registration failed:',e));
+    }).catch(e=>{
+      console.warn('[SW] registration failed:',e);
+      if(statusEl){
+        statusEl.textContent='Service worker registration failed';
+        statusEl.style.color='var(--crimson2)';
+      }
+    });
+  }else if(statusEl){
+    statusEl.textContent=location.protocol==='file:'?'Service worker unavailable on file://':'Service worker not supported';
+    statusEl.style.color='var(--text3)';
   }
 }
+
+registerSW();
 
 
 
