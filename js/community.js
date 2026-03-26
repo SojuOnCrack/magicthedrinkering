@@ -713,6 +713,14 @@ const CommunityNav={
     ].filter(Boolean))];
   },
 
+  _collectProfilePreviewNames({decks=[],trades=[],wishes=[]}={}){
+    return [...new Set([
+      ...decks.flatMap(d=>[d.commander,d.partner]),
+      ...trades.slice(0,12).map(t=>t.card_name),
+      ...wishes.slice(0,12).map(w=>w.card_name)
+    ].filter(Boolean))];
+  },
+
   async _primeCardData(names,onComplete){
     if(!names?.length)return false;
     await Store.warmCards(names);
@@ -916,8 +924,8 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     const trades=tradeRes.value?.data||[];
     const wishes=wishRes.value?.data||[];
     const isFriend=(friendRes.value?.data||[]).length>0;
-    const relevantNames=this._collectCardNames({decks,trades,wishes});
-    await Store.warmCards(relevantNames);
+    const previewNames=this._collectProfilePreviewNames({decks,trades,wishes});
+    await Store.warmCards(previewNames);
 
     // ── Header stats ──────────────────────────────────────────
     const totalCards=decks.reduce((s,d)=>s+d.cards.reduce((a,c)=>a+c.qty,0),0);
@@ -989,7 +997,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
       });
       } // end for decks
 
-      this._primeCardData(relevantNames,()=>{
+      this._primeCardData(previewNames,()=>{
         if(this._viewingUser===userId) this.viewUser(userId,email,displayName);
       });
     } else {

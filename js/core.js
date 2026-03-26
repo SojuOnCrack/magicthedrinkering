@@ -390,9 +390,15 @@ const SF={
           });
           if(r&&r.ok){
             const d=await r.json();
+            const byName=new Map(chunk.map(it=>[String(it.name||'').toLowerCase(),it]));
             for(const card of(d.data||[])){
               const slim=this._slim(card);
               Store.cache[slim.name]=slim;
+              const requested=byName.get(String(card.name||'').toLowerCase());
+              if(requested?.name&&requested.name!==slim.name){
+                Store.cache[requested.name]=slim;
+                if(Store._cachedNames)Store._cachedNames.add(requested.name);
+              }
               /* Also mark in _cachedNames so lazy lookup knows it's available */
               if(Store._cachedNames)Store._cachedNames.add(slim.name);
               newEntries.push(slim);
