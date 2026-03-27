@@ -1020,6 +1020,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
       for(const d of decks){
       const cards=d.cards;
       const cmdrData=d.commander?this._deckCardData(d,d.commander):null;
+      const totalDeckCards=cards.reduce((s,c)=>s+(c.qty||0),0);
       const totalDeckVal=cards.reduce((s,c)=>s+(parseFloat(this._cardData(c)?.prices?.eur||0)*c.qty),0);
 
       // Bracket score (quick estimate)
@@ -1041,8 +1042,8 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         <div class="fp-deck-info">
           <div class="fp-deck-title">${esc(d.name)}</div>
           <div class="fp-deck-meta">
-            <span>${cards.length} cards</span>
-            <span>$${totalDeckVal.toFixed(0)}</span>
+            <span>${totalDeckCards} cards</span>
+            <span>€${totalDeckVal.toFixed(0)}</span>
             ${d.partner?`<span>${esc(d.partner)}</span>`:''}
           </div>
         </div>

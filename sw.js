@@ -8,9 +8,9 @@
  * - Google Fonts: pass through to browser cache
  */
 
-const CACHE_NAME = 'cforge-v4';
-const SHELL_CACHE = 'cforge-shell-v4';
-const IMAGE_CACHE = 'cforge-images-v4';
+const CACHE_NAME = 'cforge-v5';
+const SHELL_CACHE = 'cforge-shell-v5';
+const IMAGE_CACHE = 'cforge-images-v5';
 const IMAGE_LIMIT = 500;
 const IMAGE_TTL = 7 * 24 * 60 * 60 * 1000;
 
