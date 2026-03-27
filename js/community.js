@@ -11,6 +11,8 @@ function communityMetaLabel(){
 
 const BulkPool={
   _data:[],_filtered:[],_tab:'single',_pasteLines:[],_page:1,_pageSize:60,
+  _backfillRunning:false,
+  _backfillTouched:new Set(),
 
   render(){
     // Show loading state immediately so user doesn't see blank page
@@ -209,27 +211,39 @@ const BulkPool={
 
   /* Silently update rows where price_usd=0 with the current Scryfall price */
   async _backfillPrices(rows){
-    if(!DB._sb||!DB._user)return;
-    const missing=rows.filter(r=>!(r.price_usd>0));
+    if(!DB._sb||!DB._user||this._backfillRunning)return;
+    const missing=rows.filter(r=>!(r.price_usd>0)&&!this._backfillTouched.has(r.id));
     if(!missing.length)return;
+    this._backfillRunning=true;
     /* Fetch any still-missing card data from Scryfall */
-    let fetched=0;
-    const total=missing.length;
     const tryUpdate=async()=>{
+      const updates=[];
       for(const r of missing){
         const cd=Store.card(r.card_name);
         const price=parseFloat(cd?.prices?.eur||0);
         if(!price)continue;
-        try{
-          await DB._sb.from('bulk_pool')
-            .update({price_usd:price})
-            .eq('id',r.id)
-            .eq('user_id',r.user_id);
-          r.price_usd=price; /* update local copy too */
-          fetched++;
-        }catch{}
+        updates.push({...r,price_usd:price});
       }
-      if(fetched>0){
+      if(!updates.length)return;
+      const CHUNK=20;
+      let changed=0;
+      for(let i=0;i<updates.length;i+=CHUNK){
+        const chunk=updates.slice(i,i+CHUNK);
+        try{
+          const { error } = await DB._sb.from('bulk_pool').upsert(chunk,{onConflict:'id'});
+          if(error)throw error;
+          chunk.forEach(u=>{
+            const local=rows.find(r=>r.id===u.id);
+            if(local)local.price_usd=u.price_usd;
+            this._backfillTouched.add(u.id);
+            changed++;
+          });
+          await new Promise(res=>setTimeout(res,120));
+        }catch(e){
+          console.warn('[BulkPool._backfillPrices]',e?.message||e);
+        }
+      }
+      if(changed>0){
         this._updateStats();
         this._renderList();
       }
@@ -240,10 +254,10 @@ const BulkPool={
       let done=0;
       needFetch.forEach(r=>SF.fetch(r.card_name,()=>{
         done++;
-        if(done>=needFetch.length)tryUpdate();
+        if(done>=needFetch.length)tryUpdate().finally(()=>{this._backfillRunning=false;});
       }));
     } else {
-      tryUpdate();
+      tryUpdate().finally(()=>{this._backfillRunning=false;});
     }
   },
 
