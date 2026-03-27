@@ -59,13 +59,13 @@ input,textarea,select{font-family:'JetBrains Mono',monospace;border:none;outline
 .im-btn{
   position:relative;width:56px;height:56px;border-radius:12px;
   background:transparent;border:1px solid transparent;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
   color:var(--text3);transition:all .18s;cursor:pointer;
 }
 .im-btn:hover{background:var(--bg3);border-color:var(--border);color:var(--text2);}
 .im-btn.on{background:var(--gold4);border-color:var(--gold3);color:var(--gold2);}
-.im-btn .im-ico{font-size:22px;line-height:1;}
-.im-btn .im-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.05em;text-transform:uppercase;line-height:1.1;}
+.im-btn .im-ico{font-size:24px;line-height:1;}
+.im-btn .im-lbl{display:none;}
 .im-btn .im-badge{
   position:absolute;top:4px;right:4px;
   min-width:14px;height:14px;border-radius:7px;
