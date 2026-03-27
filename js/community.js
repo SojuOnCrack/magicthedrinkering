@@ -736,15 +736,17 @@ const CommunityNav={
       if(!seenNames.has(name)){
         seenNames.add(name);
         const cached=Store.card(name);
-        if(!cached)items.push({name});
+        const missingImage=!cached?.img?.crop&&!cached?.img?.normal;
+        if(!cached||missingImage)items.push({name});
       }
     }
     for(const c of(deck.cards||[])){
       if(!c?.name||seenNames.has(c.name))continue;
       seenNames.add(c.name);
       const cached=Store.card(c.name);
+      const missingImage=!cached?.img?.crop&&!cached?.img?.normal;
       const needsExactPrint=c.set&&cached&&cached.set&&cached.set!==c.set;
-      if(!cached||needsExactPrint){
+      if(!cached||missingImage||needsExactPrint){
         const item={name:c.name};
         if(c.set)item.set=c.set;
         if(c.collector_number)item.collector_number=c.collector_number;
