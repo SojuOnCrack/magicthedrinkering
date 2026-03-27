@@ -171,8 +171,17 @@ const Store={
   getCur(){return localStorage.getItem(this.CUR)||''},
   saveAlerts(){try{localStorage.setItem(this.AK,JSON.stringify(this.alerts))}catch{}},
   getDeck(id){return this.decks.find(d=>d.id===id)||null},
-  addDeck(d){this.decks.push(d);this.saveDecks();Bus.emit('decks:changed');if(typeof Dashboard!=='undefined')Dashboard.markDirty();},
-  updDeck(d){const i=this.decks.findIndex(x=>x.id===d.id);if(i>=0){this.decks[i]=d;this.saveDecks();Bus.emit('decks:changed');if(typeof Dashboard!=='undefined')Dashboard.markDirty();}},
+  addDeck(d){
+    const deck={...d,updated:d?.updated||Date.now(),cloudUpdatedAt:d?.cloudUpdatedAt||0};
+    this.decks.push(deck);this.saveDecks();Bus.emit('decks:changed');if(typeof Dashboard!=='undefined')Dashboard.markDirty();
+  },
+  updDeck(d){
+    const i=this.decks.findIndex(x=>x.id===d.id);
+    if(i>=0){
+      this.decks[i]={...d,updated:Date.now(),cloudUpdatedAt:d?.cloudUpdatedAt||this.decks[i]?.cloudUpdatedAt||0};
+      this.saveDecks();Bus.emit('decks:changed');if(typeof Dashboard!=='undefined')Dashboard.markDirty();
+    }
+  },
   delDeck(id){this.decks=this.decks.filter(d=>d.id!==id);this.saveDecks();Bus.emit('decks:changed');},
   setCard(n,d){
     this.cache[n]=d;
@@ -228,7 +237,12 @@ const Parser={
     const entry={name,qty,foil,etched};
     if(setCode){entry.set=setCode;}
     if(collNum){
-      const cleanCn=collNum.replace(/\s*[*][EF][*]/gi,'').trim();
+      let cleanCn=collNum.replace(/\s*[*][EF][*]/gi,'').trim();
+      cleanCn=cleanCn.replace(/^#/,'').replace(/[),.;:]$/g,'');
+      if(cleanCn.includes('/'))cleanCn=cleanCn.split('/')[0];
+      cleanCn=cleanCn.replace(/[^0-9a-z]+/gi,'');
+      const digitLead=cleanCn.match(/^\d+[a-z]?/i);
+      if(digitLead)cleanCn=digitLead[0];
       if(cleanCn)entry.collector_number=cleanCn;
     }
     return entry;

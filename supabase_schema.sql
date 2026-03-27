@@ -39,10 +39,30 @@ create table if not exists trade_list (
   user_id uuid references auth.users not null,
   user_email text,
   card_name text,
+  img jsonb default '{}'::jsonb,
+  type_line text default '',
+  cmc numeric default 0,
+  prices jsonb default '{}'::jsonb,
+  set text default '',
+  set_name text default '',
+  collector_number text default '',
+  scryfall_id text default '',
+  rarity text default '',
+  color_identity jsonb default '[]'::jsonb,
   condition text,
   note text,
   created_at timestamptz default now()
 );
+alter table trade_list add column if not exists img jsonb default '{}'::jsonb;
+alter table trade_list add column if not exists type_line text default '';
+alter table trade_list add column if not exists cmc numeric default 0;
+alter table trade_list add column if not exists prices jsonb default '{}'::jsonb;
+alter table trade_list add column if not exists set text default '';
+alter table trade_list add column if not exists set_name text default '';
+alter table trade_list add column if not exists collector_number text default '';
+alter table trade_list add column if not exists scryfall_id text default '';
+alter table trade_list add column if not exists rarity text default '';
+alter table trade_list add column if not exists color_identity jsonb default '[]'::jsonb;
 alter table trade_list enable row level security;
 create policy "Trade list is public" on trade_list for select using (true);
 create policy "Users manage own trades" on trade_list for all using (auth.uid() = user_id);
@@ -52,9 +72,29 @@ create table if not exists wishlist (
   user_id uuid references auth.users not null,
   user_email text,
   card_name text,
+  img jsonb default '{}'::jsonb,
+  type_line text default '',
+  cmc numeric default 0,
+  prices jsonb default '{}'::jsonb,
+  set text default '',
+  set_name text default '',
+  collector_number text default '',
+  scryfall_id text default '',
+  rarity text default '',
+  color_identity jsonb default '[]'::jsonb,
   note text,
   created_at timestamptz default now()
 );
+alter table wishlist add column if not exists img jsonb default '{}'::jsonb;
+alter table wishlist add column if not exists type_line text default '';
+alter table wishlist add column if not exists cmc numeric default 0;
+alter table wishlist add column if not exists prices jsonb default '{}'::jsonb;
+alter table wishlist add column if not exists set text default '';
+alter table wishlist add column if not exists set_name text default '';
+alter table wishlist add column if not exists collector_number text default '';
+alter table wishlist add column if not exists scryfall_id text default '';
+alter table wishlist add column if not exists rarity text default '';
+alter table wishlist add column if not exists color_identity jsonb default '[]'::jsonb;
 alter table wishlist enable row level security;
 create policy "Users own their wishlist" on wishlist for all using (auth.uid() = user_id);
 

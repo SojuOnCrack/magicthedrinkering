@@ -328,7 +328,7 @@ const BulkPool={
     }
 
     for(const r of pageRows){
-      const cd=Store.card(r.card_name)||{};
+      const cd=this._cardData(r);
       const img=cd.img?.normal||cd.img?.crop||'';
       const price=r.price_usd?'€'+parseFloat(r.price_usd).toFixed(2):'—';
       const rarity=cd.rarity||'common';
@@ -405,6 +405,22 @@ const BulkPool={
 const TradeMgr={
   _data:[],
 
+  _cardData(row){
+    return CommunityNav?._cardData?.(row)||Store.card(row?.card_name)||{};
+  },
+
+  async _buildInsertPayload(cardName,extra={}){
+    if(!Store.card(cardName)) await new Promise(res=>SF.fetch(cardName,()=>res()));
+    return {
+      ...DB._listingSnapshot(cardName,extra),
+      user_id:DB._user.id,
+      user_email:DB._user.email||'',
+      qty:extra?.qty??1,
+      condition:extra?.condition||'NM',
+      note:extra?.note||''
+    };
+  },
+
   async render(){
     const listEl=document.getElementById('trade-list');
     if(!DB._sb||!DB._user){
@@ -431,7 +447,8 @@ const TradeMgr={
     const cond=document.getElementById('trade-add-cond')?.value||'NM';
     if(!name){Notify.show('Enter a card name','err');return;}
     if(!DB._sb||!DB._user)return;
-    await DB._sb.from('trade_list').insert({card_name:name,qty,condition:cond,user_id:DB._user.id,user_email:DB._user.email||''});
+    const payload=await this._buildInsertPayload(name,{qty,condition:cond});
+    await DB._sb.from('trade_list').insert(payload);
     Notify.show(name+' added to trade list','ok');
     if(nameEl)nameEl.value='';
     TradeAC?.hide?.('trade-add-name');
@@ -442,15 +459,14 @@ const TradeMgr={
     /* Silent add — used from friend profile, no full page re-render */
     if(!DB._sb||!DB._user){Notify.show('Sign in first','err');return;}
     if(this._data.some(w=>w.card_name.toLowerCase()===cardName.toLowerCase())){
-      Notify.show('"'+cardName+'" already on your wishlist','inf');return;
+      Notify.show('"'+cardName+'" already on your trade list','inf');return;
     }
-    const{error}=await DB._sb.from('wishlist').insert({
-      card_name:cardName,user_id:DB._user.id,user_email:DB._user.email||''
-    });
+    const payload=await this._buildInsertPayload(cardName);
+    const{error}=await DB._sb.from('trade_list').insert(payload);
     if(!error){
-      this._data.push({card_name:cardName,user_id:DB._user.id});
-      Notify.show('⭐ "'+cardName+'" → Wishlist','ok');
-    }else{Notify.show('Could not add to wishlist','err');}
+      this._data.unshift(payload);
+      Notify.show('🤝 "'+cardName+'" → Trade list','ok');
+    }else{Notify.show('Could not add to trade list','err');}
   },
 
   async toggleCard(cardName){
@@ -460,8 +476,8 @@ const TradeMgr={
       await DB._sb.from('trade_list').delete().eq('id',existing.id);
       Notify.show(cardName+' removed from trade list','inf');
     } else {
-      const cd=Store.card(cardName)||{};
-      await DB._sb.from('trade_list').insert({card_name:cardName,qty:1,condition:'NM',user_id:DB._user.id,user_email:DB._user.email||''});
+      const payload=await this._buildInsertPayload(cardName);
+      await DB._sb.from('trade_list').insert(payload);
       Notify.show(cardName+' listed for trade','ok');
     }
     await this.render();
@@ -474,13 +490,13 @@ const TradeMgr={
     if(!this._data.length){list.innerHTML='';if(empty)empty.style.display='block';return;}
     if(empty)empty.style.display='none';list.innerHTML='';
     for(const r of this._data){
-      const cd=Store.card(r.card_name)||{};
+      const cd=this._cardData(r);
       const row=document.createElement('div');row.className='trade-card';
       row.innerHTML=`
-        ${cd.img?.crop?`<img class="bulk-pool-thumb" src="${esc(cd.img.crop)}" loading="lazy">`:'<div class="bulk-pool-thumb" style="background:var(--bg3)"></div>'}
+        ${(cd.img?.crop||cd.img?.normal)?`<img class="bulk-pool-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy">`:'<div class="bulk-pool-thumb card-skeleton"></div>'}
         <div style="flex:1;min-width:0">
           <div class="bulk-pool-name">${esc(r.card_name)}</div>
-          <div class="bulk-pool-meta">${r.qty}× · ${r.condition||'NM'} · ${cd.prices?.eur?'€'+cd.prices.eur:''}</div>
+          <div class="bulk-pool-meta">${r.qty||1}× · ${r.condition||'NM'} · ${cd.prices?.eur?'€'+parseFloat(cd.prices.eur).toFixed(2):'no price data'}</div>
         </div>
         <span class="trade-badge have">🤝 For Trade</span>
         <button class="alert-del" onclick="TradeMgr.remove('${r.id}')">✕</button>
@@ -503,6 +519,21 @@ const WishlistMgr={
   _acTimer:null,
   _acResults:[],
   _acIdx:-1,
+
+  _cardData(row){
+    return CommunityNav?._cardData?.(row)||Store.card(row?.card_name)||{};
+  },
+
+  async _buildInsertPayload(cardName,note=''){
+    if(!Store.card(cardName)) await new Promise(res=>SF.fetch(cardName,()=>res()));
+    return {
+      ...DB._listingSnapshot(cardName),
+      card_name:cardName,
+      note,
+      user_id:DB._user.id,
+      user_email:DB._user.email||''
+    };
+  },
 
   async render(){
     const listEl=document.getElementById('wish-list');
@@ -617,7 +648,8 @@ const WishlistMgr={
     if(this._data.some(w=>w.card_name.toLowerCase()===name.toLowerCase())){
       Notify.show(name+' is already on your wishlist','inf');return;
     }
-    await DB._sb.from('wishlist').insert({card_name:name,note,user_id:DB._user.id,user_email:DB._user.email||''});
+    const payload=await this._buildInsertPayload(name,note);
+    await DB._sb.from('wishlist').insert(payload);
     Notify.show(name+' added to wishlist','ok');
     document.getElementById('wish-add-name').value='';
     if(document.getElementById('wish-add-note'))document.getElementById('wish-add-note').value='';
@@ -630,11 +662,10 @@ const WishlistMgr={
     if(this._data.some(w=>w.card_name.toLowerCase()===cardName.toLowerCase())){
       Notify.show('"'+cardName+'" already on your wishlist','inf');return;
     }
-    const{error}=await DB._sb.from('wishlist').insert({
-      card_name:cardName,user_id:DB._user.id,user_email:DB._user.email||''
-    });
+    const payload=await this._buildInsertPayload(cardName,'');
+    const{error}=await DB._sb.from('wishlist').insert(payload);
     if(!error){
-      this._data.push({card_name:cardName,user_id:DB._user.id});
+      this._data.unshift(payload);
       Notify.show('⭐ "'+cardName+'" → Wishlist','ok');
     }else{Notify.show('Could not add to wishlist','err');}
   },
@@ -646,7 +677,8 @@ const WishlistMgr={
       await DB._sb.from('wishlist').delete().eq('id',existing.id);
       Notify.show(cardName+' removed from wishlist','inf');
     } else {
-      await DB._sb.from('wishlist').insert({card_name:cardName,user_id:DB._user.id,user_email:DB._user.email||''});
+      const payload=await this._buildInsertPayload(cardName,'');
+      await DB._sb.from('wishlist').insert(payload);
       Notify.show(cardName+' added to wishlist','ok');
     }
     await this.render();
@@ -659,7 +691,7 @@ const WishlistMgr={
     if(!this._data.length){list.innerHTML='';if(empty)empty.style.display='block';return;}
     if(empty)empty.style.display='none';list.innerHTML='';
     for(const r of this._data){
-      const cd=Store.card(r.card_name)||{};
+      const cd=this._cardData(r);
       const price=parseFloat(cd.prices?.eur||0);
       const row=document.createElement('div');row.className='trade-card';
       row.style.cursor='pointer';
@@ -667,7 +699,7 @@ const WishlistMgr={
       row.innerHTML=`
         ${cd.img?.normal||cd.img?.crop?
           `<img class="bulk-pool-thumb" src="${esc(cd.img.normal||cd.img.crop)}" loading="lazy" style="width:48px;height:67px;object-fit:cover;border-radius:4px;flex-shrink:0">`
-          :'<div style="width:48px;height:67px;background:var(--bg3);border-radius:4px;flex-shrink:0;border:1px solid var(--border)"></div>'}
+          :'<div class="bulk-pool-thumb card-skeleton" style="width:48px;height:67px;flex-shrink:0"></div>'}
         <div style="flex:1;min-width:0">
           <div class="bulk-pool-name" style="font-size:13px">${esc(r.card_name)}</div>
           <div class="bulk-pool-meta">${r.note?esc(r.note)+' · ':''} ${price?'€'+price.toFixed(2):'no price data'}</div>
@@ -687,7 +719,7 @@ const WishlistMgr={
         }
       });
       // Lazy-fetch card data if not cached yet
-      if(!cd.img)SF.fetch(r.card_name,()=>{this._renderList();});
+      if(!cd.img?.crop&&!cd.img?.normal)SF.fetch(r.card_name,()=>{this._renderList();});
       list.appendChild(row);
     }
   },
@@ -721,12 +753,14 @@ const CommunityNav={
 
   _cardData(cardLike){
     if(!cardLike)return {};
-    const name=typeof cardLike==='string'?cardLike:cardLike.name;
+    const name=typeof cardLike==='string'?cardLike:(cardLike.name||cardLike.card_name);
     const cached=name?Store.card(name):null;
     const inline=typeof cardLike==='string'?null:cardLike;
     return {
       ...(inline||{}),
       ...(cached||{}),
+      name:name||inline?.name||inline?.card_name||'',
+      card_name:inline?.card_name||name||'',
       img:{
         crop:cached?.img?.crop||inline?.img?.crop||'',
         normal:cached?.img?.normal||inline?.img?.normal||''
@@ -738,9 +772,18 @@ const CommunityNav={
       type_line:cached?.type_line||inline?.type_line||'',
       cmc:cached?.cmc??inline?.cmc??0,
       set:cached?.set||inline?.set||'',
+      set_name:cached?.set_name||inline?.set_name||'',
       collector_number:cached?.collector_number||inline?.collector_number||'',
-      rarity:cached?.rarity||inline?.rarity||''
+      scryfall_id:cached?.scryfall_id||inline?.scryfall_id||'',
+      rarity:cached?.rarity||inline?.rarity||'',
+      color_identity:cached?.color_identity||inline?.color_identity||[]
     };
+  },
+
+  _fmtMoney(value,decimals=0){
+    const num=parseFloat(value||0);
+    if(!Number.isFinite(num)||num<=0)return '€0';
+    return `€${num.toFixed(decimals)}`;
   },
 
   _deckCardData(deck,name){
@@ -981,8 +1024,8 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     // ── Load all data in parallel ──────────────────────────────
     const[deckRes,tradeRes,wishRes,friendRes]=await Promise.allSettled([
       DB._sb.from('decks').select('id,name,commander,partner,cards,public').eq('user_id',userId).eq('public',true),
-      DB._sb.from('trade_list').select('card_name,qty,condition').eq('user_id',userId),
-      DB._sb.from('wishlist').select('card_name,note').eq('user_id',userId),
+      DB._sb.from('trade_list').select('*').eq('user_id',userId),
+      DB._sb.from('wishlist').select('*').eq('user_id',userId),
       DB._user?DB._sb.from('friendships').select('id').eq('user_id',DB._user.id).eq('friend_id',userId):Promise.resolve({data:[]})
     ]);
 
@@ -1073,7 +1116,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         this._profileWarmJobs.set(warmKey,job);
       }
     } else {
-      grid.innerHTML='<div style="color:var(--text3);font-size:12px;padding:16px">No public decks.</div>';
+      grid.innerHTML='<div class="fp-empty-state">No public decks yet.</div>';
     }
 
     // ── Trade list ────────────────────────────────────────────
@@ -1081,7 +1124,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     const myCardSet=new Set(Store.decks.flatMap(d=>d.cards.map(cc=>cc.name.toLowerCase())));
     const tEl=document.getElementById('fp-trade-list');
     if(tEl){
-      if(!trades.length){tEl.innerHTML='<div style="color:var(--text3);font-size:12px">Nothing for trade.</div>';}
+      if(!trades.length){tEl.innerHTML='<div class="fp-empty-state compact">Nothing listed for trade.</div>';}
       else{
         tEl.innerHTML='';
         const tradeList=document.createElement('div');
@@ -1093,7 +1136,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           row.className='fp-card-row';
           row.style.cssText='padding:5px 0;';
           row.innerHTML=`
-            ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-card-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy">`:'<div class="fp-card-thumb" style="background:var(--bg3)"></div>'}
+            ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-card-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy">`:'<div class="fp-card-thumb card-skeleton"></div>'}
             <span class="fp-card-name">${esc(t.card_name)}</span>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${t.qty}× ${t.condition||'NM'}</span>
             ${iHave?'<span class="fp-have-badge">✓ Have</span>':''}
@@ -1124,7 +1167,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     // ── Wishlist ──────────────────────────────────────────────
     const wEl=document.getElementById('fp-wish-list');
     if(wEl){
-      if(!wishes.length){wEl.innerHTML='<div style="color:var(--text3);font-size:12px">Empty wishlist.</div>';}
+      if(!wishes.length){wEl.innerHTML='<div class="fp-empty-state compact">Empty wishlist.</div>';}
       else{
         wEl.innerHTML='';
         const wishList=document.createElement('div');
@@ -1135,7 +1178,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           const row=document.createElement('div');
           row.className='fp-card-row';row.style.cssText='padding:5px 0;';
           row.innerHTML=`
-            ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-card-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy">`:'<div class="fp-card-thumb" style="background:var(--bg3)"></div>'}
+            ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-card-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy">`:'<div class="fp-card-thumb card-skeleton"></div>'}
             <span class="fp-card-name">${esc(w.card_name)}</span>
             ${cd.prices?.eur?`<span class="fp-card-price">&euro;${parseFloat(cd.prices.eur).toFixed(2)}</span>`:''}
           `;
@@ -1360,7 +1403,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
       <div class="fp-dv-pane" id="fp-dv-stats-${deck.id}">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
           <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--gold2);font-weight:600">$${totalVal.toFixed(0)}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--gold2);font-weight:600">€${totalVal.toFixed(0)}</div>
             <div style="font-size:9px;color:var(--text3);font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:.08em">Value</div>
           </div>
           <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
@@ -1380,7 +1423,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           <div class="fp-card-row">
             ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-card-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy">`:'<div class="fp-card-thumb" style="background:var(--bg3)"></div>'}
             <span class="fp-card-name">${esc(c.name)}</span>
-            <span class="fp-card-price" style="font-size:11px">$${v.toFixed(2)}</span>
+            <span class="fp-card-price" style="font-size:11px">€${v.toFixed(2)}</span>
           </div>`;}).join('')}
       </div>
 
@@ -1436,7 +1479,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           ${card.qty>1?`<div class="fp-mini-badge">${card.qty}x</div>`:''}
           <div class="fp-mini-info">
             <div class="fp-mini-name">${esc(card.name)}</div>
-            <div class="fp-mini-meta"><span>${price?'ï¿½'+price.toFixed(0):'--'}</span><span>${shortType(cd.type_line||'')}</span></div>
+            <div class="fp-mini-meta"><span>${price?this._fmtMoney(price,0):'--'}</span><span>${shortType(cd.type_line||'')}</span></div>
           </div>`;
         tile.addEventListener('click',()=>M.open({name:card.name,qty:card.qty||1},null));
         grid.appendChild(tile);
@@ -1501,7 +1544,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         </div>
         <div style="display:flex;gap:16px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">
           <span>${Store.decks.length} decks</span>
-          <span>${Store.decks.flatMap(d=>d.cards).length} cards</span>
+          <span>${Store.decks.reduce((sum,d)=>sum+d.cards.reduce((acc,c)=>acc+(c.qty||0),0),0)} cards</span>
         </div>
       </div>
 
