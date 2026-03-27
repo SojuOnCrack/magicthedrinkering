@@ -361,12 +361,29 @@ const SF={
             done++;onProgress&&onProgress(done,total);continue;
           }
           try{
-            const r=await this._fetchWithRetry(
+            let r=await this._fetchWithRetry(
               `${this.BASE}/cards/${encodeURIComponent(it.set)}/${encodeURIComponent(it.collector_number)}`,
               {signal,headers:{'Accept':'application/json'}}
             );
+            let d=null;
             if(r&&r.ok){
-              const d=await r.json();
+              d=await r.json();
+            }else if(r&&r.status===404){
+              /* Some imports carry collector-number variants that Scryfall
+                 rejects on the direct /cards/:set/:number route. Fall back
+                 to a set-scoped name lookup so profile/deck views still get
+                 usable card data and artwork. */
+              const rf=await this._fetchWithRetry(`${this.BASE}/cards/collection`,{
+                method:'POST',signal,
+                headers:{'Content-Type':'application/json','Accept':'application/json'},
+                body:JSON.stringify({identifiers:[{name:it.name,set:it.set}]})
+              });
+              if(rf&&rf.ok){
+                const df=await rf.json();
+                d=df?.data?.[0]||null;
+              }
+            }
+            if(d){
               const slim=this._slim(d);
               /* Store under the canonical name AND the import name */
               Store.cache[slim.name]=slim;
