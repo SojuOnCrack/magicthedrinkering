@@ -496,7 +496,7 @@ const TradeMgr={
         ${(cd.img?.crop||cd.img?.normal)?`<img class="bulk-pool-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy">`:'<div class="bulk-pool-thumb card-skeleton"></div>'}
         <div style="flex:1;min-width:0">
           <div class="bulk-pool-name">${esc(r.card_name)}</div>
-          <div class="bulk-pool-meta">${r.qty||1}× · ${r.condition||'NM'} · ${cd.prices?.eur?'€'+parseFloat(cd.prices.eur).toFixed(2):'no price data'}</div>
+          <div class="bulk-pool-meta">${r.qty||1}x - ${r.condition||'NM'} - ${cd.prices?.eur?'&euro;'+parseFloat(cd.prices.eur).toFixed(2):'no price data'}</div>
         </div>
         <span class="trade-badge have">🤝 For Trade</span>
         <button class="alert-del" onclick="TradeMgr.remove('${r.id}')">✕</button>
@@ -702,7 +702,7 @@ const WishlistMgr={
           :'<div class="bulk-pool-thumb card-skeleton" style="width:48px;height:67px;flex-shrink:0"></div>'}
         <div style="flex:1;min-width:0">
           <div class="bulk-pool-name" style="font-size:13px">${esc(r.card_name)}</div>
-          <div class="bulk-pool-meta">${r.note?esc(r.note)+' · ':''} ${price?'€'+price.toFixed(2):'no price data'}</div>
+          <div class="bulk-pool-meta">${r.note?esc(r.note)+' - ':''} ${price?'&euro;'+price.toFixed(2):'no price data'}</div>
         </div>
         <span class="trade-badge want">⭐ Wanted</span>
         <button class="alert-del" title="Remove from wishlist" onclick="event.stopPropagation();WishlistMgr.remove('${r.id}')">✕</button>
@@ -1280,7 +1280,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           ${card.qty>1?`<div class="fp-mini-badge">${card.qty}x</div>`:''}
           <div class="fp-mini-info">
             <div class="fp-mini-name">${esc(card.name)}</div>
-            <div class="fp-mini-meta"><span>${price?'�'+price.toFixed(0):'--'}</span><span>${shortType(cd.type_line||'')}</span></div>
+            <div class="fp-mini-meta"><span>${price?this._fmtMoney(price,0):'--'}</span><span>${shortType(cd.type_line||'')}</span></div>
           </div>`;
         tile.addEventListener('click',()=>M.open({name:card.name,qty:card.qty||1},null));
         grid.appendChild(tile);
@@ -1376,7 +1376,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           ${card.qty>1?`<div class="fp-mini-badge">${card.qty}×</div>`:''}
           <div class="fp-mini-info">
             <div class="fp-mini-name">${esc(card.name)}</div>
-            <div class="fp-mini-meta"><span>${price?'�'+price.toFixed(0):'--'}</span><span>${shortType(cd.type_line||'')}</span></div>
+            <div class="fp-mini-meta"><span>${price?this._fmtMoney(price,0):'--'}</span><span>${shortType(cd.type_line||'')}</span></div>
             <div style="margin-top:4px;display:flex;justify-content:flex-end">${wantBtn}</div>
           </div>
         </div>`;

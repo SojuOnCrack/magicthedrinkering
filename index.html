@@ -26,7 +26,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <script>
-window.APP_VERSION='202603271015';
+window.APP_VERSION='202603271045';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -350,7 +350,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <div class="bulk-stats" style="margin-bottom:14px">
           <div class="bulk-stat">Cards: <b id="bulk-total-cards">0</b></div>
           <div class="bulk-stat">Unique: <b id="bulk-unique">0</b></div>
-          <div class="bulk-stat">Value: <b id="bulk-value">$0</b></div>
+          <div class="bulk-stat">Value: <b id="bulk-value">&euro;0</b></div>
           <div class="bulk-stat">Contributors: <b id="bulk-contributors">0</b></div>
           <div style="margin-left:auto"><span class="pool-badge">🌐 Shared Pool</span></div>
         </div>
@@ -490,7 +490,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
           <div class="alert-chip grey" id="dash-last-sync">Last sync: never</div>
         </div>
         <div class="kpi-row">
-          <div class="kpi gold"><div class="kpi-top-row"><div class="kpi-icon">💰</div><div class="kpi-trend" id="kpi-portfolio-trend"></div></div><div class="kpi-val" id="kpi-portfolio">$0</div><div class="kpi-lbl">Portfolio</div><div class="kpi-bar"><div class="kpi-bar-fill" id="kpi-portfolio-bar" style="width:0%"></div></div></div>
+          <div class="kpi gold"><div class="kpi-top-row"><div class="kpi-icon">💰</div><div class="kpi-trend" id="kpi-portfolio-trend"></div></div><div class="kpi-val" id="kpi-portfolio">&euro;0</div><div class="kpi-lbl">Portfolio</div><div class="kpi-bar"><div class="kpi-bar-fill" id="kpi-portfolio-bar" style="width:0%"></div></div></div>
           <div class="kpi ice"><div class="kpi-top-row"><div class="kpi-icon">🃏</div></div><div class="kpi-val" id="kpi-cards">0</div><div class="kpi-lbl">Total Cards</div><div class="kpi-bar"><div class="kpi-bar-fill" id="kpi-cards-bar" style="width:0%"></div></div></div>
           <div class="kpi green"><div class="kpi-top-row"><div class="kpi-icon">⚔</div></div><div class="kpi-val" id="kpi-decks">0</div><div class="kpi-lbl">Decks</div><div class="kpi-bar"><div class="kpi-bar-fill" id="kpi-decks-bar" style="width:60%"></div></div></div>
           <div class="kpi crimson"><div class="kpi-top-row"><div class="kpi-icon">📈</div></div><div class="kpi-val" id="kpi-topcard">—</div><div class="kpi-lbl">Most Valuable</div></div>
@@ -521,10 +521,10 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <div class="pg-title">💰 Price Analysis</div>
         <div class="pg-sub">Multi-provider comparison, historical trends &amp; top movers</div>
         <div class="price-provider-row">
-          <div class="prov-card on" data-prov="scryfall"><div class="prov-name">Scryfall</div><div class="prov-val" id="prov-scryfall">$0.00</div><div class="prov-diff eq" id="prov-scryfall-d">Baseline</div></div>
-          <div class="prov-card" data-prov="tcgplayer"><div class="prov-name">TCGPlayer</div><div class="prov-val" id="prov-tcgplayer">$0.00</div><div class="prov-diff eq" id="prov-tcgplayer-d">—</div></div>
-          <div class="prov-card" data-prov="mkm"><div class="prov-name">MKM / Cardmarket</div><div class="prov-val" id="prov-mkm">$0.00</div><div class="prov-diff eq" id="prov-mkm-d">—</div></div>
-          <div class="prov-card" data-prov="mtgstocks"><div class="prov-name">MTGStocks</div><div class="prov-val" id="prov-mtgstocks">$0.00</div><div class="prov-diff eq" id="prov-mtgstocks-d">—</div></div>
+          <div class="prov-card on" data-prov="scryfall"><div class="prov-name">Scryfall</div><div class="prov-val" id="prov-scryfall">&euro;0.00</div><div class="prov-diff eq" id="prov-scryfall-d">Baseline</div></div>
+          <div class="prov-card" data-prov="tcgplayer"><div class="prov-name">TCGPlayer</div><div class="prov-val" id="prov-tcgplayer">&euro;0.00</div><div class="prov-diff eq" id="prov-tcgplayer-d">—</div></div>
+          <div class="prov-card" data-prov="mkm"><div class="prov-name">MKM / Cardmarket</div><div class="prov-val" id="prov-mkm">&euro;0.00</div><div class="prov-diff eq" id="prov-mkm-d">—</div></div>
+          <div class="prov-card" data-prov="mtgstocks"><div class="prov-name">MTGStocks</div><div class="prov-val" id="prov-mtgstocks">&euro;0.00</div><div class="prov-diff eq" id="prov-mtgstocks-d">—</div></div>
         </div>
         <div class="chart-card"><div class="chart-title">30-Day History <span>Scryfall</span></div><div class="line-chart-wrap" id="price-history-chart"></div></div>
         <div class="chart-card"><div class="chart-title">Top Movers <span id="price-movers-deck"></span></div>
@@ -553,7 +553,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <div class="ana-stat"><div class="ana-stat-val" id="ana-s-lands">0</div><div class="ana-stat-lbl">Lands</div></div>
             <div class="ana-stat"><div class="ana-stat-val" id="ana-s-avgcmc">0</div><div class="ana-stat-lbl">Avg CMC</div></div>
             <div class="ana-stat"><div class="ana-stat-val" id="ana-s-colors">0</div><div class="ana-stat-lbl">Colors</div></div>
-            <div class="ana-stat"><div class="ana-stat-val" id="ana-s-value">$0</div><div class="ana-stat-lbl">Value</div></div>
+            <div class="ana-stat"><div class="ana-stat-val" id="ana-s-value">&euro;0</div><div class="ana-stat-lbl">Value</div></div>
             <div class="ana-stat"><div class="ana-stat-val" id="ana-s-unique">0</div><div class="ana-stat-lbl">Unique</div></div>
           </div>
 
@@ -607,7 +607,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
               <option value="above">Price rises above</option>
               <option value="change_pct">Change % exceeds</option>
             </select>
-            <input class="form-inp" id="alert-val" placeholder="$0.00" style="max-width:100px">
+            <input class="form-inp" id="alert-val" placeholder="&euro;0.00" style="max-width:100px">
             <select class="form-sel" id="alert-prov">
               <option value="scryfall">Scryfall</option><option value="tcgplayer">TCGPlayer</option>
             </select>
@@ -670,7 +670,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <div class="mycoll-kpi-row">
           <div class="mycoll-kpi gold"><div class="mycoll-kpi-val" id="mycoll-kpi-unique">0</div><div class="mycoll-kpi-lbl">Unique Cards</div></div>
           <div class="mycoll-kpi ice"><div class="mycoll-kpi-val" id="mycoll-kpi-total">0</div><div class="mycoll-kpi-lbl">Total Copies</div></div>
-          <div class="mycoll-kpi green"><div class="mycoll-kpi-val" id="mycoll-kpi-value">$0</div><div class="mycoll-kpi-lbl">Total Value</div></div>
+          <div class="mycoll-kpi green"><div class="mycoll-kpi-val" id="mycoll-kpi-value">&euro;0</div><div class="mycoll-kpi-lbl">Total Value</div></div>
           <div class="mycoll-kpi purple"><div class="mycoll-kpi-val" id="mycoll-kpi-foils">0</div><div class="mycoll-kpi-lbl">Foils</div></div>
           <div class="mycoll-kpi crimson"><div class="mycoll-kpi-val" id="mycoll-kpi-mythic">0</div><div class="mycoll-kpi-lbl">Mythics</div></div>
           <div class="mycoll-kpi gold"><div class="mycoll-kpi-val" id="mycoll-kpi-rare">0</div><div class="mycoll-kpi-lbl">Rares</div></div>
@@ -708,7 +708,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <div class="coll-total-row">
           <div class="coll-total">Unique: <b id="mycoll-uniq">0</b></div>
           <div class="coll-total">Total: <b id="mycoll-total">0</b></div>
-          <div class="coll-total">Value: <b id="mycoll-val">$0</b></div>
+          <div class="coll-total">Value: <b id="mycoll-val">&euro;0</b></div>
         </div>
       </div>
 
@@ -940,7 +940,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <div class="mycoll-kpi-row">
           <div class="mycoll-kpi gold"><div class="mycoll-kpi-val" id="coll2-kpi-unique">0</div><div class="mycoll-kpi-lbl">Unique</div></div>
           <div class="mycoll-kpi ice"><div class="mycoll-kpi-val" id="coll2-kpi-total">0</div><div class="mycoll-kpi-lbl">Copies</div></div>
-          <div class="mycoll-kpi green"><div class="mycoll-kpi-val" id="coll2-kpi-value">$0</div><div class="mycoll-kpi-lbl">Value</div></div>
+          <div class="mycoll-kpi green"><div class="mycoll-kpi-val" id="coll2-kpi-value">&euro;0</div><div class="mycoll-kpi-lbl">Value</div></div>
           <div class="mycoll-kpi purple"><div class="mycoll-kpi-val" id="coll2-kpi-foils">0</div><div class="mycoll-kpi-lbl">Foils</div></div>
         </div>
         <div class="folder-grid" id="coll2-folders" style="margin-bottom:14px"></div>
@@ -1200,7 +1200,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
       <div class="settings-section">
         <div class="settings-section-title">About</div>
         <div class="settings-note">
-          MagicTheDrinkering v1.4<br>
+          MagicTheDrinkering v1.5<br>
           Built with Scryfall API � Supabase � Cloudflare Pages<br>
           <a href="https://scryfall.com" target="_blank" style="color:var(--ice)">Scryfall</a> �
           <a href="https://supabase.com" target="_blank" style="color:var(--ice)">Supabase</a> �
@@ -1272,7 +1272,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
 <!-- CommanderForge modules -->
 <script>
 (() => {
-  const version = window.APP_VERSION || '202603271015';
+  const version = window.APP_VERSION || '202603271045';
   [
     '/js/core.js',
     '/js/ui.js',
