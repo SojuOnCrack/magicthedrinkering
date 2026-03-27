@@ -997,7 +997,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
 
       card.innerHTML=`
         <div class="fp-deck-banner">
-          ${cmdrData?.img?.crop?`<img class="fp-deck-banner-art" src="${esc(cmdrData.img.crop)}" loading="lazy">`:''}
+          ${(cmdrData?.img?.crop||cmdrData?.img?.normal)?`<img class="fp-deck-banner-art" src="${esc(cmdrData.img.crop||cmdrData.img.normal)}" loading="lazy">`:''}
           <div class="fp-deck-banner-overlay"></div>
           <div class="fp-deck-banner-cmdr">${esc(d.commander||'No Commander')}</div>
           ${bracketLabel?`<div class="fp-deck-banner-badge" style="color:${bracketColor};border-color:${bracketColor}">${bracketLabel}</div>`:''}
@@ -1052,7 +1052,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           row.className='fp-card-row';
           row.style.cssText='padding:5px 0;';
           row.innerHTML=`
-            ${cd.img?.crop?`<img class="fp-card-thumb" src="${esc(cd.img.crop)}" loading="lazy">`:'<div class="fp-card-thumb" style="background:var(--bg3)"></div>'}
+            ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-card-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy">`:'<div class="fp-card-thumb" style="background:var(--bg3)"></div>'}
             <span class="fp-card-name">${esc(t.card_name)}</span>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${t.qty}× ${t.condition||'NM'}</span>
             ${iHave?'<span class="fp-have-badge">✓ Have</span>':''}
@@ -1094,7 +1094,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           const row=document.createElement('div');
           row.className='fp-card-row';row.style.cssText='padding:5px 0;';
           row.innerHTML=`
-            ${cd.img?.crop?`<img class="fp-card-thumb" src="${esc(cd.img.crop)}" loading="lazy">`:'<div class="fp-card-thumb" style="background:var(--bg3)"></div>'}
+            ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-card-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy">`:'<div class="fp-card-thumb" style="background:var(--bg3)"></div>'}
             <span class="fp-card-name">${esc(w.card_name)}</span>
             ${cd.prices?.eur?`<span class="fp-card-price">&euro;${parseFloat(cd.prices.eur).toFixed(2)}</span>`:''}
           `;
@@ -1201,7 +1201,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         const tile=document.createElement('div');
         tile.className='fp-mini-card';
         tile.innerHTML=`
-          ${cd.img?.crop?`<img class="fp-mini-thumb" src="${esc(cd.img.crop)}" loading="lazy" alt="${esc(card.name)}">`:'<div class="fp-mini-thumb"></div>'}
+          ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-mini-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy" alt="${esc(card.name)}">`:'<div class="fp-mini-thumb"></div>'}
           ${card.qty>1?`<div class="fp-mini-badge">${card.qty}x</div>`:''}
           <div class="fp-mini-info">
             <div class="fp-mini-name">${esc(card.name)}</div>
@@ -1299,7 +1299,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           :iWant?'<span class="fp-want-btn on" style="cursor:default;padding:2px 5px">⭐</span>'
           :'<span class="fp-have-badge">✓</span>';
         return `<div class="fp-mini-card" onclick="M.open({name:'${esc(card.name).replace(/'/g,"\\'")}',qty:${card.qty||1}},null)">
-          ${cd.img?.crop?`<img class="fp-mini-thumb" src="${esc(cd.img.crop)}" loading="lazy" alt="${esc(card.name)}">`:'<div class="fp-mini-thumb"></div>'}
+          ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-mini-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy" alt="${esc(card.name)}">`:'<div class="fp-mini-thumb"></div>'}
           ${card.qty>1?`<div class="fp-mini-badge">${card.qty}×</div>`:''}
           <div class="fp-mini-info">
             <div class="fp-mini-name">${esc(card.name)}</div>
@@ -1348,7 +1348,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         ${cards.slice().sort((a,b)=>(parseFloat(Store.card(b.name)?.prices?.eur||0)*b.qty)-(parseFloat(Store.card(a.name)?.prices?.eur||0)*a.qty))
           .slice(0,5).map(c=>{const cd=Store.card(c.name)||{};const v=(parseFloat(cd.prices?.eur||0)*c.qty);return `
           <div class="fp-card-row">
-            ${cd.img?.crop?`<img class="fp-card-thumb" src="${esc(cd.img.crop)}" loading="lazy">`:'<div class="fp-card-thumb" style="background:var(--bg3)"></div>'}
+            ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-card-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy">`:'<div class="fp-card-thumb" style="background:var(--bg3)"></div>'}
             <span class="fp-card-name">${esc(c.name)}</span>
             <span class="fp-card-price" style="font-size:11px">$${v.toFixed(2)}</span>
           </div>`;}).join('')}
@@ -1402,7 +1402,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         const tile=document.createElement('div');
         tile.className='fp-mini-card';
         tile.innerHTML=`
-          ${cd.img?.crop?`<img class="fp-mini-thumb" src="${esc(cd.img.crop)}" loading="lazy" alt="${esc(card.name)}">`:'<div class="fp-mini-thumb"></div>'}
+          ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-mini-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy" alt="${esc(card.name)}">`:'<div class="fp-mini-thumb"></div>'}
           ${card.qty>1?`<div class="fp-mini-badge">${card.qty}x</div>`:''}
           <div class="fp-mini-info">
             <div class="fp-mini-name">${esc(card.name)}</div>
