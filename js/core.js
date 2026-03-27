@@ -505,7 +505,7 @@ const SF={
   _slim(d){
     /* Lean object — only what the UI actually uses.
        Dropped: flavor_text (~200 chars), full legalities object (~400 chars),
-       full prices object — keeping only usd + eur_foil.
+       full prices object - keeping only the price fields the UI actually uses.
        Saves ~60% per card → IDB half the size, loadCache faster. */
     const f=d.card_faces?.[0]||d;
     const p=d.prices||{};
@@ -523,7 +523,7 @@ const SF={
       collector_number:d.collector_number||'',
       scryfall_id:d.id||'',
       power:f.power,toughness:f.toughness,
-      prices:{eur:p.eur||null,eur_foil:p.eur_foil||null},
+      prices:{eur:p.eur||null,eur_foil:p.eur_foil||null,usd:p.usd||null,usd_foil:p.usd_foil||null},
       legal_commander:d.legalities?.commander||'legal',
       img:{
         normal:f.image_uris?.normal||d.image_uris?.normal||'',
@@ -704,3 +704,4 @@ const ScryfallBulk={
 };
 
 /* ═══ MENU ══════════════════════════════════════════════════ */
+

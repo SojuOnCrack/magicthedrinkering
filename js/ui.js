@@ -29,7 +29,7 @@ const Menu={
   }
 };
 
-/* ═══ VAULT NAV ═════════════════════════════════════════════ */
+/* --- VAULT NAV --------------------------------------------- */
 
 const CardSearch={
   _page:null,
@@ -261,7 +261,7 @@ const VaultNav={
   }
 };
 
-/* ═══ MODAL ════════════════════════════════════════════════ */
+/* --- MODAL ------------------------------------------------ */
 const M={
   open(cardEntry,deckId){
     const cd=Store.card(cardEntry.name)||{};
@@ -270,7 +270,7 @@ const M={
     G('mc-img').onclick=()=>{if(!cd.img?.normal)return;const zo=document.getElementById('art-zoom-overlay');const zi=document.getElementById('art-zoom-img');zi.src=cd.img.normal;zo.classList.add('open');};
     G('mc-name').textContent=cd.name||cardEntry.name;
     G('mc-mana').innerHTML=fmtMana(cd.mana_cost||'');
-    G('mc-type').textContent=[cd.type_line,cd.rarity,cd.set_name].filter(Boolean).join('  •  ');
+    G('mc-type').textContent=[cd.type_line,cd.rarity,cd.set_name].filter(Boolean).join('  �  ');
     G('mc-oracle').textContent=cd.oracle_text||'';
     G('mc-flavor').textContent=cd.flavor_text?`"${cd.flavor_text}"`:'' ;
     G('mc-flavor').style.display=cd.flavor_text?'':'none';
@@ -281,39 +281,50 @@ const M={
     if(pType){
       pBanner.style.display='flex';
       pBanner.className='partner-banner';
-      pBanner.innerHTML=`<span>✦</span> This card has <strong>${Partner.label(pType)}</strong> — can be used as a second commander.`;
+      pBanner.innerHTML=`<span>?</span> This card has <strong>${Partner.label(pType)}</strong> � can be used as a second commander.`;
     } else {pBanner.style.display='none';}
 
-    const usd=cd.prices?.eur,eur=cd.prices?.eur;
+    const eur=cd.prices?.eur??null;
+    const usd=cd.prices?.usd??null;
+    const foil=cd.prices?.eur_foil??null;
+    const usdFoil=cd.prices?.usd_foil??null;
+    const marketValue=eur??foil??usd??usdFoil??null;
+    const marketSymbol=(eur!=null||foil!=null)?'&euro;':((usd!=null||usdFoil!=null)?'$':'');
     const leg=cd.legal_commander||cd.legalities?.commander;
-    const tot=((parseFloat(usd)||0)*cardEntry.qty).toFixed(2);
+    const tot=((parseFloat(marketValue)||0)*cardEntry.qty).toFixed(2);
     G('mc-stats').innerHTML=`
       <div class="ms"><div class="ms-l">CMC</div><div class="ms-v">${cd.cmc||0}</div></div>
-      <div class="ms"><div class="ms-l">EUR</div><div class="ms-v price">${eur?'€'+eur:'–'}</div></div>
-      <div class="ms"><div class="ms-l">EUR</div><div class="ms-v price">${eur?'€'+eur:'–'}</div></div>
-      <div class="ms"><div class="ms-l">Total ×${cardEntry.qty}</div><div class="ms-v price">$${tot}</div></div>
+      <div class="ms"><div class="ms-l">EUR</div><div class="ms-v price">${eur?'&euro;'+eur:(usd?'$'+usd:'-')}</div></div>
+      <div class="ms"><div class="ms-l">Foil</div><div class="ms-v price" style="color:var(--purple2)">${foil?'&euro;'+foil:(usdFoil?'$'+usdFoil:'-')}</div></div>
+      <div class="ms"><div class="ms-l">Total x${cardEntry.qty}</div><div class="ms-v price">${marketValue?marketSymbol+tot:'-'}</div></div>
       ${cd.power!=null?`<div class="ms"><div class="ms-l">P/T</div><div class="ms-v">${cd.power}/${cd.toughness}</div></div>`:''}
-      <div class="ms"><div class="ms-l">Commander</div><div class="ms-v ${leg==='legal'?'legal':'nl'}">${leg==='legal'?'✓ Legal':'✗ '+(leg||'unknown')}</div></div>
+      <div class="ms"><div class="ms-l">Commander</div><div class="ms-v ${leg==='legal'?'legal':'nl'}">${leg==='legal'?'Legal':'Unknown: '+(leg||'unknown')}</div></div>
     `;
+    if(marketValue==null && cd.scryfall_id){
+      SF.fetchById(cd.scryfall_id,cardEntry.name).then(fresh=>{
+        const resolved=fresh?.prices?.eur??fresh?.prices?.eur_foil??fresh?.prices?.usd??fresh?.prices?.usd_foil??null;
+        if(resolved!=null && document.getElementById('card-modal')?.style.display!=='none')this.open(cardEntry,deckId);
+      }).catch(()=>{});
+    }
     G('mc-acts').innerHTML='';
     const deck=Store.getDeck(deckId);
-    const addBtn=document.createElement('button');addBtn.className='ma gold';addBtn.textContent='＋ Copy';
+    const addBtn=document.createElement('button');addBtn.className='ma gold';addBtn.textContent='+ Copy';
     addBtn.onclick=()=>App.chQty(deckId,cardEntry.name,1);
-    const rmBtn=document.createElement('button');rmBtn.className='ma red';rmBtn.textContent='− Remove';
+    const rmBtn=document.createElement('button');rmBtn.className='ma red';rmBtn.textContent='- Remove';
     rmBtn.onclick=()=>{App.chQty(deckId,cardEntry.name,-1);this.close();};
-    const scrBtn=document.createElement('button');scrBtn.className='ma ghost';scrBtn.textContent='🔎 Scryfall';
+    const scrBtn=document.createElement('button');scrBtn.className='ma ghost';scrBtn.textContent='?? Scryfall';
     scrBtn.onclick=()=>window.open('https://scryfall.com/search?q='+encodeURIComponent(cardEntry.name),'_blank');
     G('mc-acts').append(addBtn,rmBtn,scrBtn);
 
     // Commander / partner set buttons
     if(deck){
       const setCmdrBtn=document.createElement('button');
-      setCmdrBtn.className='ma gold';setCmdrBtn.textContent='♛ Set Commander';
+      setCmdrBtn.className='ma gold';setCmdrBtn.textContent='? Set Commander';
       setCmdrBtn.onclick=()=>{deck.commander=cardEntry.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(cardEntry.name+' set as Commander','ok');this.close();};
       G('mc-acts').appendChild(setCmdrBtn);
       if(pType){
         const setPartnerBtn=document.createElement('button');
-        setPartnerBtn.className='ma purple';setPartnerBtn.textContent='⊕ Set as Partner';
+        setPartnerBtn.className='ma purple';setPartnerBtn.textContent='? Set as Partner';
         setPartnerBtn.onclick=()=>{deck.partner=cardEntry.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(cardEntry.name+' set as Partner','ok');this.close();};
         G('mc-acts').appendChild(setPartnerBtn);
       }
@@ -325,7 +336,7 @@ const M={
   bgClose(e){if(e.target===document.getElementById('mo'))this.close();}
 };
 
-/* ═══ PANELS ═══════════════════════════════════════════════ */
+/* --- PANELS ----------------------------------------------- */
 const P={
   _open(title,wide){
     document.getElementById('ptitle').textContent=title;
@@ -337,27 +348,27 @@ const P={
 
   editDeck(){
     const deck=Store.getDeck(App.curId);if(!deck){Notify.show('No deck loaded','err');return;}
-    this._open('✏ Edit Deck',true);
+    this._open('? Edit Deck',true);
     document.getElementById('pbody').innerHTML=`
       <div style="margin-bottom:16px">
         <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px">Deck Name</label>
-        <input class="ni" id="edit-deck-name" value="${esc(deck.name)}" placeholder="Deck name…" style="font-size:14px;width:100%"
+        <input class="ni" id="edit-deck-name" value="${esc(deck.name)}" placeholder="Deck name�" style="font-size:14px;width:100%"
           onkeydown="if(event.key==='Enter')P._applyDeckEdit()">
       </div>
       <div style="margin-bottom:16px">
         <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px">Visibility</label>
         <div style="display:flex;gap:8px">
-          <button id="vis-public-btn" class="tbtn${deck.public!==false?' gold':''}" onclick="P._setVisibility(true)" style="font-size:11px">👁 Public</button>
-          <button id="vis-private-btn" class="tbtn${deck.public===false?' gold':''}" onclick="P._setVisibility(false)" style="font-size:11px">🔒 Private</button>
+          <button id="vis-public-btn" class="tbtn${deck.public!==false?' gold':''}" onclick="P._setVisibility(true)" style="font-size:11px">?? Public</button>
+          <button id="vis-private-btn" class="tbtn${deck.public===false?' gold':''}" onclick="P._setVisibility(false)" style="font-size:11px">?? Private</button>
         </div>
         <div style="font-size:10px;color:var(--text3);margin-top:4px;font-family:'JetBrains Mono',monospace">Public decks are visible to friends on your profile.</div>
       </div>
       <div style="margin-bottom:16px;padding-top:14px;border-top:1px solid var(--border)">
-        <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:8px">🏷 Style Tags</label>
+        <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:8px">?? Style Tags</label>
         <div id="edit-tags-picker"></div>
       </div>
       <div style="padding-top:14px;border-top:1px solid var(--border)">
-        <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px">⚙ Mechanics / Archetypes</label>
+        <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px">? Mechanics / Archetypes</label>
         <div style="font-size:10px;color:var(--text3);margin-bottom:8px;font-family:'JetBrains Mono',monospace">Select the strategies this deck uses:</div>
         <div id="edit-mechanics-picker"></div>
       </div>
@@ -365,7 +376,7 @@ const P={
     document.getElementById('pfoot').innerHTML='';
     const pf=document.getElementById('pfoot');
     const ca=document.createElement('button');ca.className='tbtn';ca.textContent='Cancel';ca.onclick=()=>P.close();
-    const sv=document.createElement('button');sv.className='tbtn gold';sv.textContent='✓ Save';sv.onclick=()=>P._applyDeckEdit();
+    const sv=document.createElement('button');sv.className='tbtn gold';sv.textContent='? Save';sv.onclick=()=>P._applyDeckEdit();
     pf.append(ca,sv);
     // Render pickers after DOM is ready
     renderTagPicker(deck,'edit-tags-picker');
@@ -395,21 +406,21 @@ const P={
   },
 
   import(){
-    this._open('📥 Import Deck');
+    this._open('?? Import Deck');
     document.getElementById('pbody').innerHTML=`
       <div class="url-import-tabs">
-        <button class="url-import-tab on" id="itab-paste" onclick="P._setImportTab('paste')">📋 Paste / File</button>
-        <button class="url-import-tab" id="itab-url" onclick="P._setImportTab('url')">🔗 Import from URL</button>
+        <button class="url-import-tab on" id="itab-paste" onclick="P._setImportTab('paste')">?? Paste / File</button>
+        <button class="url-import-tab" id="itab-url" onclick="P._setImportTab('url')">?? Import from URL</button>
       </div>
 
       <div id="import-paste-panel">
         <div class="dz" id="dz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondrop="P._drop(event)">
           <input type="file" id="fi" accept=".txt,.dec" style="display:none" onchange="P._file(event)">
-          📂 Drag .txt file here or click to browse
+          ?? Drag .txt file here or click to browse
         </div>
         <div style="font-size:11px;color:var(--text3);margin:6px 0 8px">Supports: Moxfield, TappedOut, MTGGoldfish, MTGO, Archidekt, Deckstats &amp; more</div>
         <input class="ni" id="dname" placeholder="Deck name (auto-detected if empty)">
-        <textarea class="ia" id="ia" placeholder="Paste decklist here…&#10;&#10;// COMMANDER&#10;1 Zur the Enchanter&#10;&#10;// PARTNER (optional)&#10;1 Thrasios, Triton Hero&#10;&#10;1 Sol Ring&#10;2 Island"></textarea>
+        <textarea class="ia" id="ia" placeholder="Paste decklist here�&#10;&#10;// COMMANDER&#10;1 Zur the Enchanter&#10;&#10;// PARTNER (optional)&#10;1 Thrasios, Triton Hero&#10;&#10;1 Sol Ring&#10;2 Island"></textarea>
       </div>
 
       <div id="import-url-panel" style="display:none">
@@ -420,7 +431,7 @@ const P={
           oninput="P._urlChanged()" onkeydown="if(event.key==='Enter')P._fetchUrl()">
         <div id="import-url-status" class="url-status"></div>
         <div style="font-size:10px;color:var(--text3);line-height:1.8;font-family:'JetBrains Mono',monospace">
-          ✓ moxfield.com/decks/... &nbsp; ✓ archidekt.com/decks/... &nbsp; ✓ tappedout.net/mtg-decks/...<br>
+          ? moxfield.com/decks/... &nbsp; ? archidekt.com/decks/... &nbsp; ? tappedout.net/mtg-decks/...<br>
           For Moxfield private decks, export as text and paste instead.
         </div>
       </div>
@@ -428,7 +439,7 @@ const P={
     document.getElementById('pfoot').innerHTML='';
     const pf=document.getElementById('pfoot');
     const cancel=document.createElement('button');cancel.className='tbtn';cancel.textContent='Cancel';cancel.onclick=()=>P.close();
-    const imp=document.createElement('button');imp.className='tbtn gold';imp.id='import-main-btn';imp.textContent='✦ Import';imp.onclick=()=>P._doImport();
+    const imp=document.createElement('button');imp.className='tbtn gold';imp.id='import-main-btn';imp.textContent='? Import';imp.onclick=()=>P._doImport();
     pf.append(cancel,imp);
   },
 
@@ -438,7 +449,7 @@ const P={
     document.getElementById('import-paste-panel').style.display=tab==='paste'?'block':'none';
     document.getElementById('import-url-panel').style.display=tab==='url'?'block':'none';
     const btn=document.getElementById('import-main-btn');
-    if(btn)btn.textContent=tab==='url'?'🔗 Fetch & Import':'✦ Import';
+    if(btn)btn.textContent=tab==='url'?'?? Fetch & Import':'? Import';
     if(btn)btn.onclick=tab==='url'?()=>P._fetchUrl():()=>P._doImport();
   },
 
@@ -452,13 +463,13 @@ const P={
     const statusEl=document.getElementById('import-url-status');
     const btn=document.getElementById('import-main-btn');
     const setStatus=(msg,type)=>{if(statusEl){statusEl.textContent=msg;statusEl.className='url-status '+type;statusEl.style.display='block';}};
-    setStatus('Fetching deck…','loading');
-    if(btn)btn.textContent='Fetching…';
+    setStatus('Fetching deck�','loading');
+    if(btn)btn.textContent='Fetching�';
 
     try{
       let text=null,deckName='Imported Deck';
 
-      // ── Moxfield ──
+      // -- Moxfield --
       if(url.includes('moxfield.com/decks/')){
         const m=url.match(/moxfield\.com\/decks\/([^/?#]+)/i);
         if(!m)throw new Error('Could not parse Moxfield deck ID');
@@ -489,7 +500,7 @@ const P={
         deckName=data.name||'Moxfield Deck';
         text=URLImport.moxfieldToText(data);
       }
-      // ── Archidekt ──
+      // -- Archidekt --
       else if(url.includes('archidekt.com')){
         const m=url.match(/decks\/(\d+)/);
         if(!m)throw new Error('Could not parse Archidekt deck ID');
@@ -499,7 +510,7 @@ const P={
         deckName=data.name||'Archidekt Deck';
         text=URLImport.archidektToText(data);
       }
-      // ── TappedOut ──
+      // -- TappedOut --
       else if(url.includes('tappedout.net')){
         const txtUrl=url.replace(/\/?$/,'')+'?fmt=txt';
         const res=await fetch(txtUrl);
@@ -518,24 +529,24 @@ const P={
                   partner:parsed.partner||'',cards:parsed.cards,created:Date.now(),public:true};
       Store.addDeck(deck);
       enrichDeckCards(deck).then(()=>{Store.updDeck(deck);DB.schedulePush();});
-      setStatus(`✓ Imported "${deckName}" — ${parsed.cards.length} cards`,'ok');
-      if(btn)btn.textContent='✓ Imported!';
+      setStatus(`? Imported "${deckName}" � ${parsed.cards.length} cards`,'ok');
+      if(btn)btn.textContent='? Imported!';
       setTimeout(()=>{P.close();App.loadDeck(deck.id);},800);
-      Notify.show(`"${deckName}" imported — ${parsed.cards.length} cards`,'ok');
+      Notify.show(`"${deckName}" imported � ${parsed.cards.length} cards`,'ok');
     }catch(e){
       setStatus('Error: '+e.message,'err');
-      if(btn)btn.textContent='🔗 Fetch & Import';
+      if(btn)btn.textContent='?? Fetch & Import';
     }
   },
   _drop(e){e.preventDefault();document.getElementById('dz').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)this._readFile(f);},
   _file(e){const f=e.target.files[0];if(f)this._readFile(f);},
 
-  /* Deck Update — diff current deck vs new import, show preview, apply */
+  /* Deck Update � diff current deck vs new import, show preview, apply */
   _doUpdate(){
     const text=document.getElementById('ia').value.trim();
     if(!text){Notify.show('Paste a decklist first','err');return;}
     const deck=Store.getDeck(App.curId);
-    if(!deck){Notify.show('No deck loaded — load a deck to update it','err');return;}
+    if(!deck){Notify.show('No deck loaded � load a deck to update it','err');return;}
 
     const parsed=Parser.parse(text);
     if(!parsed.cards.length){Notify.show('No cards recognized','err');return;}
@@ -564,21 +575,21 @@ const P={
     // Build preview HTML
     let html=`<div style="max-height:300px;overflow-y:auto;margin:10px 0">`;
     if(toAdd.length){
-      html+=`<div class="du-section">➕ Adding (${toAdd.length})</div>`;
-      html+=toAdd.map(c=>`<div class="du-row du-add"><span class="du-qty">${c.qty}×</span>${esc(c.name)}${c.set?`<span style="font-size:9px;color:var(--ice2);margin-left:4px">(${c.set.toUpperCase()})</span>`:''}</div>`).join('');
+      html+=`<div class="du-section">? Adding (${toAdd.length})</div>`;
+      html+=toAdd.map(c=>`<div class="du-row du-add"><span class="du-qty">${c.qty}�</span>${esc(c.name)}${c.set?`<span style="font-size:9px;color:var(--ice2);margin-left:4px">(${c.set.toUpperCase()})</span>`:''}</div>`).join('');
     }
     if(toRemove.length){
-      html+=`<div class="du-section">✕ Removing (${toRemove.length})</div>`;
-      html+=toRemove.map(c=>`<div class="du-row du-rem"><span class="du-qty">${c.qty}×</span>${esc(c.name)}</div>`).join('');
+      html+=`<div class="du-section">? Removing (${toRemove.length})</div>`;
+      html+=toRemove.map(c=>`<div class="du-row du-rem"><span class="du-qty">${c.qty}�</span>${esc(c.name)}</div>`).join('');
     }
     const changed=toKeep.filter(k=>k.qty!==k.newQty);
     if(changed.length){
-      html+=`<div class="du-section">↕ Qty Changed (${changed.length})</div>`;
-      html+=changed.map(c=>`<div class="du-row du-keep"><span class="du-qty">${c.qty}→${c.newQty}×</span>${esc(c.name)}</div>`).join('');
+      html+=`<div class="du-section">? Qty Changed (${changed.length})</div>`;
+      html+=changed.map(c=>`<div class="du-row du-keep"><span class="du-qty">${c.qty}?${c.newQty}�</span>${esc(c.name)}</div>`).join('');
     }
     html+=`</div>
       <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="tbtn gold" onclick="P._applyUpdate()" style="flex:1">✓ Apply Update</button>
+        <button class="tbtn gold" onclick="P._applyUpdate()" style="flex:1">? Apply Update</button>
         <button class="tbtn" onclick="P._cancelUpdate()">Cancel</button>
       </div>`;
 
@@ -595,8 +606,8 @@ const P={
     }
     previewEl.style.display='block';
     previewEl.innerHTML=`<div style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold2);margin-bottom:8px">
-      Update Preview — "${esc(deck.name)}"
-      <span style="color:var(--text3);font-size:10px;margin-left:8px">+${toAdd.length} / −${toRemove.length}</span>
+      Update Preview � "${esc(deck.name)}"
+      <span style="color:var(--text3);font-size:10px;margin-left:8px">+${toAdd.length} / -${toRemove.length}</span>
     </div>${html}`;
   },
 
@@ -623,7 +634,7 @@ const P={
     App.loadDeck(deck.id);
     P._pendingUpdate=null;
     P.close();
-    Notify.show(`Deck updated — +${toAdd.length} added, −${toRemove.length} removed`,'ok');
+    Notify.show(`Deck updated � +${toAdd.length} added, -${toRemove.length} removed`,'ok');
   },
 
   _cancelUpdate(){
@@ -646,12 +657,12 @@ const P={
     const deck={id:Store.uid(),name:customName||parsed.name,commander:parsed.commander||'',partner:parsed.partner||'',cards:parsed.cards,created:Date.now(),public:true};
     Store.addDeck(deck);P.close();App.loadDeck(deck.id);
     enrichDeckCards(deck).then(()=>{Store.updDeck(deck);DB.schedulePush();});
-    Notify.show(`"${deck.name}" — ${parsed.cards.length} cards imported`+(deck.partner?` (Partner: ${deck.partner})`:'')||'','ok');
+    Notify.show(`"${deck.name}" � ${parsed.cards.length} cards imported`+(deck.partner?` (Partner: ${deck.partner})`:'')||'','ok');
   },
 
   export(){
     const deck=Store.getDeck(App.curId);if(!deck){Notify.show('No deck loaded','err');return;}
-    this._open('📤 Export — '+deck.name,true);
+    this._open('?? Export � '+deck.name,true);
     document.getElementById('pbody').innerHTML=`
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         ${['moxfield','mtgo','arena','tappedout','mtggoldfish','archidekt','deckstats','csv'].map(f=>
@@ -664,9 +675,9 @@ const P={
     document.getElementById('pfoot').innerHTML='';
     const pf=document.getElementById('pfoot');
     const cl=document.createElement('button');cl.className='tbtn';cl.textContent='Close';cl.onclick=()=>P.close();
-    const cp=document.createElement('button');cp.className='tbtn';cp.textContent='📋 Copy';
+    const cp=document.createElement('button');cp.className='tbtn';cp.textContent='?? Copy';
     cp.onclick=()=>{navigator.clipboard.writeText(document.getElementById('export-ta').value);Notify.show('Copied!','ok');};
-    const dl=document.createElement('button');dl.className='tbtn gold';dl.textContent='💾 Download';
+    const dl=document.createElement('button');dl.className='tbtn gold';dl.textContent='?? Download';
     dl.onclick=()=>{
       const ext=P._curFmt==='csv'?'csv':'txt';
       const a=document.createElement('a');
@@ -687,7 +698,7 @@ const P={
 
   editCmdr(){
     const deck=Store.getDeck(App.curId);if(!deck)return;
-    this._open('⚔ Commanders',true);
+    this._open('? Commanders',true);
     const hasPartner=!!deck.partner;
     document.getElementById('pbody').innerHTML=`
       <div class="partner-toggle" id="partner-toggle-wrap">
@@ -698,16 +709,16 @@ const P={
       </div>
       <div class="cmdr-slots">
         <div class="cmdr-slot active" id="slot-1">
-          <div class="cmdr-slot-label">⚔ Commander</div>
-          <div class="cmdr-slot-name" id="slot-1-name">${esc(deck.commander||'—')}</div>
+          <div class="cmdr-slot-label">? Commander</div>
+          <div class="cmdr-slot-name" id="slot-1-name">${esc(deck.commander||'�')}</div>
           <div class="cmdr-slot-ability" id="slot-1-ability"></div>
-          <input class="ni" id="ci-1" value="${esc(deck.commander||'')}" placeholder="Commander name…" oninput="P._updateSlotPreview(1)" style="margin-top:8px;margin-bottom:0">
+          <input class="ni" id="ci-1" value="${esc(deck.commander||'')}" placeholder="Commander name�" oninput="P._updateSlotPreview(1)" style="margin-top:8px;margin-bottom:0">
         </div>
         <div class="cmdr-slot${hasPartner?' active partner':''}" id="slot-2" style="opacity:${hasPartner?1:.4};transition:opacity .2s">
-          <div class="cmdr-slot-label">⊕ Partner / Background</div>
-          <div class="cmdr-slot-name" id="slot-2-name">${esc(deck.partner||'—')}</div>
+          <div class="cmdr-slot-label">? Partner / Background</div>
+          <div class="cmdr-slot-name" id="slot-2-name">${esc(deck.partner||'�')}</div>
           <div class="cmdr-slot-ability" id="slot-2-ability"></div>
-          <input class="ni" id="ci-2" value="${esc(deck.partner||'')}" placeholder="Partner / Background name…" ${hasPartner?'':'disabled'} oninput="P._updateSlotPreview(2)" style="margin-top:8px;margin-bottom:0">
+          <input class="ni" id="ci-2" value="${esc(deck.partner||'')}" placeholder="Partner / Background name�" ${hasPartner?'':'disabled'} oninput="P._updateSlotPreview(2)" style="margin-top:8px;margin-bottom:0">
         </div>
       </div>
       <p style="font-size:11px;color:var(--text3);margin-top:4px">Partner commanders share the command zone. Both count toward your deck's color identity.</p>
@@ -749,15 +760,15 @@ const P={
     const cd=Store.card(inp.value.trim());
     const nameEl=document.getElementById('slot-'+n+'-name');
     const abilEl=document.getElementById('slot-'+n+'-ability');
-    if(nameEl) nameEl.textContent=inp.value.trim()||'—';
+    if(nameEl) nameEl.textContent=inp.value.trim()||'�';
     if(abilEl){
       const pType=Partner.partnerType(cd);
-      abilEl.textContent=pType?'✦ '+Partner.label(pType):(cd?'No partner ability':'');
+      abilEl.textContent=pType?'? '+Partner.label(pType):(cd?'No partner ability':'');
     }
   }
 };
 
-/* ═══ MANA FORMAT ══════════════════════════════════════════ */
+/* --- MANA FORMAT ------------------------------------------ */
 function fmtMana(mc){
   /* Full MTG color palette + textured look */
   const CFG={
@@ -772,14 +783,14 @@ function fmtMana(mc){
   const NUM={bg:'#18202e',border:'#2a3548',text:'#8a9baa'};
   return String(mc).replace(/\{([^}]+)\}/g,(_,s)=>{
     const key=s.toUpperCase();
-    const isNum=s.match(/^\d+$/) || s==='½';
+    const isNum=s.match(/^\d+$/) || s==='�';
     const cfg=isNum?NUM:(CFG[key]||{bg:'#252d3e',border:'#3a4560',text:'#8a9baa',shadow:'none'});
     const shadow=cfg.shadow&&cfg.shadow!=='none'?`,0 0 4px ${cfg.shadow}`:'';
     return `<span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:${cfg.bg};color:${cfg.text};font-size:8px;font-weight:800;margin:0 1px;border:1.5px solid ${cfg.border};flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)${shadow};font-family:'JetBrains Mono',monospace;line-height:1;letter-spacing:0">${s}</span>`;
   });
 }
 
-/* ═══ NOTIFY ═══════════════════════════════════════════════ */
+/* --- NOTIFY ----------------------------------------------- */
 const Notify={
   show(msg,type='inf',dur=3000){
     const el=document.createElement('div');el.className=`notif ${type}`;el.textContent=msg;
@@ -788,7 +799,7 @@ const Notify={
   }
 };
 
-/* ═══ PRINT PICKER ═════════════════════════════════════════ */
+/* --- PRINT PICKER ----------------------------------------- */
 const PrintPicker={
   _name:null,_deckId:null,_cardEntry:null,_prints:[],_filtered:[],_open:false,
 
@@ -815,7 +826,7 @@ const PrintPicker={
     const cd=Store.card(cardEntry.name)||{};
     if(curSet){
       if(cd.set){
-        curSet.textContent='Current: '+(cd.set||'').toUpperCase()+' #'+(cd.collector_number||'?')+' — '+(cd.set_name||'');
+        curSet.textContent='Current: '+(cd.set||'').toUpperCase()+' #'+(cd.collector_number||'?')+' � '+(cd.set_name||'');
         curSet.style.display='block';
       } else {
         curSet.style.display='none';
@@ -838,14 +849,14 @@ const PrintPicker={
   async load(){
     const G=id=>document.getElementById(id);
     const load=G('ep-loading');const lst=G('ep-list');const cnt=G('ep-count');
-    if(load){load.style.display='flex';load.textContent='⟳ Loading all printings…';}
+    if(load){load.style.display='flex';load.textContent='? Loading all printings�';}
     if(lst)lst.innerHTML='';
 
-    // file:// protocol can't fetch — show helpful message
+    // file:// protocol can't fetch � show helpful message
     if(location.protocol==='file:'){
       if(load){load.style.display='none';}
       if(lst)lst.innerHTML=`<div style="grid-column:1/-1;padding:16px;background:rgba(200,168,75,.08);border:1px solid var(--gold3);border-radius:var(--r);font-size:11px;color:var(--gold);font-family:'JetBrains Mono',monospace;line-height:1.7">
-        ⚠ Edition browsing requires a server connection.<br>
+        ? Edition browsing requires a server connection.<br>
         <span style="color:var(--text3)">Open in Firefox or a local server to fetch all printings.<br>You can still manually set the set code below.</span><br><br>
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           <input id="ep-manual-set" placeholder="Set code (e.g. CMR)" style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:5px 8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;width:100px">
@@ -867,7 +878,7 @@ const PrintPicker={
     const setCode=(document.getElementById('ep-manual-set')?.value||'').trim().toLowerCase();
     const cn=(document.getElementById('ep-manual-cn')?.value||'').trim();
     if(!setCode){Notify.show('Enter a set code','err');return;}
-    Notify.show('Fetching '+setCode.toUpperCase()+'…','inf',2000);
+    Notify.show('Fetching '+setCode.toUpperCase()+'�','inf',2000);
     try{
       const url=`/api/scryfall/cards/${encodeURIComponent(setCode)}/${encodeURIComponent(cn||'1')}`;
       const r=await fetch(url,{method:'GET',headers:{'Accept':'application/json'}});
@@ -899,7 +910,6 @@ const PrintPicker={
       lst.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:16px;color:var(--text3);font-size:12px">No printings match.</div>';
       return;
     }
-
     for(const p of this._filtered){
       const isCur=p.id===curId;
       const card=document.createElement('div');
@@ -909,8 +919,8 @@ const PrintPicker={
 
       const f=p.card_faces?.[0]||p;
       const imgCrop=f.image_uris?.art_crop||p.image_uris?.art_crop||'';
-      const priceUsd=p.prices?.eur||'';
-      const priceFoil=p.prices?.eur_foil||'';
+      const priceUsd=p.prices?.eur||p.prices?.usd||'';
+      const priceFoil=p.prices?.eur_foil||p.prices?.usd_foil||'';
       const rarColor=this.RAR_COLORS[p.rarity]||'#555';
       const relYear=(p.released_at||'').slice(0,4);
 
@@ -918,27 +928,26 @@ const PrintPicker={
         ${imgCrop
           ?`<img class="ep-print-img" src="${esc(imgCrop)}" alt="${esc(p.set_name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
           :''}
-        <div class="ep-print-img-ph" style="display:${imgCrop?'none':'flex'}">🃏</div>
+        <div class="ep-print-img-ph" style="display:${imgCrop?'none':'flex'}">??</div>
         <div class="ep-set-code">
           <span class="ep-rarity-dot" style="background:${rarColor}"></span>
           ${esc((p.set||'').toUpperCase())} #${esc(p.collector_number||'?')}
         </div>
         <div class="ep-set-name" title="${esc(p.set_name||'')}">${esc(p.set_name||'?')}</div>
-        <div class="ep-cn">${relYear||'—'} · ${p.rarity||'—'}</div>
+        <div class="ep-cn">${relYear||'-'} - ${p.rarity||'-'}</div>
         <div class="ep-price">
-          ${priceUsd?'€'+priceUsd:'–'}
-          ${priceFoil?'<span style="color:var(--purple2);margin-left:4px">✦$'+priceFoil+'</span>':''}
+          ${priceUsd?((p.prices?.eur?'&euro;':'$')+priceUsd):'-'}
+          ${priceFoil?'<span style="color:var(--purple2);margin-left:4px">'+(p.prices?.eur_foil?'* &euro;':'* $')+priceFoil+'</span>':''}
         </div>
-        <div class="ep-check">✓</div>
+        <div class="ep-check">?</div>
       `;
-
       card.addEventListener('click',()=>this.selectPrint(p));
       lst.appendChild(card);
     }
   },
 
   async selectPrint(p){
-    Notify.show('Switching to '+p.set_name+'…','inf',1500);
+    Notify.show('Switching to '+p.set_name+'�','inf',1500);
     const slim=await SF.fetchById(p.id,this._name);
     if(!slim){Notify.show('Failed to fetch this printing','err');return;}
 
@@ -956,11 +965,11 @@ const PrintPicker={
     // Update the "current set" label
     const curSet=document.getElementById('ep-current-set');
     if(curSet){
-      curSet.textContent='Current: '+(p.set||'').toUpperCase()+' #'+(p.collector_number||'?')+' — '+(p.set_name||'');
+      curSet.textContent='Current: '+(p.set||'').toUpperCase()+' #'+(p.collector_number||'?')+' � '+(p.set_name||'');
       curSet.style.display='block';
     }
 
-    Notify.show('Edition updated → '+p.set_name+' #'+p.collector_number,'ok');
+    Notify.show('Edition updated ? '+p.set_name+' #'+p.collector_number,'ok');
   },
 
   _saveSetToDeck(slim,p){
@@ -983,21 +992,25 @@ const PrintPicker={
     if(slim.img?.normal){const imgEl=G('mc-img-el');if(imgEl)imgEl.src=slim.img.normal;}
     // Type line
     const typeEl=G('mc-type');
-    if(typeEl)typeEl.textContent=[slim.type_line,slim.rarity,slim.set_name].filter(Boolean).join('  •  ');
+    if(typeEl)typeEl.textContent=[slim.type_line,slim.rarity,slim.set_name].filter(Boolean).join('  �  ');
     // Stats
-    const eur=slim.prices?.eur,foil=slim.prices?.eur_foil;
+    const eur=slim.prices?.eur??null;
+    const usd=slim.prices?.usd??null;
+    const foil=slim.prices?.eur_foil??null;
+    const usdFoil=slim.prices?.usd_foil??null;
     const qty=this._cardEntry?.qty||1;
-    const tot=((parseFloat(eur)||0)*qty).toFixed(2);
+    const marketValue=eur??foil??usd??usdFoil??null;
+    const marketSymbol=(eur!=null||foil!=null)?'&euro;':((usd!=null||usdFoil!=null)?'$':'');
+    const tot=((parseFloat(marketValue)||0)*qty).toFixed(2);
     const statsEl=G('mc-stats');
     if(statsEl)statsEl.innerHTML=`
       <div class="ms"><div class="ms-l">CMC</div><div class="ms-v">${slim.cmc||0}</div></div>
-      <div class="ms"><div class="ms-l">EUR</div><div class="ms-v price">${eur?'€'+eur:'–'}</div></div>
-      <div class="ms"><div class="ms-l">EUR</div><div class="ms-v price">${eur?'€'+eur:'–'}</div></div>
-      <div class="ms"><div class="ms-l">Foil EUR</div><div class="ms-v price" style="color:var(--purple2)">${foil?'€'+foil:'–'}</div></div>
+      <div class="ms"><div class="ms-l">EUR</div><div class="ms-v price">${eur?'&euro;'+eur:(usd?'$'+usd:'-')}</div></div>
+      <div class="ms"><div class="ms-l">Foil</div><div class="ms-v price" style="color:var(--purple2)">${foil?'&euro;'+foil:(usdFoil?'$'+usdFoil:'-')}</div></div>
       <div class="ms"><div class="ms-l">Set</div><div class="ms-v" style="font-size:11px;color:var(--ice)">${esc((slim.set||'').toUpperCase()+' #'+(slim.collector_number||'?'))}</div></div>
-      <div class="ms"><div class="ms-l">Total ×${qty}</div><div class="ms-v price">$${tot}</div></div>
+      <div class="ms"><div class="ms-l">Total x${qty}</div><div class="ms-v price">${marketValue?marketSymbol+tot:'-'}</div></div>
       ${slim.power!=null?`<div class="ms"><div class="ms-l">P/T</div><div class="ms-v">${slim.power}/${slim.toughness}</div></div>`:''}
-      <div class="ms"><div class="ms-l">Commander</div><div class="ms-v ${slim.legalities?.commander==='legal'?'legal':'nl'}">${slim.legalities?.commander==='legal'?'✓ Legal':'✗ '+(slim.legalities?.commander||'unknown')}</div></div>
+      <div class="ms"><div class="ms-l">Commander</div><div class="ms-v ${slim.legalities?.commander==='legal'?'legal':'nl'}">${slim.legalities?.commander==='legal'?'Legal':'Unknown: '+(slim.legalities?.commander||'unknown')}</div></div>
     `;
     // Patch grid tile and header
     App._patchTile(this._name,slim,this._deckId);
@@ -1005,7 +1018,7 @@ const PrintPicker={
   }
 };
 
-/* ═══ CHARTS ════════════════════════════════════════════════ */
+/* --- CHARTS ------------------------------------------------ */
 const Charts={
   bar(containerId,data,maxH=110){
     const el=document.getElementById(containerId);if(!el)return;
@@ -1063,7 +1076,7 @@ const Charts={
   }
 };
 
-/* ═══ DASHBOARD ════════════════════════════════════════════ */
+/* --- DASHBOARD -------------------------------------------- */
 
 function animateVal(el,toVal,prefix='',suffix='',duration=350){
   if(!el)return;
@@ -1089,16 +1102,16 @@ const Dashboard={
     const deck=Store.getDeck(App.curId);
     const allCards=Store.decks.flatMap(d=>d.cards.map(c=>({...c,deck:d.name})));
     const totalVal=allCards.reduce((s,c)=>{const cd=Store.card(c.name);return s+(parseFloat(cd?.prices?.eur||0)*c.qty);},0);
-    animateVal(document.getElementById('kpi-portfolio'),Math.round(totalVal),'€');
+    animateVal(document.getElementById('kpi-portfolio'),Math.round(totalVal),'�');
     animateVal(document.getElementById('kpi-cards'),allCards.reduce((s,c)=>s+c.qty,0));
     animateVal(document.getElementById('kpi-decks'),Store.decks.length);
     document.getElementById('kpi-alerts').textContent=Store.alerts.filter(a=>a.active).length;
     let topCard=null,topVal=0;
     for(const c of allCards){const v=parseFloat(Store.card(c.name)?.prices?.eur||0)*c.qty;if(v>topVal){topVal=v;topCard=c.name;}}
-    document.getElementById('kpi-topcard').textContent=topCard?topCard.slice(0,11)+'…':'—';
+    document.getElementById('kpi-topcard').textContent=topCard?topCard.slice(0,11)+'�':'�';
     const cacheCount=Object.keys(Store.cache).length;
     const ce=document.getElementById('dash-engine-cache');if(ce)ce.textContent='Cache: '+cacheCount;
-    document.getElementById('dash-alert-watch').textContent=`◎ ${Store.alerts.filter(a=>a.active).length} Watching`;
+    document.getElementById('dash-alert-watch').textContent=`? ${Store.alerts.filter(a=>a.active).length} Watching`;
     const trig=Store.alerts.filter(a=>a.triggered);
     const trigEl=document.getElementById('dash-alert-triggered');
     if(trig.length){trigEl.style.display='flex';document.getElementById('dash-trig-count').textContent=trig.length;}
@@ -1111,7 +1124,7 @@ const Dashboard={
       for(const c of deck.cards){const cd=Store.card(c.name);if(cd&&!(cd.type_line||'').toLowerCase().includes('land')){const cmc=Math.min(cd.cmc||0,7);curve[cmc]=(curve[cmc]||0)+c.qty;}}
       Charts.bar('dash-curve-chart',Array.from({length:8},(_,i)=>({k:i<7?String(i):'7+',v:curve[i]||0,color:'var(--ice2)',
         onclick:()=>{if(Menu.cur==='forge'){App._filter=i<7?String(i):'7+';App._sort='cmc';
-          /* filter by cmc — extend _getCards to support cmc filter */
+          /* filter by cmc � extend _getCards to support cmc filter */
           App._cmcFilter=i;App.render();Menu.go('forge');
           Notify.show(`Showing CMC ${i<7?i:'7+'} cards`,'inf',2000);
         }
@@ -1130,7 +1143,7 @@ const Dashboard={
   }
 };
 
-/* ═══ COLLECTION ════════════════════════════════════════════ */
+/* --- COLLECTION -------------------------------------------- */
 const CollView={
   filter(){this.render();},
   render(){
@@ -1173,21 +1186,21 @@ const CollView={
         <td>${cd.img?.crop?`<img src="${esc(cd.img.crop)}" class="lthumb">`:'<div style="width:30px;height:42px;background:var(--bg3);border-radius:3px;border:1px solid var(--border)"></div>'}</td>
         <td><span class="lname">${esc(r.name)}</span>${r.foil||r.etched?` <span class="foil-chip">${r.foil?'F':'E'}</span>`:''}</td>
         <td>${(cd.color_identity||[]).map(c=>`<div class="pip ${c}" style="display:inline-flex">${c}</div>`).join('')}</td>
-        <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${rarColors[cd.rarity||'common']||'#555'};border:1px solid rgba(255,255,255,.2)"></span> <span style="font-size:10px;color:var(--text3)">${cd.rarity||'—'}</span></td>
+        <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${rarColors[cd.rarity||'common']||'#555'};border:1px solid rgba(255,255,255,.2)"></span> <span style="font-size:10px;color:var(--text3)">${cd.rarity||'�'}</span></td>
         <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)">${cd.cmc||0}</td>
         <td>${cd.type_line?`<span class="tag ${getTypeTag(cd.type_line)}">${shortType(cd.type_line)}</span>`:''}</td>
         <td><span class="cond-badge ${cond}">${cond}</span></td>
-        <td>${r.foil||r.etched?`<span class="foil-chip">${r.foil?'✦F':''}${r.etched?'✧E':''}</span>`:''}</td>
+        <td>${r.foil||r.etched?`<span class="foil-chip">${r.foil?'?F':''}${r.etched?'?E':''}</span>`:''}</td>
         <td style="font-size:10px;color:var(--text3)">${r.decks.slice(0,2).join(', ')}</td>
-        <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green2)">${price?'€'+price.toFixed(2):'—'}</td>
-        <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold)">${total?'€'+total.toFixed(2):'—'}</td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green2)">${price?'�'+price.toFixed(2):'�'}</td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold)">${total?'�'+total.toFixed(2):'�'}</td>
       `;tbody.appendChild(tr);
     }
     const totalQty=rows.reduce((s,r)=>s+r.qty,0);
     document.getElementById('coll-cnt').textContent=totalQty;
     document.getElementById('coll-uniq').textContent=rows.length;
     document.getElementById('coll-foils').textContent=foilCount;
-    document.getElementById('coll-val').textContent='€'+totalVal.toFixed(2);
+    document.getElementById('coll-val').textContent='�'+totalVal.toFixed(2);
   },
   exportCSV(){
     const deck=Store.getDeck(App.curId);if(!deck){Notify.show('No deck loaded','err');return;}
@@ -1197,12 +1210,12 @@ const CollView={
   }
 };
 
-/* ═══ PRICE VIEW ════════════════════════════════════════════ */
+/* --- PRICE VIEW -------------------------------------------- */
 const PriceView={
   _lastPriceBase:0,
   async renderPriceProviders(base,deck){
     const scryfallVal=base.toFixed(2);
-    const scEl=document.getElementById('prov-scryfall');if(scEl)scEl.textContent='€'+scryfallVal;
+    const scEl=document.getElementById('prov-scryfall');if(scEl)scEl.textContent='�'+scryfallVal;
     const sdEl=document.getElementById('prov-scryfall-d');if(sdEl){sdEl.textContent='Baseline';sdEl.className='prov-diff eq';}
     // Fetch from proxy (real or simulated)
     if(deck){
@@ -1215,23 +1228,23 @@ const PriceView={
         if(prices.tcgplayer?.usd){
           const ratio=prices.tcgplayer.usd/parseFloat(Store.card(topCard.name)?.prices?.eur||prices.tcgplayer.usd);
           const tcgTotal=(base*ratio).toFixed(2);
-          if(tcgEl)tcgEl.textContent='€'+tcgTotal;
+          if(tcgEl)tcgEl.textContent='�'+tcgTotal;
           const pct=((ratio-1)*100).toFixed(1);
-          if(tcgdEl){tcgdEl.textContent=(ratio>1?'▲ +':'▼ ')+Math.abs(pct)+'% vs Scryfall'+(prices.tcgplayer.simulated?' (est.)':'');tcgdEl.className='prov-diff '+(ratio>1?'up':'dn');}
+          if(tcgdEl){tcgdEl.textContent=(ratio>1?'? +':'? ')+Math.abs(pct)+'% vs Scryfall'+(prices.tcgplayer.simulated?' (est.)':'');tcgdEl.className='prov-diff '+(ratio>1?'up':'dn');}
         }
         // MKM
         const mkmEl=document.getElementById('prov-mkm');const mkmdEl=document.getElementById('prov-mkm-d');
         if(prices.mkm?.eur){
           const eurTotal=(base*0.92).toFixed(2);
-          if(mkmEl)mkmEl.textContent='€'+eurTotal;
-          if(mkmdEl){mkmdEl.textContent='▼ -8% (EUR)'+(prices.mkm.simulated?' (est.)':'');mkmdEl.className='prov-diff dn';}
+          if(mkmEl)mkmEl.textContent='�'+eurTotal;
+          if(mkmdEl){mkmdEl.textContent='? -8% (EUR)'+(prices.mkm.simulated?' (est.)':'');mkmdEl.className='prov-diff dn';}
         }
       }
     }
-    // MTGStocks — simulated
+    // MTGStocks � simulated
     const msEl=document.getElementById('prov-mtgstocks');const msdEl=document.getElementById('prov-mtgstocks-d');
-    if(msEl)msEl.textContent='€'+(base*1.02).toFixed(2);
-    if(msdEl){msdEl.textContent='▲ +2% (est.)';msdEl.className='prov-diff up';}
+    if(msEl)msEl.textContent='�'+(base*1.02).toFixed(2);
+    if(msdEl){msdEl.textContent='? +2% (est.)';msdEl.className='prov-diff up';}
   },
 
   render(){
@@ -1248,18 +1261,18 @@ const PriceView={
       const ch7=((Math.random()-.4)*20).toFixed(1),ch30=((Math.random()-.3)*40).toFixed(1);
       const tr=document.createElement('tr');
       tr.innerHTML=`<td><span class="lname">${esc(c.name)}</span></td>
-        <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green2)">${usd?'€'+usd.toFixed(2):'—'}</td>
-        <td class="${parseFloat(ch7)>=0?'price-up':'price-dn'}">${parseFloat(ch7)>=0?'▲ +':'▼ '}${Math.abs(ch7)}%</td>
-        <td class="${parseFloat(ch30)>=0?'price-up':'price-dn'}">${parseFloat(ch30)>=0?'▲ +':'▼ '}${Math.abs(ch30)}%</td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green2)">${usd?'�'+usd.toFixed(2):'�'}</td>
+        <td class="${parseFloat(ch7)>=0?'price-up':'price-dn'}">${parseFloat(ch7)>=0?'? +':'? '}${Math.abs(ch7)}%</td>
+        <td class="${parseFloat(ch30)>=0?'price-up':'price-dn'}">${parseFloat(ch30)>=0?'? +':'? '}${Math.abs(ch30)}%</td>
         <td style="font-size:10px;color:var(--text3)">Scryfall</td>`;
       tbody.appendChild(tr);
     }
   }
 };
 
-/* ═══ ANALYSIS ══════════════════════════════════════════════ */
+/* --- ANALYSIS ---------------------------------------------- */
 
-/* ═══ ALERT MANAGER ════════════════════════════════════════ */
+/* --- ALERT MANAGER ---------------------------------------- */
 const AlertMgr={
   add(){
     const card=(document.getElementById('alert-card')?.value||'').trim();
@@ -1295,22 +1308,22 @@ const AlertMgr={
       const row=document.createElement('div');row.className='alert-row'+(a.triggered?' triggered':'');
       row.innerHTML=`<div class="alert-dot ${!a.active?'inactive':a.triggered?'triggered':'active'}"></div>
         <div class="alert-name">${esc(a.card)}</div>
-        <div class="alert-cond">${condLabel[a.cond]||a.cond} ${a.cond==='change_pct'?a.val+'%':'€'+a.val} · ${a.prov}</div>
-        <div class="alert-cur">${curPrice?'€'+curPrice.toFixed(2):'—'}</div>
-        <div class="alert-status ${a.triggered?'ok':a.active?'watch':'off'}">${a.triggered?'⚡ Triggered':a.active?'Watching':'Off'}</div>
+        <div class="alert-cond">${condLabel[a.cond]||a.cond} ${a.cond==='change_pct'?a.val+'%':'�'+a.val} � ${a.prov}</div>
+        <div class="alert-cur">${curPrice?'�'+curPrice.toFixed(2):'�'}</div>
+        <div class="alert-status ${a.triggered?'ok':a.active?'watch':'off'}">${a.triggered?'? Triggered':a.active?'Watching':'Off'}</div>
         <button class="tbtn sm" onclick="AlertMgr.toggle('${a.id}')">${a.active?'Pause':'Resume'}</button>
-        <button class="alert-del" onclick="AlertMgr.del('${a.id}')">✕</button>`;
+        <button class="alert-del" onclick="AlertMgr.del('${a.id}')">?</button>`;
       list.appendChild(row);
     }
     const kpiAl=document.getElementById('kpi-alerts');if(kpiAl)kpiAl.textContent=Store.alerts.filter(a=>a.active).length;
   }
 };
 
-/* ═══ APP ══════════════════════════════════════════════════ */
-/* ═══ LAZY IMAGE OBSERVER ══════════════════════════════════════
+/* --- APP -------------------------------------------------- */
+/* --- LAZY IMAGE OBSERVER --------------------------------------
    Sets img.src from img.dataset.src only when tile enters viewport.
    Saves ~90% of initial image requests on large decks.
-   ═══════════════════════════════════════════════════════════ */
+   ----------------------------------------------------------- */
 const TileImgObserver=(()=>{
   const obs=new IntersectionObserver((entries)=>{
     entries.forEach(entry=>{
