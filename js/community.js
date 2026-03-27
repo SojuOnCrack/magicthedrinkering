@@ -717,6 +717,37 @@ const CommunityNav={
     return [...new Set(decks.flatMap(d=>[d.commander,d.partner]).filter(Boolean))];
   },
 
+  _profileWarmJobs:new Map(),
+
+  _cardData(cardLike){
+    if(!cardLike)return {};
+    const name=typeof cardLike==='string'?cardLike:cardLike.name;
+    const cached=name?Store.card(name):null;
+    const inline=typeof cardLike==='string'?null:cardLike;
+    return {
+      ...(inline||{}),
+      ...(cached||{}),
+      img:{
+        crop:cached?.img?.crop||inline?.img?.crop||'',
+        normal:cached?.img?.normal||inline?.img?.normal||''
+      },
+      prices:{
+        eur:cached?.prices?.eur??inline?.prices?.eur??null,
+        eur_foil:cached?.prices?.eur_foil??inline?.prices?.eur_foil??null
+      },
+      type_line:cached?.type_line||inline?.type_line||'',
+      cmc:cached?.cmc??inline?.cmc??0,
+      set:cached?.set||inline?.set||'',
+      collector_number:cached?.collector_number||inline?.collector_number||'',
+      rarity:cached?.rarity||inline?.rarity||''
+    };
+  },
+
+  _deckCardData(deck,name){
+    const fromDeck=(deck?.cards||[]).find(c=>c.name===name)||null;
+    return this._cardData(fromDeck||name);
+  },
+
   async _primeCardData(names,onComplete){
     if(!names?.length)return false;
     await Store.warmCards(names);
@@ -735,18 +766,20 @@ const CommunityNav={
     for(const name of cmdrs){
       if(!seenNames.has(name)){
         seenNames.add(name);
-        const cached=Store.card(name);
-        const missingImage=!cached?.img?.crop&&!cached?.img?.normal;
-        if(!cached||missingImage)items.push({name});
+        const available=this._deckCardData(deck,name);
+        const missingImage=!available?.img?.crop&&!available?.img?.normal;
+        const missingType=!available?.type_line;
+        if(!available?.name||missingImage||missingType)items.push({name});
       }
     }
     for(const c of(deck.cards||[])){
       if(!c?.name||seenNames.has(c.name))continue;
       seenNames.add(c.name);
-      const cached=Store.card(c.name);
-      const missingImage=!cached?.img?.crop&&!cached?.img?.normal;
-      const needsExactPrint=c.set&&cached&&cached.set&&cached.set!==c.set;
-      if(!cached||missingImage||needsExactPrint){
+      const available=this._cardData(c);
+      const missingImage=!available?.img?.crop&&!available?.img?.normal;
+      const missingType=!available?.type_line;
+      const needsExactPrint=c.set&&available?.set&&available.set!==c.set;
+      if(!available?.name||missingImage||missingType||needsExactPrint){
         const item={name:c.name};
         if(c.set)item.set=c.set;
         if(c.collector_number)item.collector_number=c.collector_number;
@@ -958,11 +991,12 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     const wishes=wishRes.value?.data||[];
     const isFriend=(friendRes.value?.data||[]).length>0;
     const previewNames=this._collectProfilePreviewNames({decks,trades,wishes});
+    const allProfileNames=this._collectCardNames({decks,trades,wishes});
     await Store.warmCards(previewNames);
 
     // ── Header stats ──────────────────────────────────────────
     const totalCards=decks.reduce((s,d)=>s+d.cards.reduce((a,c)=>a+c.qty,0),0);
-    const totalVal=decks.reduce((s,d)=>s+d.cards.reduce((a,c)=>a+(parseFloat(Store.card(c.name)?.prices?.eur||0)*c.qty),0),0);
+    const totalVal=decks.reduce((s,d)=>s+d.cards.reduce((a,c)=>a+(parseFloat(this._cardData(c)?.prices?.eur||0)*c.qty),0),0);
     const dc=document.getElementById('fp-deck-count');if(dc)dc.textContent=decks.length;
     const cc=document.getElementById('fp-card-count');if(cc)cc.textContent=totalCards.toLocaleString();
     const vc=document.getElementById('fp-total-val');if(vc)vc.textContent='€'+totalVal.toFixed(0);
@@ -985,8 +1019,8 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
 
       for(const d of decks){
       const cards=d.cards;
-      const cmdrData=d.commander?Store.card(d.commander):null;
-      const totalDeckVal=cards.reduce((s,c)=>s+(parseFloat(Store.card(c.name)?.prices?.eur||0)*c.qty),0);
+      const cmdrData=d.commander?this._deckCardData(d,d.commander):null;
+      const totalDeckVal=cards.reduce((s,c)=>s+(parseFloat(this._cardData(c)?.prices?.eur||0)*c.qty),0);
 
       // Bracket score (quick estimate)
       const bracketScore=BracketCalc?._quickScore?BracketCalc._quickScore(cards):null;
@@ -1030,9 +1064,13 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
       });
       } // end for decks
 
-      this._primeCardData(previewNames,()=>{
-        if(this._viewingUser===userId) this.viewUser(userId,email,displayName);
-      });
+      const warmKey=`profile:${userId}`;
+      if(!this._profileWarmJobs.has(warmKey)){
+        const job=this._primeCardData(allProfileNames,()=>{
+          this._profileWarmJobs.delete(warmKey);
+        }).finally(()=>this._profileWarmJobs.delete(warmKey));
+        this._profileWarmJobs.set(warmKey,job);
+      }
     } else {
       grid.innerHTML='<div style="color:var(--text3);font-size:12px;padding:16px">No public decks.</div>';
     }
@@ -1047,7 +1085,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         tEl.innerHTML='';
         const tradeList=document.createElement('div');
         trades.slice(0,12).forEach(t=>{
-          const cd=Store.card(t.card_name)||{};
+          const cd=this._cardData(t);
           const alreadyWanted=myWishSet.has(t.card_name.toLowerCase());
           const iHave=myCardSet.has(t.card_name.toLowerCase());
           const row=document.createElement('div');
@@ -1090,7 +1128,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         wEl.innerHTML='';
         const wishList=document.createElement('div');
         wishes.slice(0,12).forEach(w=>{
-          const cd=Store.card(w.card_name)||{};
+          const cd=this._cardData(w);
           const iHave=myCardSet.has(w.card_name.toLowerCase());
           const alsoWant=myWishSet.has(w.card_name.toLowerCase());
           const row=document.createElement('div');
@@ -1258,13 +1296,13 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     const cards=deck.cards;
     // Sort into groups
     const cmdrs=[deck.commander,deck.partner].filter(Boolean);
-    const lands=cards.filter(c=>!cmdrs.includes(c.name)&&(Store.card(c.name)?.type_line||'').toLowerCase().includes('land'));
-    const creatures=cards.filter(c=>!cmdrs.includes(c.name)&&(Store.card(c.name)?.type_line||'').toLowerCase().includes('creature')&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('land'));
-    const spells=cards.filter(c=>!cmdrs.includes(c.name)&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('land')&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('creature'));
+    const lands=cards.filter(c=>!cmdrs.includes(c.name)&&(this._cardData(c)?.type_line||'').toLowerCase().includes('land'));
+    const creatures=cards.filter(c=>!cmdrs.includes(c.name)&&(this._cardData(c)?.type_line||'').toLowerCase().includes('creature')&&!(this._cardData(c)?.type_line||'').toLowerCase().includes('land'));
+    const spells=cards.filter(c=>!cmdrs.includes(c.name)&&!(this._cardData(c)?.type_line||'').toLowerCase().includes('land')&&!(this._cardData(c)?.type_line||'').toLowerCase().includes('creature'));
 
     // Mana curve
     const curve={};
-    cards.forEach(c=>{const cd=Store.card(c.name);if(cd&&!(cd.type_line||'').toLowerCase().includes('land')){const cmc=Math.min(cd.cmc||0,7);curve[cmc]=(curve[cmc]||0)+c.qty;}});
+    cards.forEach(c=>{const cd=this._cardData(c);if(cd&&!(cd.type_line||'').toLowerCase().includes('land')){const cmc=Math.min(cd.cmc||0,7);curve[cmc]=(curve[cmc]||0)+c.qty;}});
     const maxCurve=Math.max(...Object.values(curve),1);
     const curveHTML=Array.from({length:8},(_,i)=>{
       const h=Math.round(((curve[i]||0)/maxCurve)*40);
@@ -1274,10 +1312,10 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
       </div>`;
     }).join('');
 
-    const totalVal=cards.reduce((s,c)=>s+(parseFloat(Store.card(c.name)?.prices?.eur||0)*c.qty),0);
+    const totalVal=cards.reduce((s,c)=>s+(parseFloat(this._cardData(c)?.prices?.eur||0)*c.qty),0);
     const avgCmc=(()=>{
       let total=0,count=0;
-      cards.forEach(c=>{const cd=Store.card(c.name);if(cd&&!(cd.type_line||'').toLowerCase().includes('land')){total+=cd.cmc||0;count++;}});
+      cards.forEach(c=>{const cd=this._cardData(c);if(cd&&!(cd.type_line||'').toLowerCase().includes('land')){total+=cd.cmc||0;count++;}});
       return count?( total/count).toFixed(1):'—';
     })();
 
@@ -1286,12 +1324,12 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     const renderGroup=(title,arr)=>{
       if(!arr.length)return'';
       const sorted=arr.slice().sort((a,b)=>{
-        const pa=parseFloat(Store.card(a.name)?.prices?.eur||0);
-        const pb=parseFloat(Store.card(b.name)?.prices?.eur||0);
+        const pa=parseFloat(this._cardData(a)?.prices?.eur||0);
+        const pb=parseFloat(this._cardData(b)?.prices?.eur||0);
         return pb-pa;
       });
       const tiles=sorted.map(card=>{
-        const cd=Store.card(card.name)||{};
+        const cd=this._cardData(card);
         const price=parseFloat(cd.prices?.eur||0);
         const iOwn=myDeckCards.has(card.name.toLowerCase());
         const iWant=myWishCards.has(card.name.toLowerCase());
@@ -1347,8 +1385,8 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         <div style="font-family:'Cinzel',serif;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:6px">Mana Curve</div>
         <div style="display:flex;gap:4px;align-items:flex-end;height:52px;margin-bottom:12px">${curveHTML}</div>
         <div style="font-family:'Cinzel',serif;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:8px">Top 5 by Value</div>
-        ${cards.slice().sort((a,b)=>(parseFloat(Store.card(b.name)?.prices?.eur||0)*b.qty)-(parseFloat(Store.card(a.name)?.prices?.eur||0)*a.qty))
-          .slice(0,5).map(c=>{const cd=Store.card(c.name)||{};const v=(parseFloat(cd.prices?.eur||0)*c.qty);return `
+        ${cards.slice().sort((a,b)=>(parseFloat(this._cardData(b)?.prices?.eur||0)*b.qty)-(parseFloat(this._cardData(a)?.prices?.eur||0)*a.qty))
+          .slice(0,5).map(c=>{const cd=this._cardData(c)||{};const v=(parseFloat(cd.prices?.eur||0)*c.qty);return `
           <div class="fp-card-row">
             ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-card-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy">`:'<div class="fp-card-thumb" style="background:var(--bg3)"></div>'}
             <span class="fp-card-name">${esc(c.name)}</span>
@@ -1363,12 +1401,12 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
 
   _renderDeckPopupContent(roDeck){
     const cards=roDeck.cards||[];
-    const totalVal=cards.reduce((s,c)=>s+(parseFloat(Store.card(c.name)?.prices?.eur||0)*(c.qty||0)),0);
+    const totalVal=cards.reduce((s,c)=>s+(parseFloat(this._cardData(c)?.prices?.eur||0)*(c.qty||0)),0);
     const totalCards=cards.reduce((s,c)=>s+(c.qty||0),0);
     const avgCmc=(()=>{
       let total=0,count=0;
       cards.forEach(c=>{
-        const cd=Store.card(c.name)||{};
+        const cd=this._cardData(c);
         if((cd.type_line||'').toLowerCase().includes('land'))return;
         total+=(cd.cmc||0)*(c.qty||1);
         count+=c.qty||1;
@@ -1378,9 +1416,9 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     const cmdrs=[roDeck.commander,roDeck.partner].filter(Boolean);
     const groups=[
       ['Commander',cards.filter(c=>cmdrs.includes(c.name))],
-      ['Creatures',cards.filter(c=>!cmdrs.includes(c.name)&&(Store.card(c.name)?.type_line||'').toLowerCase().includes('creature')&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('land'))],
-      ['Spells',cards.filter(c=>!cmdrs.includes(c.name)&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('land')&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('creature'))],
-      ['Lands',cards.filter(c=>!cmdrs.includes(c.name)&&(Store.card(c.name)?.type_line||'').toLowerCase().includes('land'))]
+      ['Creatures',cards.filter(c=>!cmdrs.includes(c.name)&&(this._cardData(c)?.type_line||'').toLowerCase().includes('creature')&&!(this._cardData(c)?.type_line||'').toLowerCase().includes('land'))],
+      ['Spells',cards.filter(c=>!cmdrs.includes(c.name)&&!(this._cardData(c)?.type_line||'').toLowerCase().includes('land')&&!(this._cardData(c)?.type_line||'').toLowerCase().includes('creature'))],
+      ['Lands',cards.filter(c=>!cmdrs.includes(c.name)&&(this._cardData(c)?.type_line||'').toLowerCase().includes('land'))]
     ];
     document.getElementById('pbody').innerHTML=`
       <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px">
@@ -1399,7 +1437,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
       wrap.appendChild(sec);
       const grid=sec.querySelector(`#readonly-group-${groupIdx}`);
       arr.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(card=>{
-        const cd=Store.card(card.name)||{};
+        const cd=this._cardData(card);
         const price=parseFloat(cd.prices?.eur||0);
         const tile=document.createElement('div');
         tile.className='fp-mini-card';

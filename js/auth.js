@@ -48,6 +48,35 @@ const ProfilePrefs={
    ═══════════════════════════════════════════════════════════ */
 const DB={
   _sb:null,_user:null,_syncing:false,_bootHandled:false,
+  _snapshotBackfillRunning:false,
+
+  _cardSnapshot(card){
+    const cached=Store.card(card?.name)||null;
+    const snap={
+      ...card,
+      img:{
+        crop:card?.img?.crop||cached?.img?.crop||'',
+        normal:card?.img?.normal||cached?.img?.normal||''
+      },
+      type_line:card?.type_line||cached?.type_line||'',
+      cmc:card?.cmc??cached?.cmc??0,
+      prices:{
+        eur:card?.prices?.eur??cached?.prices?.eur??null,
+        eur_foil:card?.prices?.eur_foil??cached?.prices?.eur_foil??null
+      },
+      set:card?.set||cached?.set||'',
+      set_name:card?.set_name||cached?.set_name||'',
+      collector_number:card?.collector_number||cached?.collector_number||'',
+      scryfall_id:card?.scryfall_id||cached?.scryfall_id||'',
+      rarity:card?.rarity||cached?.rarity||'',
+      color_identity:card?.color_identity||cached?.color_identity||[]
+    };
+    return snap;
+  },
+
+  _deckCardsForCloud(deck){
+    return (deck.cards||[]).map(card=>this._cardSnapshot(card));
+  },
 
   init(url,key){
     if(!url||!key||typeof supabase==='undefined')return false;
@@ -139,7 +168,7 @@ const DB={
       const payload=Store.decks.map(d=>({
         id:d.id,user_id:this._user?.id||'',
         name:d.name,commander:d.commander||'',partner:d.partner||'',
-        cards:JSON.stringify(d.cards),public:d.public!==false,
+        cards:JSON.stringify(this._deckCardsForCloud(d)),public:d.public!==false,
         updated_at:new Date().toISOString()
       }));
       OfflineQueue.push({type:'upsert',table:'decks',payload});
@@ -155,7 +184,7 @@ const DB={
       const allRows=Store.decks.map(d=>({
         id:d.id,user_id:this._user.id,
         name:d.name,commander:d.commander||'',partner:d.partner||'',
-        cards:JSON.stringify(d.cards),public:d.public!==false,
+        cards:JSON.stringify(this._deckCardsForCloud(d)),public:d.public!==false,
         created_at:new Date(d.created||Date.now()).toISOString(),
         updated_at:new Date().toISOString()
       }));
@@ -198,6 +227,26 @@ const DB={
     }catch(e){
       Auth._updSyncDot('err');
       Notify.show('Pull failed: '+e.message,'err');
+    }
+  },
+
+  async backfillDeckSnapshots(){
+    if(!this._sb||!this._user||this._snapshotBackfillRunning||!Store.decks.length)return;
+    this._snapshotBackfillRunning=true;
+    try{
+      const names=[...new Set(Store.decks.flatMap(d=>[
+        d.commander,
+        d.partner,
+        ...(d.cards||[]).map(c=>c.name)
+      ]).filter(Boolean))];
+      await Store.warmCards(names);
+      const missing=names.filter(n=>!Store.card(n));
+      if(missing.length)await SF.fetchBatch(missing);
+      await this.pushDecks();
+    }catch(e){
+      console.warn('[DB.backfillDeckSnapshots]',e);
+    }finally{
+      this._snapshotBackfillRunning=false;
     }
   },
 
@@ -353,6 +402,7 @@ const Auth={
     this._updSyncDot('ok');
     // Pull decks from cloud on sign-in
     await DB.pullDecks();
+    DB.backfillDeckSnapshots();
     App?.refreshTopbarStats?.(true);
     /* Auto-refresh Bulk Pool if it's currently visible */
     if(Menu.cur==='bulk')BulkPool.refresh();
