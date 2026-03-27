@@ -1172,13 +1172,6 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     const cards=typeof deck.cards==='string'?JSON.parse(deck.cards||'[]'):deck.cards||[];
     const roDeck={...deck,cards};
     P._open(`[Deck] ${deck.name}`,true);
-    document.getElementById('pbody').innerHTML=`
-      <div style="padding:24px;text-align:center;color:var(--text2)">
-        <div style="font-family:'Cinzel',serif;font-size:15px;color:var(--gold2);margin-bottom:8px">${esc(roDeck.name)}</div>
-        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Loading deck cards...</div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)" id="readonly-deck-load-status">Preparing...</div>
-      </div>
-    `;
     const foot=document.getElementById('pfoot');
     foot.innerHTML='';
     const close=document.createElement('button');
@@ -1190,12 +1183,10 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     importBtn.textContent='Import Copy';
     importBtn.onclick=()=>{P.close();this._importDeck(roDeck);};
     foot.append(close,importBtn);
-    this._ensureDeckCardData(roDeck,(done,total)=>{
-      const status=document.getElementById('readonly-deck-load-status');
-      if(status)status.textContent=`Loading ${done}/${total}`;
-    }).then(()=>{
+    this._renderDeckPopupContent(roDeck);
+    this._ensureDeckCardData(roDeck).then(fetched=>{
       const title=document.getElementById('ptitle');
-      if(title?.textContent===`[Deck] ${deck.name}`) this._renderDeckPopupContent(roDeck);
+      if(fetched&&title?.textContent===`[Deck] ${deck.name}`) this._renderDeckPopupContent(roDeck);
     });
     return;
     const _legacyCardNames=this._collectCardNames({decks:[roDeck]});
@@ -1278,11 +1269,9 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     viewerEl.classList.add('open');
     cardEl.classList.add('expanded');
     cardEl.scrollIntoView({behavior:'smooth',block:'nearest'});
-    viewerEl.innerHTML=`<div style="padding:18px;text-align:center;color:var(--text3);font-size:12px">Loading deck...</div>`;
-    this._ensureDeckCardData(deck,(done,total)=>{
-      if(viewerEl.classList.contains('open'))viewerEl.innerHTML=`<div style="padding:18px;text-align:center;color:var(--text3);font-size:12px">Loading deck... ${done}/${total}</div>`;
-    }).then(()=>{
-      if(viewerEl.classList.contains('open')) this._buildDeckViewer(deck,viewerEl);
+    this._buildDeckViewer(deck,viewerEl);
+    this._ensureDeckCardData(deck).then(fetched=>{
+      if(fetched&&viewerEl.classList.contains('open')) this._buildDeckViewer(deck,viewerEl);
     });
     return;
     const _legacyCardNames=this._collectCardNames({decks:[deck]});
