@@ -25,6 +25,7 @@ const App={
     /* Update cache count in dashboard */
     IDB.count().then(n=>{const ce=document.getElementById('dash-engine-cache');if(ce)ce.textContent='Cache: '+n.toLocaleString();});
     this.renderSidebar();
+    MobileNav?.syncDeckButton?.();
     const last=Store.getCur();
     if(last&&Store.getDeck(last)){
       /* Phase-2 warm: pre-load card data for the active deck before rendering */
@@ -71,6 +72,7 @@ const App={
     document.getElementById('empty').style.display='flex';
     document.getElementById('card-grid').classList.remove('show');
     document.getElementById('list-wrap').classList.remove('show');
+    MobileNav?.syncDeckButton?.();
   },
 
   newDeck(){
@@ -121,6 +123,7 @@ const App={
     if(synBtn)synBtn.style.display=deck.commander?'inline-flex':'none';
     // Auto-sync to Supabase if signed in
     if(DB._user)DB.schedulePush();
+    MobileNav?.syncDeckButton?.();
   },
 
   _fetchCards(deck){
@@ -301,9 +304,14 @@ const App={
     try{
       const {data,error}=await DB._sb.from('bulk_pool').select('qty,price_usd,card_name');
       if(error)throw error;
-      const value=(data||[]).reduce((sum,row)=>{
-        const fallback=parseFloat(Store.card(row.card_name)?.prices?.eur||0);
-        return sum+((parseFloat(row.price_usd)||fallback)*(row.qty||1));
+      const rows=data||[];
+      const names=[...new Set(rows.map(row=>row.card_name).filter(Boolean))];
+      if(names.length)await Store.warmCards(names);
+      const value=rows.reduce((sum,row)=>{
+        const local=parseFloat(Store.card(row.card_name)?.prices?.eur||0);
+        const saved=parseFloat(row.price_usd||0);
+        const price=local||saved;
+        return sum+(price*(row.qty||1));
       },0);
       this._bulkPoolSummary={value,updated:Date.now()};
     }catch{}
@@ -450,7 +458,7 @@ const App={
   renderSidebar(){
     const list=document.getElementById('deck-list');
     const decks=Store.decks;
-    if(!decks.length){list.innerHTML='<div style="padding:14px;font-size:11px;color:var(--text3);text-align:center">No decks yet</div>';return;}
+    if(!decks.length){list.innerHTML='<div style="padding:14px;font-size:11px;color:var(--text3);text-align:center">No decks yet</div>';MobileNav?.syncDeckButton?.();return;}
     list.innerHTML='';
     let dragSrc=null;
     for(const d of decks){
@@ -500,6 +508,7 @@ const App={
       });
       list.appendChild(item);
     }
+    MobileNav?.syncDeckButton?.();
   }
 };
 

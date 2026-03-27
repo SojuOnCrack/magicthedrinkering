@@ -946,6 +946,7 @@ textarea.ia:focus{border-color:var(--gold3);}
 .settings-status.warn{color:var(--gold);border-color:var(--gold3);background:rgba(200,168,75,.1);}
 .settings-status.err{color:var(--crimson2);border-color:var(--crimson2);background:rgba(194,43,62,.1);}
 .data-action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+#mobile-decks-btn{display:none;}
 /* CommanderForge — auth modal, responsive breakpoints */
 
 /* ════════════════════════════════
@@ -963,6 +964,14 @@ textarea.ia:focus{border-color:var(--gold3);}
     min-height:52px;height:auto;padding:6px 10px;
   }
   .logo{font-size:14px;}
+  #mobile-decks-btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    max-width:38vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    font-size:10px;
+  }
+  #mobile-decks-label{
+    display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+  }
   #cmdr-zone{display:none;}
   #deck-stats{gap:8px;}
   .stat b{font-size:11px;}
@@ -1069,6 +1078,7 @@ textarea.ia:focus{border-color:var(--gold3);}
   #mobile-nav{display:none;}
   #mobile-deck-drawer{display:none!important;}
   #vault-mobile-tabs{display:none!important;}
+  #mobile-decks-btn{display:none!important;}
 }
 
 
