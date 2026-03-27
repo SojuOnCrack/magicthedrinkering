@@ -328,7 +328,7 @@ const BulkPool={
     }
 
     for(const r of pageRows){
-      const cd=this._cardData(r);
+      const cd=Store.card(r.card_name)||{};
       const img=cd.img?.normal||cd.img?.crop||'';
       const price=r.price_usd?'€'+parseFloat(r.price_usd).toFixed(2):'—';
       const rarity=cd.rarity||'common';
