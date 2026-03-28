@@ -198,10 +198,13 @@ const BulkPool={
       return s+p*(r.qty||1);
     },0);
     const contrib=new Set(this._data.map(r=>r.user_id)).size;
+    const formattedValue='\u20AC'+val.toFixed(2);
     ['bulk-total-cards','bulk-unique','bulk-value','bulk-contributors'].forEach((id,i)=>{
       const el=document.getElementById(id);
-      if(el)el.textContent=[total,unique,'€'+val.toFixed(2),contrib][i];
+      if(el)el.textContent=[total,unique,formattedValue,contrib][i];
     });
+    const topbarBulk=document.getElementById('s-bulk');
+    if(topbarBulk)topbarBulk.textContent=formattedValue;
     // Update sidebar stats too
     const sbc=document.getElementById('bulk-sb-cards');if(sbc)sbc.textContent=total;
     const sbcon=document.getElementById('bulk-sb-contrib');if(sbcon)sbcon.textContent=contrib;

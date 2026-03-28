@@ -324,9 +324,11 @@ const App={
 
     const sum=this._collectionSummary();
     const bulk=await this._refreshBulkPoolSummary(force);
+    const bulkValueEl=document.getElementById('bulk-value');
+    const bulkValueText=(bulkValueEl?.textContent||'').trim();
     totalEl.textContent=sum.copies;
     collectionEl.textContent='\u20AC'+sum.value.toFixed(0);
-    bulkEl.textContent='\u20AC'+(bulk.value||0).toFixed(0);
+    bulkEl.textContent=bulkValueText||('\u20AC'+(bulk.value||0).toFixed(2));
     if(totalLabel)totalLabel.textContent='Cards';
     if(collectionLabel)collectionLabel.textContent='Collection';
     if(bulkLabel)bulkLabel.textContent='Bulk Pool';
