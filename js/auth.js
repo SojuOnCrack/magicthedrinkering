@@ -115,6 +115,7 @@ const DB={
       created:new Date(row.created_at||Date.now()).getTime(),
       updated:new Date(row.updated_at||row.created_at||Date.now()).getTime(),
       cloudUpdatedAt:new Date(row.updated_at||row.created_at||Date.now()).getTime(),
+      localOnly:false,
       public:row.public!==false
     };
   },
@@ -122,26 +123,24 @@ const DB={
   _mergePulledDecks(remoteRows){
     const remoteDecks=(remoteRows||[]).map(r=>this._normalizeCloudDeck(r));
     const localById=new Map((Store.decks||[]).map(d=>[d.id,d]));
-    const merged=[];
-    let keptLocal=0;
+    const merged=[...remoteDecks];
+    let localOnlyCount=0;
     for(const remote of remoteDecks){
-      const local=localById.get(remote.id);
-      if(local){
-        const localTs=this._deckTimestamp(local);
-        const remoteTs=this._deckTimestamp(remote);
-        if(localTs>remoteTs){
-          merged.push({...local,cloudUpdatedAt:remote.cloudUpdatedAt||remoteTs});
-          keptLocal++;
-        }else{
-          merged.push(remote);
-        }
-        localById.delete(remote.id);
-      }else{
-        merged.push(remote);
-      }
+      localById.delete(remote.id);
     }
-    for(const local of localById.values()) merged.push(local);
-    return {decks:merged,keptLocal};
+    for(const local of localById.values()){
+      merged.push({
+        ...local,
+        localOnly:true,
+        cloudUpdatedAt:local.cloudUpdatedAt||0
+      });
+      localOnlyCount++;
+    }
+    return {decks:merged,localOnlyCount};
+  },
+
+  _cloudDecks(){
+    return (Store.decks||[]).filter(d=>!d.localOnly);
   },
 
   init(url,key){
@@ -229,9 +228,11 @@ const DB={
   // Upload all decks to Supabase
   _pushTimer:null,
   schedulePush(){
+    const cloudDecks=this._cloudDecks();
+    if(!cloudDecks.length)return;
     if(!navigator.onLine){
       /* Queue offline — will drain when connection returns */
-      const payload=Store.decks.map(d=>({
+      const payload=cloudDecks.map(d=>({
         id:d.id,user_id:this._user?.id||'',
         name:d.name,commander:d.commander||'',partner:d.partner||'',
         cards:JSON.stringify(this._deckCardsForCloud(d)),public:d.public!==false,
@@ -247,13 +248,17 @@ const DB={
     if(!this._sb||!this._user)return;
     this._syncing=true;Auth._updSyncDot('syncing');
     try{
-      const allRows=Store.decks.map(d=>({
+      const allRows=this._cloudDecks().map(d=>({
         id:d.id,user_id:this._user.id,
         name:d.name,commander:d.commander||'',partner:d.partner||'',
         cards:JSON.stringify(this._deckCardsForCloud(d)),public:d.public!==false,
         created_at:new Date(d.created||Date.now()).toISOString(),
         updated_at:new Date(this._deckTimestamp(d)).toISOString()
       }));
+      if(!allRows.length){
+        Auth._updSyncDot('ok');
+        return;
+      }
       const CHUNK=50;
       for(let i=0;i<allRows.length;i+=CHUNK){
         const chunk=allRows.slice(i,i+CHUNK);
@@ -285,8 +290,8 @@ const DB={
         App.renderSidebar();
         const last=Store.getCur();
         if(last&&Store.getDeck(last))App.loadDeck(last);
-        if(merged.keptLocal){
-          Notify.show(`Pulled ${data.length} cloud decks, kept ${merged.keptLocal} newer local change${merged.keptLocal===1?'':'s'}`,'inf');
+        if(merged.localOnlyCount){
+          Notify.show(`Pulled ${data.length} cloud decks. Kept ${merged.localOnlyCount} local-only draft${merged.localOnlyCount===1?'':'s'} on this device only.`,'inf');
           Auth._updSyncDot('warn');
           return;
         }

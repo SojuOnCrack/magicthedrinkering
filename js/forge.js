@@ -468,9 +468,18 @@ const App={
       item.draggable=true;item.dataset.id=d.id;
       const count=d.cards.reduce((s,c)=>s+c.qty,0);
       const meta=document.createElement('div');meta.className='di-meta';
+      const nameRow=document.createElement('div');nameRow.className='di-name-row';
       const name=document.createElement('div');name.className='di-name';name.textContent=d.name;
       name.title='Double-click to rename';
       name.addEventListener('dblclick',e=>{e.stopPropagation();App.loadDeck(d.id);setTimeout(()=>P.editDeck(),50);});
+      nameRow.appendChild(name);
+      if(d.localOnly){
+        const badge=document.createElement('span');
+        badge.className='di-badge local';
+        badge.textContent='Local Draft';
+        badge.title='Only on this device. Not syncing to cloud.';
+        nameRow.appendChild(badge);
+      }
       const sub=document.createElement('div');sub.className='di-sub';
       sub.textContent=count+' cards'+(d.commander?' · '+d.commander:'')+(d.partner?' + '+d.partner:'');
       // Show mechanics tags if any
@@ -486,7 +495,7 @@ const App={
         });
         meta.appendChild(tagRow);
       }
-      meta.append(name,sub);
+      meta.append(nameRow,sub);
       const del=document.createElement('button');del.className='di-del';del.textContent='✕';del.addEventListener('click',e=>App.delDeck(d.id,e));
       /* context menu: duplicate */
       const dup=document.createElement('button');dup.className='di-del';dup.textContent='⎘';
