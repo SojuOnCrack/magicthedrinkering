@@ -397,7 +397,7 @@ const SynergyScanner={
 
   _cardRow(c, cd, match, badgeType){
     const img=cd.img?.crop?`<img src="${esc(cd.img.crop)}" class="syn-card-img" loading="lazy">`:'<div class="syn-card-img" style="background:var(--bg3)"></div>';
-    const price=cd.prices?.eur?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--green2)">$${cd.prices.eur}</span>`:'';
+    const price=cd.prices?.eur?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--green2)">&euro;${cd.prices.eur}</span>`:'';
     return `<div class="syn-card">
       ${img}
       <div style="flex:1;min-width:0">
@@ -738,7 +738,7 @@ const ReprintAlert={
       <div class="kpi-card"><div class="kpi-val">${this._results.length}</div><div class="kpi-lbl">Reprints Found</div></div>
       <div class="kpi-card"><div class="kpi-val" style="color:var(--crimson2)">${negative}</div><div class="kpi-lbl">Price Drops &gt;10%</div></div>
       <div class="kpi-card"><div class="kpi-val" style="color:var(--green2)">${positive}</div><div class="kpi-lbl">Price Gains &gt;10%</div></div>
-      <div class="kpi-card"><div class="kpi-val" style="color:${totalImpact<0?'var(--crimson2)':'var(--green2)'}">${totalImpact>=0?'+':''}$${Math.abs(totalImpact).toFixed(0)}</div><div class="kpi-lbl">Total Portfolio Impact</div></div>`;
+      <div class="kpi-card"><div class="kpi-val" style="color:${totalImpact<0?'var(--crimson2)':'var(--green2)'}">${totalImpact>=0?'+':''}&euro;${Math.abs(totalImpact).toFixed(0)}</div><div class="kpi-lbl">Total Portfolio Impact</div></div>`;
 
     const notifSupported='Notification' in window;
     const notifGranted=notifSupported && Notification.permission==='granted';
@@ -764,10 +764,10 @@ const ReprintAlert={
             </div>
             <div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap">
               <span style="font-family:'JetBrains Mono',monospace;font-size:11px">
-                $${r.oldPrice.toFixed(2)} → <span style="color:${impactColor};font-weight:600">$${r.newPrice.toFixed(2)}</span>
+                &euro;${r.oldPrice.toFixed(2)} -> <span style="color:${impactColor};font-weight:600">&euro;${r.newPrice.toFixed(2)}</span>
                 <span style="color:${impactColor}">(${r.impact>0?'+':''}${r.impact}%)</span>
               </span>
-              ${qty?`<span style="font-size:10px;color:var(--text3)">You own: ${qty}× · Impact: <span style="color:${totalImpact<0?'var(--crimson2)':'var(--green2)'}">${totalImpact>=0?'+':''}$${Math.abs(totalImpact).toFixed(2)}</span></span>`:''}
+              ${qty?`<span style="font-size:10px;color:var(--text3)">You own: ${qty}x - Impact: <span style="color:${totalImpact<0?'var(--crimson2)':'var(--green2)'}">${totalImpact>=0?'+':''}&euro;${Math.abs(totalImpact).toFixed(2)}</span></span>`:''}
             </div>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
@@ -1219,7 +1219,7 @@ const CardSearch2={
           <div class="cs-card-name">${esc(card.name)}</div>
           <div class="cs-card-meta">
             <span class="${rarityClass}">${card.rarity||''}</span>
-            ${price?`<span class="cs-card-price">$${price}</span>`:''}
+            ${price?`<span class="cs-card-price">&euro;${price}</span>`:''}
           </div>
         </div>
         <div class="cs-actions">
@@ -1269,7 +1269,7 @@ const CollSection={
     const foils=data.filter(r=>r.foil).length;
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
     set('coll2-kpi-unique',unique);set('coll2-kpi-total',total);
-    set('coll2-kpi-value','€'+val.toFixed(0));set('coll2-kpi-foils',foils);
+    set('coll2-kpi-value','EUR '+val.toFixed(0));set('coll2-kpi-foils',foils);
   },
 
   _renderFolders(){
@@ -1280,7 +1280,7 @@ const CollSection={
     if(!folders.length){grid.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">No folders yet — create one to organise your cards.</div>';return;}
     grid.innerHTML='';
     folders.forEach(f=>{
-      const count=(this._data()||[]).filter(r=>r.folder===f.name).length;
+      const count=(this._data()||[]).filter(r=>r.folder===f.name).reduce((sum,r)=>sum+(r.qty||1),0);
       const el=document.createElement('div');
       el.className='folder-card';el.style.cursor='pointer';
       el.innerHTML=`<div class="folder-icon">📁</div><div class="folder-name">${esc(f.name)}</div><div class="folder-count">${count} cards</div>`;
@@ -1299,7 +1299,7 @@ const CollSection={
       allBtn.onclick=()=>{document.getElementById('coll2-folder-filter').value='';this.filter();};
       sb.appendChild(allBtn);
       folders.forEach(f=>{
-        const count=(this._data()||[]).filter(r=>r.folder===f.name).length;
+        const count=(this._data()||[]).filter(r=>r.folder===f.name).reduce((sum,r)=>sum+(r.qty||1),0);
         const btn=document.createElement('div');
         btn.className='vn-item';btn.style.cursor='pointer';
         btn.innerHTML=`<div class="vn-ico">📁</div><div><div class="vn-label">${esc(f.name)}</div><div class="vn-sub">${count} cards</div></div>`;
@@ -1337,7 +1337,7 @@ const CollSection={
     const title=document.getElementById('coll2-folder-title');
     if(title)title.textContent=folder||'All Cards';
     const cnt=document.getElementById('coll2-card-count');
-    if(cnt)cnt.textContent=data.length+' cards';
+    if(cnt)cnt.textContent=data.reduce((sum,r)=>sum+(r.qty||1),0)+' cards';
     this._renderCards();
   },
 
@@ -1379,7 +1379,7 @@ const CollSection={
           ${r.foil?'<div class="ct-foil">✦ Foil</div>':''}
           <div class="ct-info"><div class="ct-name">${esc(r.name)}</div>
             <div class="ct-foot"><span class="ct-type" style="font-size:9px">${esc(cd.type_line?.split('—')[0]?.trim()||'')}</span>
-            ${cd.prices?.eur?`<span class="ct-price">$${cd.prices.eur}</span>`:''}</div>
+            ${cd.prices?.eur?`<span class="ct-price">&euro;${cd.prices.eur}</span>`:''}</div>
           </div>`;
         el.onclick=()=>M.open({name:r.name,qty:r.qty||1},null);
         grid.appendChild(el);
@@ -1404,7 +1404,7 @@ const CollSection={
           <td style="padding:6px 8px;font-family:Cinzel,serif;font-size:11px;color:var(--text)">${esc(r.name)}${r.foil?' <span style="color:var(--purple2);font-size:9px">✦</span>':''}</td>
           <td style="padding:6px 8px;font-size:10px;color:var(--text3)">${esc((cd.type_line||'').split('—')[0].trim())}</td>
           <td style="padding:6px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold2);text-align:center">${r.qty||1}</td>
-          <td style="padding:6px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green2)">${cd.prices?.eur?'€'+cd.prices.eur:'—'}</td>
+          <td style="padding:6px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green2)">${cd.prices?.eur?'&euro;'+cd.prices.eur:'�'}</td>
           <td style="padding:6px 8px;font-size:10px;color:var(--text3)">${esc(r.folder||'')}</td>`;
         tr.onclick=()=>M.open({name:r.name,qty:r.qty||1},null);
         tbody.appendChild(tr);
@@ -1822,7 +1822,7 @@ const TradeAC={
       const img=cd?.img?.normal||cd?.img?.crop||'';
       const setInfo=cd?.set?`${String(cd.set).toUpperCase()}${cd.collector_number?' #'+cd.collector_number:''}`:'Unknown print';
       const type=cd?.type_line||'';
-      const price=cd?.prices?.eur?`€${cd.prices.eur}`:'';
+      const price=cd?.prices?.eur?`EUR ${cd.prices.eur}`:'';
       pv.innerHTML=`${img?`<img src="${esc(img)}" alt="${esc(name)}" style="width:100%;border-radius:6px;border:1px solid var(--border);margin-bottom:8px">`:''}<div style="font-family:Cinzel,serif;font-size:12px;color:var(--gold2);margin-bottom:4px">${esc(name)}</div><div style="font-size:10px;color:var(--ice);margin-bottom:3px">${esc(setInfo)}</div><div style="font-size:10px;color:var(--text3);line-height:1.4">${esc(type)}</div>${price?`<div style="font-size:11px;color:var(--green2);margin-top:6px">${esc(price)}</div>`:''}`;
     },120);
   },

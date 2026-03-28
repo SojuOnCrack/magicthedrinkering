@@ -48,6 +48,101 @@ const ProfilePrefs={
    ═══════════════════════════════════════════════════════════ */
 const DB={
   _sb:null,_user:null,_syncing:false,_bootHandled:false,
+  _snapshotBackfillRunning:false,
+
+  _cardSnapshot(card){
+    const cached=Store.card(card?.name)||null;
+    const snap={
+      ...card,
+      img:{
+        crop:card?.img?.crop||cached?.img?.crop||'',
+        normal:card?.img?.normal||cached?.img?.normal||''
+      },
+      type_line:card?.type_line||cached?.type_line||'',
+      cmc:card?.cmc??cached?.cmc??0,
+      prices:{
+        eur:card?.prices?.eur??cached?.prices?.eur??null,
+        eur_foil:card?.prices?.eur_foil??cached?.prices?.eur_foil??null
+      },
+      set:card?.set||cached?.set||'',
+      set_name:card?.set_name||cached?.set_name||'',
+      collector_number:card?.collector_number||cached?.collector_number||'',
+      scryfall_id:card?.scryfall_id||cached?.scryfall_id||'',
+      rarity:card?.rarity||cached?.rarity||'',
+      color_identity:card?.color_identity||cached?.color_identity||[]
+    };
+    return snap;
+  },
+
+  _deckCardsForCloud(deck){
+    return (deck.cards||[]).map(card=>this._cardSnapshot(card));
+  },
+
+  _listingSnapshot(cardName,extra={}){
+    const cached=Store.card(cardName)||null;
+    return {
+      card_name:cardName,
+      img:{
+        crop:extra?.img?.crop||cached?.img?.crop||'',
+        normal:extra?.img?.normal||cached?.img?.normal||''
+      },
+      type_line:extra?.type_line||cached?.type_line||'',
+      cmc:extra?.cmc??cached?.cmc??0,
+      prices:{
+        eur:extra?.prices?.eur??cached?.prices?.eur??null,
+        eur_foil:extra?.prices?.eur_foil??cached?.prices?.eur_foil??null
+      },
+      set:extra?.set||cached?.set||'',
+      set_name:extra?.set_name||cached?.set_name||'',
+      collector_number:extra?.collector_number||cached?.collector_number||'',
+      scryfall_id:extra?.scryfall_id||cached?.scryfall_id||'',
+      rarity:extra?.rarity||cached?.rarity||'',
+      color_identity:extra?.color_identity||cached?.color_identity||[]
+    };
+  },
+
+  _deckTimestamp(deck){
+    return deck?.updated||deck?.cloudUpdatedAt||deck?.created||Date.now();
+  },
+
+  _normalizeCloudDeck(row){
+    return {
+      id:row.id,
+      name:row.name,
+      commander:row.commander||'',
+      partner:row.partner||'',
+      cards:JSON.parse(row.cards||'[]'),
+      created:new Date(row.created_at||Date.now()).getTime(),
+      updated:new Date(row.updated_at||row.created_at||Date.now()).getTime(),
+      cloudUpdatedAt:new Date(row.updated_at||row.created_at||Date.now()).getTime(),
+      public:row.public!==false
+    };
+  },
+
+  _mergePulledDecks(remoteRows){
+    const remoteDecks=(remoteRows||[]).map(r=>this._normalizeCloudDeck(r));
+    const localById=new Map((Store.decks||[]).map(d=>[d.id,d]));
+    const merged=[];
+    let keptLocal=0;
+    for(const remote of remoteDecks){
+      const local=localById.get(remote.id);
+      if(local){
+        const localTs=this._deckTimestamp(local);
+        const remoteTs=this._deckTimestamp(remote);
+        if(localTs>remoteTs){
+          merged.push({...local,cloudUpdatedAt:remote.cloudUpdatedAt||remoteTs});
+          keptLocal++;
+        }else{
+          merged.push(remote);
+        }
+        localById.delete(remote.id);
+      }else{
+        merged.push(remote);
+      }
+    }
+    for(const local of localById.values()) merged.push(local);
+    return {decks:merged,keptLocal};
+  },
 
   init(url,key){
     if(!url||!key||typeof supabase==='undefined')return false;
@@ -139,7 +234,7 @@ const DB={
       const payload=Store.decks.map(d=>({
         id:d.id,user_id:this._user?.id||'',
         name:d.name,commander:d.commander||'',partner:d.partner||'',
-        cards:JSON.stringify(d.cards),public:d.public!==false,
+        cards:JSON.stringify(this._deckCardsForCloud(d)),public:d.public!==false,
         updated_at:new Date().toISOString()
       }));
       OfflineQueue.push({type:'upsert',table:'decks',payload});
@@ -155,9 +250,9 @@ const DB={
       const allRows=Store.decks.map(d=>({
         id:d.id,user_id:this._user.id,
         name:d.name,commander:d.commander||'',partner:d.partner||'',
-        cards:JSON.stringify(d.cards),public:d.public!==false,
+        cards:JSON.stringify(this._deckCardsForCloud(d)),public:d.public!==false,
         created_at:new Date(d.created||Date.now()).toISOString(),
-        updated_at:new Date().toISOString()
+        updated_at:new Date(this._deckTimestamp(d)).toISOString()
       }));
       const CHUNK=50;
       for(let i=0;i<allRows.length;i+=CHUNK){
@@ -183,21 +278,44 @@ const DB={
         .select('*').eq('user_id',this._user.id).order('created_at');
       if(error)throw error;
       if(data?.length){
-        Store.decks=data.map(r=>({
-          id:r.id,name:r.name,commander:r.commander,partner:r.partner||'',
-          cards:JSON.parse(r.cards||'[]'),created:new Date(r.created_at).getTime()
-        }));
+        const merged=this._mergePulledDecks(data);
+        Store.decks=merged.decks;
         Store.saveDecks();
         Bus.emit('decks:changed');if(typeof Dashboard!=='undefined')Dashboard.markDirty();
         App.renderSidebar();
         const last=Store.getCur();
         if(last&&Store.getDeck(last))App.loadDeck(last);
+        if(merged.keptLocal){
+          Notify.show(`Pulled ${data.length} cloud decks, kept ${merged.keptLocal} newer local change${merged.keptLocal===1?'':'s'}`,'inf');
+          Auth._updSyncDot('warn');
+          return;
+        }
       }
       Auth._updSyncDot('ok');
       Notify.show('Pulled '+( data?.length||0)+' decks from cloud','ok');
     }catch(e){
       Auth._updSyncDot('err');
       Notify.show('Pull failed: '+e.message,'err');
+    }
+  },
+
+  async backfillDeckSnapshots(){
+    if(!this._sb||!this._user||this._snapshotBackfillRunning||!Store.decks.length)return;
+    this._snapshotBackfillRunning=true;
+    try{
+      const names=[...new Set(Store.decks.flatMap(d=>[
+        d.commander,
+        d.partner,
+        ...(d.cards||[]).map(c=>c.name)
+      ]).filter(Boolean))];
+      await Store.warmCards(names);
+      const missing=names.filter(n=>!Store.card(n));
+      if(missing.length)await SF.fetchBatch(missing);
+      await this.pushDecks();
+    }catch(e){
+      console.warn('[DB.backfillDeckSnapshots]',e);
+    }finally{
+      this._snapshotBackfillRunning=false;
     }
   },
 
@@ -353,6 +471,7 @@ const Auth={
     this._updSyncDot('ok');
     // Pull decks from cloud on sign-in
     await DB.pullDecks();
+    DB.backfillDeckSnapshots();
     App?.refreshTopbarStats?.(true);
     /* Auto-refresh Bulk Pool if it's currently visible */
     if(Menu.cur==='bulk')BulkPool.refresh();
@@ -373,6 +492,7 @@ const Auth={
     if(!dot)return;
     dot.className='auth-sync-dot';
     if(state==='syncing')dot.classList.add('syncing');
+    else if(state==='warn')dot.classList.add('syncing');
     else if(state==='err'||state==='offline')dot.classList.add('offline');
   },
 

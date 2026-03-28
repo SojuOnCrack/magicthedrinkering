@@ -171,8 +171,17 @@ const Store={
   getCur(){return localStorage.getItem(this.CUR)||''},
   saveAlerts(){try{localStorage.setItem(this.AK,JSON.stringify(this.alerts))}catch{}},
   getDeck(id){return this.decks.find(d=>d.id===id)||null},
-  addDeck(d){this.decks.push(d);this.saveDecks();Bus.emit('decks:changed');if(typeof Dashboard!=='undefined')Dashboard.markDirty();},
-  updDeck(d){const i=this.decks.findIndex(x=>x.id===d.id);if(i>=0){this.decks[i]=d;this.saveDecks();Bus.emit('decks:changed');if(typeof Dashboard!=='undefined')Dashboard.markDirty();}},
+  addDeck(d){
+    const deck={...d,updated:d?.updated||Date.now(),cloudUpdatedAt:d?.cloudUpdatedAt||0};
+    this.decks.push(deck);this.saveDecks();Bus.emit('decks:changed');if(typeof Dashboard!=='undefined')Dashboard.markDirty();
+  },
+  updDeck(d){
+    const i=this.decks.findIndex(x=>x.id===d.id);
+    if(i>=0){
+      this.decks[i]={...d,updated:Date.now(),cloudUpdatedAt:d?.cloudUpdatedAt||this.decks[i]?.cloudUpdatedAt||0};
+      this.saveDecks();Bus.emit('decks:changed');if(typeof Dashboard!=='undefined')Dashboard.markDirty();
+    }
+  },
   delDeck(id){this.decks=this.decks.filter(d=>d.id!==id);this.saveDecks();Bus.emit('decks:changed');},
   setCard(n,d){
     this.cache[n]=d;
@@ -228,7 +237,12 @@ const Parser={
     const entry={name,qty,foil,etched};
     if(setCode){entry.set=setCode;}
     if(collNum){
-      const cleanCn=collNum.replace(/\s*[*][EF][*]/gi,'').trim();
+      let cleanCn=collNum.replace(/\s*[*][EF][*]/gi,'').trim();
+      cleanCn=cleanCn.replace(/^#/,'').replace(/[),.;:]$/g,'');
+      if(cleanCn.includes('/'))cleanCn=cleanCn.split('/')[0];
+      cleanCn=cleanCn.replace(/[^0-9a-z]+/gi,'');
+      const digitLead=cleanCn.match(/^\d+[a-z]?/i);
+      if(digitLead)cleanCn=digitLead[0];
       if(cleanCn)entry.collector_number=cleanCn;
     }
     return entry;
@@ -361,12 +375,29 @@ const SF={
             done++;onProgress&&onProgress(done,total);continue;
           }
           try{
-            const r=await this._fetchWithRetry(
+            let r=await this._fetchWithRetry(
               `${this.BASE}/cards/${encodeURIComponent(it.set)}/${encodeURIComponent(it.collector_number)}`,
               {signal,headers:{'Accept':'application/json'}}
             );
+            let d=null;
             if(r&&r.ok){
-              const d=await r.json();
+              d=await r.json();
+            }else if(r&&r.status===404){
+              /* Some imports carry collector-number variants that Scryfall
+                 rejects on the direct /cards/:set/:number route. Fall back
+                 to a set-scoped name lookup so profile/deck views still get
+                 usable card data and artwork. */
+              const rf=await this._fetchWithRetry(`${this.BASE}/cards/collection`,{
+                method:'POST',signal,
+                headers:{'Content-Type':'application/json','Accept':'application/json'},
+                body:JSON.stringify({identifiers:[{name:it.name,set:it.set}]})
+              });
+              if(rf&&rf.ok){
+                const df=await rf.json();
+                d=df?.data?.[0]||null;
+              }
+            }
+            if(d){
               const slim=this._slim(d);
               /* Store under the canonical name AND the import name */
               Store.cache[slim.name]=slim;
@@ -390,9 +421,15 @@ const SF={
           });
           if(r&&r.ok){
             const d=await r.json();
+            const byName=new Map(chunk.map(it=>[String(it.name||'').toLowerCase(),it]));
             for(const card of(d.data||[])){
               const slim=this._slim(card);
               Store.cache[slim.name]=slim;
+              const requested=byName.get(String(card.name||'').toLowerCase());
+              if(requested?.name&&requested.name!==slim.name){
+                Store.cache[requested.name]=slim;
+                if(Store._cachedNames)Store._cachedNames.add(requested.name);
+              }
               /* Also mark in _cachedNames so lazy lookup knows it's available */
               if(Store._cachedNames)Store._cachedNames.add(slim.name);
               newEntries.push(slim);
@@ -468,7 +505,7 @@ const SF={
   _slim(d){
     /* Lean object — only what the UI actually uses.
        Dropped: flavor_text (~200 chars), full legalities object (~400 chars),
-       full prices object — keeping only usd + eur_foil.
+       full prices object - keeping only the price fields the UI actually uses.
        Saves ~60% per card → IDB half the size, loadCache faster. */
     const f=d.card_faces?.[0]||d;
     const p=d.prices||{};
@@ -486,7 +523,7 @@ const SF={
       collector_number:d.collector_number||'',
       scryfall_id:d.id||'',
       power:f.power,toughness:f.toughness,
-      prices:{eur:p.eur||null,eur_foil:p.eur_foil||null},
+      prices:{eur:p.eur||null,eur_foil:p.eur_foil||null,usd:p.usd||null,usd_foil:p.usd_foil||null},
       legal_commander:d.legalities?.commander||'legal',
       img:{
         normal:f.image_uris?.normal||d.image_uris?.normal||'',
@@ -667,3 +704,4 @@ const ScryfallBulk={
 };
 
 /* ═══ MENU ══════════════════════════════════════════════════ */
+
