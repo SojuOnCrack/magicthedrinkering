@@ -86,6 +86,7 @@ const BulkPool={
       const names=[...new Set((data||[]).map(r=>r.card_name))];
       Store.warmCards(names).then(()=>{
         this._updateStats(); /* recalc with warmed prices */
+        App?.refreshTopbarStats?.(true);
         this._backfillPrices(data||[]);
       });
     }catch(e){
