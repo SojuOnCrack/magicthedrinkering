@@ -1250,11 +1250,14 @@ const CardSearch2={
    ═══════════════════════════════════════════════════════════ */
 const CollSection={
   _view:'grid',
+  _scope:'all',
   _filtered:[],
 
   render(){
     MyCollection?.load?.();
     MyCollection?._ensurePersonalBulkPanels?.();
+    MyCollection?._ensureScopeFilters?.();
+    this._scope=MyCollection?._scope||'all';
     this._updateKPIs();
     this._renderFolders();
     this._populateFolderFilter();
@@ -1267,7 +1270,7 @@ const CollSection={
     const data=this._data();
     const unique=new Set(data.map(r=>r.name)).size;
     const total=data.reduce((s,r)=>s+(r.qty||1),0);
-    const val=data.reduce((s,r)=>s+(parseFloat(Store.card(r.name)?.prices?.eur||0)*(r.qty||1)),0);
+    const val=data.reduce((s,r)=>s+(parseFloat(MyCollection._cardData(r)?.prices?.eur||0)*(r.qty||1)),0);
     const foils=data.filter(r=>r.foil).length;
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
     set('coll2-kpi-unique',unique);set('coll2-kpi-total',total);
@@ -1326,9 +1329,12 @@ const CollSection={
     const srch=(document.getElementById('coll2-search')?.value||'').toLowerCase();
     const folder=document.getElementById('coll2-folder-filter')?.value||'';
     const sort=document.getElementById('coll2-sort')?.value||'name';
+    const scope=document.getElementById('coll2-scope-filter')?.value||this._scope||'all';
     let data=[...(this._data()||[])];
     if(srch)data=data.filter(r=>(r.name||'').toLowerCase().includes(srch));
     if(folder)data=data.filter(r=>r.folder===folder);
+    if(scope==='decks')data=data.filter(r=>(r.deckQty||0)>0);
+    else if(scope==='loose')data=data.filter(r=>(r.deckQty||0)===0);
     data.sort((a,b)=>{
       if(sort==='qty')return(b.qty||1)-(a.qty||1);
       if(sort==='price_desc')return(parseFloat(Store.card(b.name)?.prices?.eur||0))-(parseFloat(Store.card(a.name)?.prices?.eur||0));
@@ -1344,6 +1350,13 @@ const CollSection={
     const cnt=document.getElementById('coll2-card-count');
     if(cnt)cnt.textContent=data.reduce((sum,r)=>sum+(r.qty||1),0)+' cards';
     this._renderCards();
+  },
+
+  setScope(scope){
+    this._scope=scope||'all';
+    if(typeof MyCollection!=='undefined')MyCollection._scope=this._scope;
+    MyCollection?._syncScopeFilters?.();
+    this.filter();
   },
 
   setView(v){
@@ -1362,10 +1375,9 @@ const CollSection={
     if(!data.length){area.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)">No cards match.</div>';return;}
 
     // Fetch missing card data
-    const missing=data.filter(r=>!Store.card(r.name));
+    const missing=data.filter(r=>!MyCollection._cardData(r)?.name);
     if(missing.length){
-      let done=0;
-      missing.forEach(r=>SF.fetch(r.name,()=>{done++;if(done>=missing.length)this._renderCards();}));
+      SF.fetchBatch(missing.map(r=>MyCollection._fetchRef(r)),()=>{}).then(()=>this._renderCards());
     }
 
     if(this._view==='grid'){
@@ -1373,7 +1385,7 @@ const CollSection={
       const grid=document.createElement('div');
       grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:12px';
       data.forEach(r=>{
-        const cd=Store.card(r.name)||{};
+        const cd=MyCollection._cardData(r)||{};
         const img=cd.img?.normal||cd.img?.crop||'';
         const el=document.createElement('div');
         el.className='ct';el.style.cursor='pointer';
@@ -1398,7 +1410,7 @@ const CollSection={
       tbl.innerHTML='<thead><tr style="border-bottom:1px solid var(--border)"><th style="width:38px"></th><th style="text-align:left;padding:6px 8px;font-family:Cinzel,serif;font-size:10px;color:var(--text3)">Name</th><th style="text-align:left;padding:6px 8px;font-family:Cinzel,serif;font-size:10px;color:var(--text3)">Type</th><th style="padding:6px 8px;font-family:Cinzel,serif;font-size:10px;color:var(--text3)">Qty</th><th style="padding:6px 8px;font-family:Cinzel,serif;font-size:10px;color:var(--text3)">Price</th><th style="padding:6px 8px;font-family:Cinzel,serif;font-size:10px;color:var(--text3)">Folder</th></tr></thead>';
       const tbody=document.createElement('tbody');
       data.forEach(r=>{
-        const cd=Store.card(r.name)||{};
+        const cd=MyCollection._cardData(r)||{};
         const img=cd.img?.crop||cd.img?.normal||'';
         const tr=document.createElement('tr');
         tr.style.cssText='border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s';

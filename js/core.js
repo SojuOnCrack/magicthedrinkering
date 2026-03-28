@@ -399,9 +399,11 @@ const SF={
             }
             if(d){
               const slim=this._slim(d);
+              const exactKey=`${slim.name}::${slim.set||it.set||''}::${slim.collector_number||it.collector_number||''}`;
               /* Store under the canonical name AND the import name */
               Store.cache[slim.name]=slim;
               if(it.name!==slim.name)Store.cache[it.name]=slim;
+              Store.cache[exactKey]=slim;
               newEntries.push(slim);
             }
           }catch(e){if(e.name==='AbortError')return;}
@@ -426,6 +428,10 @@ const SF={
               const slim=this._slim(card);
               Store.cache[slim.name]=slim;
               const requested=byName.get(String(card.name||'').toLowerCase());
+              if(requested?.set){
+                const exactKey=`${slim.name}::${slim.set||requested.set||''}::${slim.collector_number||requested.collector_number||''}`;
+                Store.cache[exactKey]=slim;
+              }
               if(requested?.name&&requested.name!==slim.name){
                 Store.cache[requested.name]=slim;
                 if(Store._cachedNames)Store._cachedNames.add(requested.name);

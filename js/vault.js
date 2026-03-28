@@ -197,7 +197,7 @@ function toggleDeckTag(deckId,tag,containerId,cb){
    IMPROVED MY COLLECTION — stats + grid/list + qty
    ═══════════════════════════════════════════════════════════ */
 const MyCollection={
-  _folders:[],_activeFolder:null,_view:'list',_sort:'name',_filter:'',
+  _folders:[],_activeFolder:null,_view:'list',_sort:'name',_filter:'',_scope:'all',
   FK:'cforge_folders',PBK:'cforge_personal_bulk',
   /* Memoized card list — invalidated by Bus event */
   _cardCache:null,
@@ -216,6 +216,17 @@ const MyCollection={
     this._cardCache=null;
     this._rowCache=null;
     this._rowCacheKey='';
+  },
+  _cardKey(card){
+    return `${encodeURIComponent(String(card?.name||'').toLowerCase())}|${card?.set||''}|${card?.collector_number||''}`;
+  },
+  _cardData(row){
+    const exactKey=`${row?.name||''}::${row?.set||''}::${row?.collector_number||''}`;
+    return Store.cache?.[exactKey]||Store.card(row?.name)||{};
+  },
+  _fetchRef(row){
+    if(row?.set)return {name:row.name,set:row.set,collector_number:row.collector_number||undefined};
+    return {name:row?.name};
   },
   _folderLabel(folderId){
     return this._folders.find(f=>f.id===folderId)?.name||'';
@@ -256,6 +267,46 @@ const MyCollection={
       anchor.parentNode.insertBefore(wrap,anchor);
     });
     this._syncPersonalBulkPanels();
+  },
+  _ensureScopeFilters(){
+    [
+      {
+        prefix:'mycoll',
+        hostId:'mycoll-sort',
+        onChange:"MyCollection.setScope(this.value)"
+      },
+      {
+        prefix:'coll2',
+        hostId:'coll2-sort',
+        onChange:"CollSection.setScope(this.value)"
+      }
+    ].forEach(cfg=>{
+      const host=document.getElementById(cfg.hostId);
+      if(!host||document.getElementById(`${cfg.prefix}-scope-filter`))return;
+      const sel=document.createElement('select');
+      sel.id=`${cfg.prefix}-scope-filter`;
+      sel.className=host.className||'coll-sel';
+      sel.setAttribute('onchange',cfg.onChange);
+      sel.innerHTML='' +
+        '<option value="all">All Cards</option>' +
+        '<option value="decks">In Decks</option>' +
+        '<option value="loose">No Decks</option>';
+      host.insertAdjacentElement('afterend',sel);
+    });
+    this._syncScopeFilters();
+  },
+  _syncScopeFilters(){
+    const val=this._scope||'all';
+    ['mycoll','coll2'].forEach(prefix=>{
+      const sel=document.getElementById(`${prefix}-scope-filter`);
+      if(sel)sel.value=val;
+    });
+  },
+  setScope(scope){
+    this._scope=scope||'all';
+    this._syncScopeFilters();
+    this._renderCards();
+    if(Menu.cur==='collection')CollSection?.filter?.();
   },
   _syncPersonalBulkPanels(){
     ['mycoll','coll2'].forEach(prefix=>{
@@ -353,6 +404,7 @@ const MyCollection={
   render(){
     this.load();
     this._ensurePersonalBulkPanels();
+    this._ensureScopeFilters();
     this._renderKPIs();
     this._renderFolders();
     this._renderCards();
@@ -368,23 +420,27 @@ const MyCollection={
     const map={};
     for(const deck of Store.decks){
       for(const c of deck.cards){
-        if(!map[c.name])map[c.name]={name:c.name,qty:0,folder:c.folder||null,decks:[],foil:false,etched:false,set:c.set||null,collector_number:c.collector_number||null};
-        map[c.name].qty+=c.qty;
-        if(c.foil)map[c.name].foil=true;
-        if(c.etched)map[c.name].etched=true;
+        const key=this._cardKey(c);
+        if(!map[key])map[key]={key,name:c.name,qty:0,folder:c.folder||null,decks:[],foil:false,etched:false,set:c.set||null,collector_number:c.collector_number||null,deckQty:0,personalBulkQty:0};
+        map[key].qty+=c.qty;
+        map[key].deckQty+=(c.qty||0);
+        if(c.foil)map[key].foil=true;
+        if(c.etched)map[key].etched=true;
         /* Keep most specific print info */
-        if(c.set&&!map[c.name].set){map[c.name].set=c.set;map[c.name].collector_number=c.collector_number||null;}
-        if(!map[c.name].decks.includes(deck.name))map[c.name].decks.push(deck.name);
+        if(c.set&&!map[key].set){map[key].set=c.set;map[key].collector_number=c.collector_number||null;}
+        if(!map[key].decks.includes(deck.name))map[key].decks.push(deck.name);
       }
     }
     for(const row of(this._personalBulk||[])){
-      if(!map[row.name])map[row.name]={name:row.name,qty:0,folder:row.folder||null,decks:[],foil:false,etched:false,set:row.set||null,collector_number:row.collector_number||null};
-      map[row.name].qty+=(row.qty||0);
-      if(row.foil)map[row.name].foil=true;
-      if(row.etched)map[row.name].etched=true;
-      if(row.folder&&!map[row.name].folder)map[row.name].folder=row.folder;
-      if(row.set&&!map[row.name].set){map[row.name].set=row.set;map[row.name].collector_number=row.collector_number||null;}
-      if(!map[row.name].decks.includes('Personal Bulk'))map[row.name].decks.push('Personal Bulk');
+      const key=this._cardKey(row);
+      if(!map[key])map[key]={key,name:row.name,qty:0,folder:row.folder||null,decks:[],foil:false,etched:false,set:row.set||null,collector_number:row.collector_number||null,deckQty:0,personalBulkQty:0};
+      map[key].qty+=(row.qty||0);
+      map[key].personalBulkQty+=(row.qty||0);
+      if(row.foil)map[key].foil=true;
+      if(row.etched)map[key].etched=true;
+      if(row.folder&&!map[key].folder)map[key].folder=row.folder;
+      if(row.set&&!map[key].set){map[key].set=row.set;map[key].collector_number=row.collector_number||null;}
+      if(!map[key].decks.includes('Personal Bulk'))map[key].decks.push('Personal Bulk');
     }
     this._cardCache=Object.values(map);
     return this._cardCache;
@@ -395,9 +451,9 @@ const MyCollection={
   _renderKPIs(){
     const cards=this._allCards();
     const totalQty=cards.reduce((s,c)=>s+c.qty,0);
-    const totalVal=cards.reduce((s,c)=>{const cd=Store.card(c.name)||{};return s+(parseFloat(cd.prices?.eur||0)*c.qty);},0);
+    const totalVal=cards.reduce((s,c)=>{const cd=this._cardData(c);return s+(parseFloat(cd.prices?.eur||0)*c.qty);},0);
     const rarities={mythic:0,rare:0,uncommon:0,common:0};
-    cards.forEach(c=>{const cd=Store.card(c.name)||{};if(cd.rarity&&rarities[cd.rarity]!==undefined)rarities[cd.rarity]++;});
+    cards.forEach(c=>{const cd=this._cardData(c);if(cd.rarity&&rarities[cd.rarity]!==undefined)rarities[cd.rarity]++;});
     const foils=cards.filter(c=>c.foil||c.etched).length;
     const G=id=>document.getElementById(id);
     if(G('mycoll-kpi-unique'))G('mycoll-kpi-unique').textContent=cards.length;
@@ -471,6 +527,8 @@ const MyCollection={
     const folderFilter=document.getElementById('mycoll-folder-filter')?.value||this._activeFolder||'';
     let rows=this._allCards();
     if(folderFilter)rows=rows.filter(r=>r.folder===folderFilter);
+    if(this._scope==='decks')rows=rows.filter(r=>(r.deckQty||0)>0);
+    else if(this._scope==='loose')rows=rows.filter(r=>(r.deckQty||0)===0);
     const f=this._filter.toLowerCase();
     if(f)rows=rows.filter(r=>r.name.toLowerCase().includes(f));
     rows.sort((a,b)=>{
@@ -488,7 +546,7 @@ const MyCollection={
     const cntEl=document.getElementById('mycoll-card-count');if(cntEl)cntEl.textContent=rows.length.toLocaleString()+' cards';
 
     // Totals (computed once, not inside loop)
-    const totalVal=rows.reduce((s,r)=>{const cd=Store.card(r.name)||{};return s+(parseFloat(cd.prices?.eur||0)*r.qty);},0);
+    const totalVal=rows.reduce((s,r)=>{const cd=this._cardData(r);return s+(parseFloat(cd.prices?.eur||0)*r.qty);},0);
     const totalQty=rows.reduce((s,r)=>s+r.qty,0);
     if(document.getElementById('mycoll-uniq'))document.getElementById('mycoll-uniq').textContent=rows.length.toLocaleString();
     if(document.getElementById('mycoll-total'))document.getElementById('mycoll-total').textContent=totalQty.toLocaleString();
@@ -503,7 +561,7 @@ const MyCollection={
         const frag=document.createDocumentFragment();
         const end=Math.min(idx+CHUNK,rows.length);
         for(let i=idx;i<end;i++){
-          const r=rows[i];const cd=Store.card(r.name)||{};
+          const r=rows[i];const cd=this._cardData(r);
           const price=parseFloat(cd.prices?.eur||0);
           const tile=document.createElement('div');tile.className='mycoll-tile';
           const _uid=DB._user?.id;
@@ -581,7 +639,7 @@ const MyCollection={
       tbody.style.transform=`translateY(${firstIdx*ROW_H}px)`;
       const frag=document.createDocumentFragment();
       for(let i=firstIdx;i<=lastIdx;i++){
-        const r=rows[i];const cd=Store.card(r.name)||{};
+      const r=rows[i];const cd=this._cardData(r);
         const price=parseFloat(cd.prices?.eur||0);
         const isTrading=tradingSet.has(r.name);
         const isWanted=wantedSet.has(r.name);
@@ -599,7 +657,7 @@ const MyCollection={
           <td>${(cd.color_identity||[]).map(c=>`<div class="pip ${c}" style="display:inline-flex">${c}</div>`).join('')}</td>
           <td>${cd.type_line?`<span class="tag ${getTypeTag(cd.type_line)}">${shortType(cd.type_line)}</span>`:''}</td>
           <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);text-align:center">${cd.cmc||0}</td>
-          <td><select class="coll-sel" style="font-size:9px;padding:2px 4px" onchange="MyCollection.moveToFolder('${esc(r.name)}',this.value)">
+          <td><select class="coll-sel" style="font-size:9px;padding:2px 4px" onchange="MyCollection.moveToFolder('${r.key}',this.value)">
             <option value="">No folder</option>
             ${this._folders.map(fl=>`<option value="${fl.id}"${r.folder===fl.id?' selected':''}>${fl.icon} ${esc(fl.name)}</option>`).join('')}
           </select></td>
@@ -627,14 +685,14 @@ const MyCollection={
     };
   },
 
-  moveToFolder(cardName,folderId){
+  moveToFolder(cardKey,folderId){
     let moved=false;
     for(const deck of Store.decks){
-      const card=deck.cards.find(c=>c.name===cardName);
+      const card=deck.cards.find(c=>this._cardKey(c)===cardKey);
       if(card){card.folder=folderId||null;Store.updDeck(deck);moved=true;}
     }
     for(const row of(this._personalBulk||[])){
-      if(row.name===cardName){row.folder=folderId||null;moved=true;}
+      if(this._cardKey(row)===cardKey){row.folder=folderId||null;moved=true;}
     }
     if(moved){
       this.save();
