@@ -198,16 +198,161 @@ function toggleDeckTag(deckId,tag,containerId,cb){
    ═══════════════════════════════════════════════════════════ */
 const MyCollection={
   _folders:[],_activeFolder:null,_view:'list',_sort:'name',_filter:'',
-  FK:'cforge_folders',
+  FK:'cforge_folders',PBK:'cforge_personal_bulk',
   /* Memoized card list — invalidated by Bus event */
   _cardCache:null,
-  _initBus(){Bus.on('decks:changed',()=>{this._cardCache=null;});},
+  _personalBulk:[],
+  _initBus(){Bus.on('decks:changed',()=>{this._invalidateCache();});},
 
-  load(){try{this._folders=JSON.parse(localStorage.getItem(this.FK)||'[]')}catch{this._folders=[];}},
-  save(){try{localStorage.setItem(this.FK,JSON.stringify(this._folders))}catch{}},
+  load(){
+    try{this._folders=JSON.parse(localStorage.getItem(this.FK)||'[]')}catch{this._folders=[];}
+    try{this._personalBulk=JSON.parse(localStorage.getItem(this.PBK)||'[]')}catch{this._personalBulk=[];}
+  },
+  save(){
+    try{localStorage.setItem(this.FK,JSON.stringify(this._folders))}catch{}
+    try{localStorage.setItem(this.PBK,JSON.stringify(this._personalBulk||[]))}catch{}
+  },
+  _invalidateCache(){
+    this._cardCache=null;
+    this._rowCache=null;
+    this._rowCacheKey='';
+  },
+  _folderLabel(folderId){
+    return this._folders.find(f=>f.id===folderId)?.name||'';
+  },
+  _personalBulkCount(){
+    return (this._personalBulk||[]).reduce((sum,row)=>sum+(row.qty||0),0);
+  },
+  _personalBulkUnique(){
+    return new Set((this._personalBulk||[]).map(row=>row.name)).size;
+  },
+  _ensurePersonalBulkPanels(){
+    [
+      {prefix:'mycoll', anchorId:'mycoll-card-area'},
+      {prefix:'coll2', anchorId:'coll2-card-area'}
+    ].forEach(cfg=>{
+      const anchor=document.getElementById(cfg.anchorId);
+      if(!anchor||document.getElementById(`${cfg.prefix}-pb-wrap`))return;
+      const wrap=document.createElement('div');
+      wrap.id=`${cfg.prefix}-pb-wrap`;
+      wrap.style.cssText='margin:0 0 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px';
+      wrap.innerHTML=`
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+          <div>
+            <div style="font-family:'Cinzel',serif;font-size:13px;color:var(--gold2)">📦 Personal Bulk</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">Private collection-only cards. Great for trade stock, spare copies and everything that is not in decks or the shared bulk pool.</div>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)" id="${cfg.prefix}-pb-meta"></div>
+        </div>
+        <textarea id="${cfg.prefix}-pb-text" class="bulk-paste-area" placeholder="4 Sol Ring&#10;2 Arcane Signet (SNC) 201&#10;12 Island" style="height:120px"></textarea>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+          <select id="${cfg.prefix}-pb-folder" class="coll-sel" style="min-width:180px">
+            <option value="">No folder</option>
+          </select>
+          <button class="tbtn gold" onclick="MyCollection.importPersonalBulk('${cfg.prefix}')">Import to Personal Bulk</button>
+          <button class="tbtn" onclick="MyCollection.clearPersonalBulkInput('${cfg.prefix}')">Clear</button>
+          <div id="${cfg.prefix}-pb-status" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)"></div>
+        </div>`;
+      anchor.parentNode.insertBefore(wrap,anchor);
+    });
+    this._syncPersonalBulkPanels();
+  },
+  _syncPersonalBulkPanels(){
+    ['mycoll','coll2'].forEach(prefix=>{
+      const sel=document.getElementById(`${prefix}-pb-folder`);
+      if(sel){
+        const prev=sel.value;
+        sel.innerHTML='<option value="">No folder</option>';
+        this._folders.forEach(f=>{
+          const opt=document.createElement('option');
+          opt.value=f.id;
+          opt.textContent=`${f.icon||'📁'} ${f.name}`;
+          sel.appendChild(opt);
+        });
+        if(prev)sel.value=prev;
+      }
+      const meta=document.getElementById(`${prefix}-pb-meta`);
+      if(meta)meta.textContent=`${this._personalBulkUnique()} unique · ${this._personalBulkCount()} copies`;
+      const status=document.getElementById(`${prefix}-pb-status`);
+      if(status&&!status.dataset.locked)status.textContent='Paste any card list and import it into your private collection bulk.';
+    });
+  },
+  clearPersonalBulkInput(prefix){
+    const ta=document.getElementById(`${prefix}-pb-text`);
+    const status=document.getElementById(`${prefix}-pb-status`);
+    if(ta)ta.value='';
+    if(status){
+      status.textContent='Input cleared.';
+      status.dataset.locked='1';
+      setTimeout(()=>{delete status.dataset.locked;this._syncPersonalBulkPanels();},1600);
+    }
+  },
+  _refreshCollectionViews(){
+    this._invalidateCache();
+    this._syncPersonalBulkPanels();
+    if(Menu.cur==='vault'&&VaultNav.cur==='mycollection')this.render();
+    if(Menu.cur==='collection')CollSection?.render?.();
+  },
+  importPersonalBulk(prefix){
+    const ta=document.getElementById(`${prefix}-pb-text`);
+    const folderSel=document.getElementById(`${prefix}-pb-folder`);
+    const status=document.getElementById(`${prefix}-pb-status`);
+    const text=(ta?.value||'').trim();
+    const folderId=folderSel?.value||'';
+    if(!text){Notify.show('Paste a card list first','err');return;}
+    const lines=text.split(/\r?\n/);
+    let added=0,skipped=0;
+    for(const rawLine of lines){
+      const line=rawLine.trim();
+      if(!line)continue;
+      const parsed=Parser.parseLine(line);
+      if(!parsed){skipped++;continue;}
+      const key=[parsed.name.toLowerCase(),parsed.set||'',parsed.collector_number||'',folderId,parsed.foil?'1':'0',parsed.etched?'1':'0'].join('|');
+      const existing=(this._personalBulk||[]).find(row=>[
+        String(row.name||'').toLowerCase(),
+        row.set||'',
+        row.collector_number||'',
+        row.folder||'',
+        row.foil?'1':'0',
+        row.etched?'1':'0'
+      ].join('|')===key);
+      if(existing){
+        existing.qty=(existing.qty||0)+(parsed.qty||1);
+      }else{
+        (this._personalBulk||(this._personalBulk=[])).push({
+          id:'pb'+Date.now()+Math.random().toString(36).slice(2,6),
+          name:parsed.name,
+          qty:parsed.qty||1,
+          folder:folderId||null,
+          foil:!!parsed.foil,
+          etched:!!parsed.etched,
+          set:parsed.set||null,
+          collector_number:parsed.collector_number||null,
+          created:Date.now()
+        });
+      }
+      added+=(parsed.qty||1);
+    }
+    if(!added){Notify.show('No cards recognized','err');return;}
+    this.save();
+    const names=[...new Set((this._personalBulk||[]).map(row=>row.name).filter(Boolean))];
+    Store.warmCards(names).then(()=>{
+      const missing=names.filter(name=>!Store.card(name));
+      if(missing.length)SF.fetchBatch(missing,()=>{});
+    });
+    this._refreshCollectionViews();
+    if(ta)ta.value='';
+    if(status){
+      status.textContent=`Imported ${added} card${added!==1?'s':''}${skipped?` · skipped ${skipped} line${skipped!==1?'s':''}`:''}.`;
+      status.dataset.locked='1';
+      setTimeout(()=>{delete status.dataset.locked;this._syncPersonalBulkPanels();},2400);
+    }
+    Notify.show(`Imported ${added} card${added!==1?'s':''} to Personal Bulk`+(skipped?` (${skipped} skipped)`:''),'ok');
+  },
 
   render(){
     this.load();
+    this._ensurePersonalBulkPanels();
     this._renderKPIs();
     this._renderFolders();
     this._renderCards();
@@ -231,6 +376,15 @@ const MyCollection={
         if(c.set&&!map[c.name].set){map[c.name].set=c.set;map[c.name].collector_number=c.collector_number||null;}
         if(!map[c.name].decks.includes(deck.name))map[c.name].decks.push(deck.name);
       }
+    }
+    for(const row of(this._personalBulk||[])){
+      if(!map[row.name])map[row.name]={name:row.name,qty:0,folder:row.folder||null,decks:[],foil:false,etched:false,set:row.set||null,collector_number:row.collector_number||null};
+      map[row.name].qty+=(row.qty||0);
+      if(row.foil)map[row.name].foil=true;
+      if(row.etched)map[row.name].etched=true;
+      if(row.folder&&!map[row.name].folder)map[row.name].folder=row.folder;
+      if(row.set&&!map[row.name].set){map[row.name].set=row.set;map[row.name].collector_number=row.collector_number||null;}
+      if(!map[row.name].decks.includes('Personal Bulk'))map[row.name].decks.push('Personal Bulk');
     }
     this._cardCache=Object.values(map);
     return this._cardCache;
@@ -289,12 +443,12 @@ const MyCollection={
     const name=prompt('Folder name:','New Folder');if(!name)return;
     const icons=['📁','⚔','🌊','🔥','🌿','💀','✨','🛡','🐉','💎'];
     this._folders.push({id:'f'+Date.now(),name:name.trim(),icon:icons[Math.floor(Math.random()*icons.length)],created:Date.now()});
-    this.save();this.render();
+    this.save();this.render();CollSection?.render?.();
   },
   delFolder(id){
     if(!confirm('Delete folder?'))return;
     this._folders=this._folders.filter(f=>f.id!==id);this.save();
-    if(this._activeFolder===id)this._activeFolder=null;this.render();
+    if(this._activeFolder===id)this._activeFolder=null;this.render();CollSection?.render?.();
   },
 
   setView(v){this._view=v;this._renderCards();
@@ -474,9 +628,17 @@ const MyCollection={
   },
 
   moveToFolder(cardName,folderId){
+    let moved=false;
     for(const deck of Store.decks){
       const card=deck.cards.find(c=>c.name===cardName);
-      if(card){card.folder=folderId||null;Store.updDeck(deck);}
+      if(card){card.folder=folderId||null;Store.updDeck(deck);moved=true;}
+    }
+    for(const row of(this._personalBulk||[])){
+      if(row.name===cardName){row.folder=folderId||null;moved=true;}
+    }
+    if(moved){
+      this.save();
+      this._refreshCollectionViews();
     }
   }
 };

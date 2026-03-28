@@ -1253,6 +1253,8 @@ const CollSection={
   _filtered:[],
 
   render(){
+    MyCollection?.load?.();
+    MyCollection?._ensurePersonalBulkPanels?.();
     this._updateKPIs();
     this._renderFolders();
     this._populateFolderFilter();
@@ -1280,12 +1282,12 @@ const CollSection={
     if(!folders.length){grid.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">No folders yet — create one to organise your cards.</div>';return;}
     grid.innerHTML='';
     folders.forEach(f=>{
-      const count=(this._data()||[]).filter(r=>r.folder===f.name).reduce((sum,r)=>sum+(r.qty||1),0);
+      const count=(this._data()||[]).filter(r=>r.folder===f.id).reduce((sum,r)=>sum+(r.qty||1),0);
       const el=document.createElement('div');
       el.className='folder-card';el.style.cursor='pointer';
       el.innerHTML=`<div class="folder-icon">📁</div><div class="folder-name">${esc(f.name)}</div><div class="folder-count">${count} cards</div>`;
       el.onclick=()=>{
-        document.getElementById('coll2-folder-filter').value=f.name;
+        document.getElementById('coll2-folder-filter').value=f.id;
         this.filter();
       };
       grid.appendChild(el);
@@ -1299,11 +1301,11 @@ const CollSection={
       allBtn.onclick=()=>{document.getElementById('coll2-folder-filter').value='';this.filter();};
       sb.appendChild(allBtn);
       folders.forEach(f=>{
-        const count=(this._data()||[]).filter(r=>r.folder===f.name).reduce((sum,r)=>sum+(r.qty||1),0);
+        const count=(this._data()||[]).filter(r=>r.folder===f.id).reduce((sum,r)=>sum+(r.qty||1),0);
         const btn=document.createElement('div');
         btn.className='vn-item';btn.style.cursor='pointer';
         btn.innerHTML=`<div class="vn-ico">📁</div><div><div class="vn-label">${esc(f.name)}</div><div class="vn-sub">${count} cards</div></div>`;
-        btn.onclick=()=>{document.getElementById('coll2-folder-filter').value=f.name;this.filter();};
+        btn.onclick=()=>{document.getElementById('coll2-folder-filter').value=f.id;this.filter();};
         sb.appendChild(btn);
       });
     }
@@ -1315,7 +1317,7 @@ const CollSection={
     const prev=sel.value;
     sel.innerHTML='<option value="">All folders</option>';
     (MyCollection?MyCollection._folders||[]:[]).forEach(f=>{
-      const o=document.createElement('option');o.value=f.name;o.textContent=f.name;sel.appendChild(o);
+      const o=document.createElement('option');o.value=f.id;o.textContent=f.name;sel.appendChild(o);
     });
     if(prev)sel.value=prev;
   },
@@ -1329,13 +1331,16 @@ const CollSection={
     if(folder)data=data.filter(r=>r.folder===folder);
     data.sort((a,b)=>{
       if(sort==='qty')return(b.qty||1)-(a.qty||1);
-      if(sort==='price_desc')return(parseFloat(Store.card(b.card_name)?.prices?.eur||0))-(parseFloat(Store.card(a.card_name)?.prices?.eur||0));
-      if(sort==='rarity'){const order={mythic:0,rare:1,uncommon:2,common:3};return(order[Store.card(a.card_name)?.rarity]??4)-(order[Store.card(b.card_name)?.rarity]??4);}
-      return(a.card_name||'').localeCompare(b.card_name||'');
+      if(sort==='price_desc')return(parseFloat(Store.card(b.name)?.prices?.eur||0))-(parseFloat(Store.card(a.name)?.prices?.eur||0));
+      if(sort==='rarity'){const order={mythic:0,rare:1,uncommon:2,common:3};return(order[Store.card(a.name)?.rarity]??4)-(order[Store.card(b.name)?.rarity]??4);}
+      return(a.name||'').localeCompare(b.name||'');
     });
     this._filtered=data;
     const title=document.getElementById('coll2-folder-title');
-    if(title)title.textContent=folder||'All Cards';
+    if(title){
+      const folderObj=(MyCollection?MyCollection._folders||[]:[]).find(f=>f.id===folder);
+      title.textContent=folderObj?folderObj.name:'All Cards';
+    }
     const cnt=document.getElementById('coll2-card-count');
     if(cnt)cnt.textContent=data.reduce((sum,r)=>sum+(r.qty||1),0)+' cards';
     this._renderCards();
