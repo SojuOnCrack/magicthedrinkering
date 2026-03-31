@@ -168,8 +168,9 @@ const App={
     const tile=document.getElementById('card-grid').querySelector(`[data-name="${CSS.escape(name)}"]`);
     if(!tile)return;
     const skel=tile.querySelector('.ct-skel');const imgWrap=tile.querySelector('.ct-img');
-    if(cd.img?.crop&&!imgWrap.querySelector('img')){
-      const img=document.createElement('img');img.className='loading';img.src=cd.img.crop;img.alt=name;
+    const tileImg=cd.img?.normal||cd.img?.crop;
+    if(tileImg&&!imgWrap.querySelector('img')){
+      const img=document.createElement('img');img.className='loading';img.src=tileImg;img.alt=name;
       img.onload=()=>{img.classList.remove('loading');if(skel)skel.style.display='none';};
       img.onerror=()=>{img.style.display='none';};
       imgWrap.insertBefore(img,imgWrap.firstChild);
@@ -355,19 +356,20 @@ const App={
     tile.dataset.name=c.name;
     const imgWrap=document.createElement('div');imgWrap.className='ct-img';
     const skel=document.createElement('div');skel.className='ct-skel';imgWrap.appendChild(skel);
-    if(cd.img?.crop){
+    const tileImg=cd.img?.normal||cd.img?.crop;
+    if(tileImg){
       const img=document.createElement('img');img.className='loading';img.alt=c.name;
-      img.dataset.src=cd.img.crop; /* defer src â€” set by observer */
+      img.dataset.src=tileImg; /* defer src - set by observer */
       img.onload=()=>{img.classList.remove('loading');skel.style.display='none';};
       img.onerror=()=>{img.style.display='none';};
       imgWrap.appendChild(img);
       /* Lazy-load via IntersectionObserver */
       TileImgObserver.observe(img);
     }
-    if(c.qty>1){const qty=document.createElement('div');qty.className='ct-qty';qty.textContent=c.qty+'Ã—';imgWrap.appendChild(qty);}
-    if(c.foil||c.etched){const fb=document.createElement('div');fb.className='ct-foil';fb.textContent=(c.foil?'âœ¦F':'')+(c.etched?'âœ§E':'');imgWrap.appendChild(fb);}
-    if(isCmdr){const crown=document.createElement('div');crown.className='ct-cmdr-crown';crown.textContent='â™›';imgWrap.appendChild(crown);}
-    if(isPartner){const crown=document.createElement('div');crown.className='ct-cmdr-crown';crown.style.color='var(--purple2)';crown.textContent='âŠ•';imgWrap.appendChild(crown);}
+    if(c.qty>1){const qty=document.createElement('div');qty.className='ct-qty';qty.textContent=c.qty+'x';imgWrap.appendChild(qty);}
+    if(c.foil||c.etched){const fb=document.createElement('div');fb.className='ct-foil';fb.textContent=(c.foil?'Foil':'')+(c.etched?' Etched':'');imgWrap.appendChild(fb);}
+    if(isCmdr){const crown=document.createElement('div');crown.className='ct-cmdr-crown';crown.textContent='CMD';imgWrap.appendChild(crown);}
+    if(isPartner){const crown=document.createElement('div');crown.className='ct-cmdr-crown';crown.style.color='var(--purple2)';crown.textContent='PRT';imgWrap.appendChild(crown);}
 
     const ov=document.createElement('div');ov.className='ct-ov';
     const ovName=document.createElement('div');ovName.className='ov-name';ovName.textContent=c.name;
