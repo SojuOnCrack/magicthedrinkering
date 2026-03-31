@@ -2,6 +2,8 @@
 
 const SettingsMgr={
   open(){
+    if(typeof MobileNav!=='undefined')MobileNav.setActive('settings');
+    document.getElementById('mobile-more-drawer')?.classList.remove('open');
     document.getElementById('settings-panel').classList.add('show');
     ScryfallBulk._updateSettingsStatus();
     document.getElementById('cfg-tcp-pub').value=Config.get('tcp_pub');

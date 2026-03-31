@@ -1,6 +1,130 @@
 /* CommanderForge - ui: Menu, CardSearch, VaultNav, M (modal), P (panels),
    fmtMana, Notify, PrintPicker, Charts, Dashboard, CollView, PriceView, AlertMgr */
 
+function attachTapPop(el,cls='tap-pop'){
+  if(!el||el.dataset.tapPopBound)return;
+  const pop=()=>{
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+  };
+  el.addEventListener('pointerdown',pop);
+  el.dataset.tapPopBound='1';
+}
+
+const SearchSuggest={
+  _states:{},
+  _state(key){
+    return this._states[key]||(this._states[key]={items:[],idx:-1,timer:null});
+  },
+  hide(key){
+    const panel=document.getElementById(key);
+    if(panel)panel.style.display='none';
+    const st=this._state(key);
+    st.idx=-1;
+  },
+  async onType({key,inputId,deckId,val,onOpen,onAdd,search}){
+    const st=this._state(key);
+    clearTimeout(st.timer);
+    if(!val||val.trim().length<2){this.hide(key);return;}
+    st.timer=setTimeout(async()=>{
+      try{
+        const r=await fetch(`/api/scryfall/cards/autocomplete?q=${encodeURIComponent(val.trim())}&include_extras=false`,{headers:{Accept:'application/json'}});
+        if(!r.ok)return;
+        const d=await r.json();
+        st.items=(d.data||[]).slice(0,8);
+        st.idx=-1;
+        this._render({key,inputId,deckId,onOpen,onAdd,search});
+      }catch{}
+    },140);
+  },
+  _render({key,inputId,deckId,onOpen,onAdd,search}){
+    const panel=document.getElementById(key);
+    const st=this._state(key);
+    if(!panel)return;
+    if(!st.items.length){panel.style.display='none';return;}
+    const selectedDeck=deckId?Store.getDeck(document.getElementById(deckId)?.value||''):null;
+    const addLabel=selectedDeck?`Add to ${selectedDeck.name}`:'Add to deck';
+    panel.innerHTML='';
+    st.items.forEach((name,i)=>{
+      const row=document.createElement('div');
+      row.className='cs-suggest-item'+(i===st.idx?' on':'');
+      row.dataset.idx=i;
+      row.innerHTML=`
+        <div class="cs-suggest-main">
+          <div class="cs-suggest-name">${esc(name)}</div>
+          <div class="cs-suggest-hint">Open card details instantly</div>
+        </div>
+        <button class="cs-suggest-cta" type="button">${esc(addLabel)}</button>`;
+      row.addEventListener('mouseenter',()=>{st.idx=i;this._paint(key);});
+      row.addEventListener('mousedown',e=>{
+        if(e.target.closest('.cs-suggest-cta'))return;
+        e.preventDefault();
+        this.pick({key,inputId,index:i,onOpen});
+      });
+      row.querySelector('.cs-suggest-cta')?.addEventListener('mousedown',e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        const input=document.getElementById(inputId);
+        if(input)input.value=name;
+        onAdd(name);
+        this.hide(key);
+      });
+      panel.appendChild(row);
+    });
+    panel.style.display='block';
+  },
+  _paint(key){
+    const panel=document.getElementById(key);
+    const st=this._state(key);
+    panel?.querySelectorAll('[data-idx]').forEach((el,i)=>el.classList.toggle('on',i===st.idx));
+  },
+  onKey({key,inputId,e,onOpen,search}){
+    const st=this._state(key);
+    const hasItems=st.items.length>0;
+    if(e.key==='ArrowDown'&&hasItems){
+      e.preventDefault();
+      st.idx=Math.min(st.idx+1,st.items.length-1);
+      this._paint(key);
+      return true;
+    }
+    if(e.key==='ArrowUp'&&hasItems){
+      e.preventDefault();
+      st.idx=Math.max(st.idx-1,0);
+      this._paint(key);
+      return true;
+    }
+    if(e.key==='Enter'){
+      if(hasItems&&st.idx>=0){
+        e.preventDefault();
+        this.pick({key,inputId,index:st.idx,onOpen});
+        return true;
+      }
+      this.hide(key);
+      search?.();
+      return true;
+    }
+    if(e.key==='Escape'){this.hide(key);return true;}
+    return false;
+  },
+  pick({key,inputId,index,onOpen}){
+    const st=this._state(key);
+    const name=st.items[index];
+    if(!name)return;
+    const input=document.getElementById(inputId);
+    if(input)input.value=name;
+    this.hide(key);
+    onOpen(name);
+  }
+};
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.cs-search-wrap')){
+    SearchSuggest.hide('cs-suggest');
+    SearchSuggest.hide('cs2-suggest');
+  }
+});
+
 const Menu={
   cur:'forge',
   NAV_KEY:'cforge_nav',
@@ -9,6 +133,7 @@ const Menu={
     this.cur=section;
     localStorage.setItem(this.NAV_KEY,section);
     document.querySelectorAll('.im-btn').forEach(b=>b.classList.toggle('on',b.dataset.section===section));
+    if(typeof MobileNav!=='undefined')MobileNav.setActive(section);
     this.SECTIONS.forEach(s=>{
       const el=document.getElementById('section-'+s);
       if(el)el.style.display=s===section?'flex':'none';
@@ -57,9 +182,27 @@ const CardSearch={
   },
 
   onType(val){
+    SearchSuggest.onType({
+      key:'cs-suggest',
+      inputId:'cs-query',
+      deckId:'cs-target-deck',
+      val,
+      onOpen:(name)=>this._openFromSuggest(name),
+      onAdd:(name)=>this._addToDeck(name),
+      search:()=>this.search()
+    });
     clearTimeout(this._acTimer);
     if(val.length<3)return;
-    this._acTimer=setTimeout(()=>this.search(),500);
+    this._acTimer=setTimeout(()=>this.search(),350);
+  },
+  onKey(e){
+    return SearchSuggest.onKey({
+      key:'cs-suggest',
+      inputId:'cs-query',
+      e,
+      onOpen:(name)=>this._openFromSuggest(name),
+      search:()=>this.search()
+    });
   },
 
   _buildQuery(){
@@ -84,6 +227,7 @@ const CardSearch={
   },
 
   async search(){
+    SearchSuggest.hide('cs-suggest');
     this._query=this._buildQuery();
     this._page=null;
     const el=document.getElementById('cs-results');
@@ -167,22 +311,36 @@ const CardSearch={
       </div>
       <div class="cs-actions">
         <button class="cs-action-btn purple${inWish?' on':''}" data-cs-name="${esc(card.name)}" onclick='CardSearch._addWish(this,${safeNameJs})'>
-          ${inWish?'Wished':'Wish'}
+          ${inWish?'Saved':'Wishlist'}
         </button>
         <button class="cs-action-btn gold" data-cs-deck onclick='CardSearch._addToDeck(${safeNameJs},this)'>
-          + Deck
+          Add to Deck
         </button>
         <button class="cs-action-btn" onclick='CardSearch._addTrade(${safeNameJs},this)'>
-          Trade
+          Trade Cards
         </button>
       </div>`;
 
-    tile.querySelector('.cs-card-img').onclick=()=>{
+    attachTapPop(tile);
+    tile.querySelectorAll('.cs-action-btn').forEach(btn=>btn.addEventListener('click',e=>e.stopPropagation()));
+    tile.addEventListener('click',()=>{
       const slim=SF._slim(card);
-      Store.cache[slim.name]=slim;
+      if(slim)Store.cache[slim.name]=slim;
       M.open({name:card.name,qty:1},null);
-    };
+    });
     return tile;
+  },
+  _openFromSuggest(name){
+    const cached=Store.card(name);
+    if(cached?.name){M.open({name,qty:1},null);return;}
+    fetch(`/api/scryfall/cards/named?exact=${encodeURIComponent(name)}`,{headers:{Accept:'application/json'}})
+      .then(r=>r.ok?r.json():null)
+      .then(card=>{
+        const slim=card&&SF._slim(card);
+        if(slim)Store.setCard(slim.name,slim);
+        M.open({name,qty:1},null);
+      })
+      .catch(()=>M.open({name,qty:1},null));
   },
 
   _addWish(btn,name){
@@ -208,10 +366,12 @@ const CardSearch={
     }
     Store.updDeck(deck);
     if(App.curId===deckId)App.render();
-    btn.textContent='Added';
-    btn.style.color='var(--green2)';
-    btn.style.borderColor='var(--green2)';
-    setTimeout(()=>{btn.textContent='+ Deck';btn.style.color='';btn.style.borderColor='';},2000);
+    if(btn){
+      btn.textContent='Added';
+      btn.style.color='var(--green2)';
+      btn.style.borderColor='var(--green2)';
+      setTimeout(()=>{btn.textContent='Add to Deck';btn.style.color='';btn.style.borderColor='';},2000);
+    }
   },
 
   _addTrade(name,btn){
@@ -308,23 +468,23 @@ const M={
     }
     G('mc-acts').innerHTML='';
     const deck=Store.getDeck(deckId);
-    const addBtn=document.createElement('button');addBtn.className='ma gold';addBtn.textContent='+ Copy';
+    const addBtn=document.createElement('button');addBtn.className='ma gold';addBtn.textContent='Add Copy';
     addBtn.onclick=()=>App.chQty(deckId,cardEntry.name,1);
-    const rmBtn=document.createElement('button');rmBtn.className='ma red';rmBtn.textContent='- Remove';
+    const rmBtn=document.createElement('button');rmBtn.className='ma red';rmBtn.textContent='Remove Card';
     rmBtn.onclick=()=>{App.chQty(deckId,cardEntry.name,-1);this.close();};
-    const scrBtn=document.createElement('button');scrBtn.className='ma ghost';scrBtn.textContent='?? Scryfall';
+    const scrBtn=document.createElement('button');scrBtn.className='ma ghost';scrBtn.textContent='Open in Scryfall';
     scrBtn.onclick=()=>window.open('https://scryfall.com/search?q='+encodeURIComponent(cardEntry.name),'_blank');
     G('mc-acts').append(addBtn,rmBtn,scrBtn);
 
     // Commander / partner set buttons
     if(deck){
       const setCmdrBtn=document.createElement('button');
-      setCmdrBtn.className='ma gold';setCmdrBtn.textContent='? Set Commander';
+      setCmdrBtn.className='ma gold';setCmdrBtn.textContent='Set as Commander';
       setCmdrBtn.onclick=()=>{deck.commander=cardEntry.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(cardEntry.name+' set as Commander','ok');this.close();};
       G('mc-acts').appendChild(setCmdrBtn);
       if(pType){
         const setPartnerBtn=document.createElement('button');
-        setPartnerBtn.className='ma purple';setPartnerBtn.textContent='? Set as Partner';
+        setPartnerBtn.className='ma purple';setPartnerBtn.textContent='Set as Partner';
         setPartnerBtn.onclick=()=>{deck.partner=cardEntry.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(cardEntry.name+' set as Partner','ok');this.close();};
         G('mc-acts').appendChild(setPartnerBtn);
       }
@@ -1336,4 +1496,3 @@ const TileImgObserver=(()=>{
   },{rootMargin:'100px'});
   return{observe:(img)=>obs.observe(img),disconnect:()=>obs.disconnect()};
 })();
-

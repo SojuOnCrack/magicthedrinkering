@@ -1,11 +1,11 @@
-/* CommanderForge — forge: App (deck editor), BracketCalc */
+﻿/* CommanderForge â€” forge: App (deck editor), BracketCalc */
 
 const App={
   curId:null,_view:'grid',_filter:'all',_search:'',_sort:'name',_cmcFilter:null,
 
   async init(){
     Store.load();
-    /* One-time migration: move old localStorage card cache → IndexedDB */
+    /* One-time migration: move old localStorage card cache â†’ IndexedDB */
     const OLD_CACHE_KEY='cforge_cache4';
     const migFlag='cforge_idb_migrated';
     if(!localStorage.getItem(migFlag)){
@@ -42,13 +42,13 @@ const App={
     VaultNav.cur=lastVPage; /* set before Menu.go so vault restores correctly */
     registerSW();
 
-    /* UI FIRST — render immediately so the screen isn't black */
+    /* UI FIRST â€” render immediately so the screen isn't black */
     Menu.go(lastSection);
     PriceProxy.keysUpdated();
     MyCollection._initBus();
     OfflineQueue.init();
 
-    /* Auth in background — _onSignedIn will refresh sections once ready */
+    /* Auth in background â€” _onSignedIn will refresh sections once ready */
     Auth.init().then(()=>{
       ScryfallBulk.autoCheck();
       ReprintAlert.autoCheck();
@@ -149,10 +149,10 @@ const App={
     if(!allItems.length)return;
     const total=allItems.length;
     const prog=document.getElementById('prog');const ptxt=document.getElementById('prog-txt');
-    prog.style.display='block';ptxt.textContent=`Loading… 0/${total}`;
+    prog.style.display='block';ptxt.textContent=`Loadingâ€¦ 0/${total}`;
     const deckId=deck.id;
     SF.fetchBatch(allItems,(done,tot)=>{
-      ptxt.textContent=`Loading… ${done}/${tot}`;
+      ptxt.textContent=`Loadingâ€¦ ${done}/${tot}`;
       if(done>=tot){
         prog.style.display='none';
         P._updateSlotPreview(1);P._updateSlotPreview(2);
@@ -176,7 +176,7 @@ const App={
     }
     const typeEl=tile.querySelector('.ct-type');if(typeEl)typeEl.textContent=shortType(cd.type_line||'');
     const manaEl=tile.querySelector('.ct-mana');if(manaEl)manaEl.innerHTML=fmtMana(cd.mana_cost||'');
-    const priceEl=tile.querySelector('.ct-price');if(priceEl)priceEl.textContent=cd.prices?.eur?'€'+cd.prices.eur:'';
+    const priceEl=tile.querySelector('.ct-price');if(priceEl)priceEl.textContent=cd.prices?.eur?'â‚¬'+cd.prices.eur:'';
     const ovType=tile.querySelector('.ov-type');if(ovType)ovType.textContent=cd.type_line||'';
     const ovText=tile.querySelector('.ov-text');if(ovText)ovText.textContent=cd.oracle_text||'';
   },
@@ -337,8 +337,8 @@ const App={
     totalEl.textContent=sum.copies;
     collectionEl.textContent='\u20AC'+sum.value.toFixed(0);
     bulkEl.textContent=bulkValueText||('\u20AC'+(bulk.value||0).toFixed(2));
-    if(totalLabel)totalLabel.textContent='Cards';
-    if(collectionLabel)collectionLabel.textContent='Collection';
+    if(totalLabel)totalLabel.textContent='Library';
+    if(collectionLabel)collectionLabel.textContent='Value';
     if(bulkLabel)bulkLabel.textContent='Bulk Pool';
     if(cmdrName)cmdrName.textContent='Collection Overview';
     if(ciPips)ciPips.innerHTML='';
@@ -357,30 +357,30 @@ const App={
     const skel=document.createElement('div');skel.className='ct-skel';imgWrap.appendChild(skel);
     if(cd.img?.crop){
       const img=document.createElement('img');img.className='loading';img.alt=c.name;
-      img.dataset.src=cd.img.crop; /* defer src — set by observer */
+      img.dataset.src=cd.img.crop; /* defer src â€” set by observer */
       img.onload=()=>{img.classList.remove('loading');skel.style.display='none';};
       img.onerror=()=>{img.style.display='none';};
       imgWrap.appendChild(img);
       /* Lazy-load via IntersectionObserver */
       TileImgObserver.observe(img);
     }
-    if(c.qty>1){const qty=document.createElement('div');qty.className='ct-qty';qty.textContent=c.qty+'×';imgWrap.appendChild(qty);}
-    if(c.foil||c.etched){const fb=document.createElement('div');fb.className='ct-foil';fb.textContent=(c.foil?'✦F':'')+(c.etched?'✧E':'');imgWrap.appendChild(fb);}
-    if(isCmdr){const crown=document.createElement('div');crown.className='ct-cmdr-crown';crown.textContent='♛';imgWrap.appendChild(crown);}
-    if(isPartner){const crown=document.createElement('div');crown.className='ct-cmdr-crown';crown.style.color='var(--purple2)';crown.textContent='⊕';imgWrap.appendChild(crown);}
+    if(c.qty>1){const qty=document.createElement('div');qty.className='ct-qty';qty.textContent=c.qty+'Ã—';imgWrap.appendChild(qty);}
+    if(c.foil||c.etched){const fb=document.createElement('div');fb.className='ct-foil';fb.textContent=(c.foil?'âœ¦F':'')+(c.etched?'âœ§E':'');imgWrap.appendChild(fb);}
+    if(isCmdr){const crown=document.createElement('div');crown.className='ct-cmdr-crown';crown.textContent='â™›';imgWrap.appendChild(crown);}
+    if(isPartner){const crown=document.createElement('div');crown.className='ct-cmdr-crown';crown.style.color='var(--purple2)';crown.textContent='âŠ•';imgWrap.appendChild(crown);}
 
     const ov=document.createElement('div');ov.className='ct-ov';
     const ovName=document.createElement('div');ovName.className='ov-name';ovName.textContent=c.name;
     const ovType=document.createElement('div');ovType.className='ov-type';ovType.textContent=cd.type_line||'';
     const ovText=document.createElement('div');ovText.className='ov-text';ovText.textContent=cd.oracle_text||'';
     const ovBtns=document.createElement('div');ovBtns.className='ov-btns';
-    const rmB=document.createElement('button');rmB.className='ovb rm';rmB.textContent='−';
+    const rmB=document.createElement('button');rmB.className='ovb rm';rmB.textContent='Remove';
     rmB.addEventListener('click',e=>{e.stopPropagation();App.chQty(deck.id,c.name,-1);});
-    const addB=document.createElement('button');addB.className='ovb add';addB.textContent='＋';
+    const addB=document.createElement('button');addB.className='ovb add';addB.textContent='Add Copy';
     addB.addEventListener('click',e=>{e.stopPropagation();App.chQty(deck.id,c.name,1);});
     ovBtns.append(rmB,addB);
-    if(!isCmdr){const setCB=document.createElement('button');setCB.className='ovb set-cmdr';setCB.textContent='♛ Cmdr';setCB.addEventListener('click',e=>{e.stopPropagation();deck.commander=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(c.name+' → Commander','ok');});ovBtns.appendChild(setCB);}
-    if(hasP&&!isPartner&&!isCmdr){const setPB=document.createElement('button');setPB.className='ovb set-partner';setPB.textContent='⊕ Partner';setPB.addEventListener('click',e=>{e.stopPropagation();deck.partner=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(c.name+' → Partner','ok');});ovBtns.appendChild(setPB);}
+    if(!isCmdr){const setCB=document.createElement('button');setCB.className='ovb set-cmdr';setCB.textContent='â™› Cmdr';setCB.addEventListener('click',e=>{e.stopPropagation();deck.commander=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(c.name+' â†’ Commander','ok');});ovBtns.appendChild(setCB);}
+    if(hasP&&!isPartner&&!isCmdr){const setPB=document.createElement('button');setPB.className='ovb set-partner';setPB.textContent='âŠ• Partner';setPB.addEventListener('click',e=>{e.stopPropagation();deck.partner=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(c.name+' â†’ Partner','ok');});ovBtns.appendChild(setPB);}
     ov.append(ovName,ovType,ovText,ovBtns);imgWrap.appendChild(ov);
 
     const info=document.createElement('div');info.className='ct-info';
@@ -393,7 +393,7 @@ const App={
       const ctSet=document.createElement('div');
       ctSet.style.cssText='font-family:"JetBrains Mono",monospace;font-size:8px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
       ctSet.textContent=setStr+(cnStr?' #'+cnStr:'');
-      ctSet.title=`Set: ${setStr}${cnStr?' · #'+cnStr:''}`;
+      ctSet.title=`Set: ${setStr}${cnStr?' Â· #'+cnStr:''}`;
       info.appendChild(ctName);info.appendChild(ctType);info.appendChild(ctSet);
     } else {
       info.append(ctName,ctType);
@@ -401,12 +401,13 @@ const App={
     const ctMana=document.createElement('div');ctMana.className='ct-mana';ctMana.innerHTML=fmtMana(cd.mana_cost||'');
     const ctFoot=document.createElement('div');ctFoot.className='ct-foot';
     const ctPriceWrap=document.createElement('div');ctPriceWrap.style.cssText='display:flex;align-items:center;gap:3px';
-    const ctPrice=document.createElement('div');ctPrice.className='ct-price';ctPrice.textContent=cd.prices?.eur?'€'+parseFloat(cd.prices.eur).toFixed(2):'';
+    const ctPrice=document.createElement('div');ctPrice.className='ct-price';ctPrice.textContent=cd.prices?.eur?'â‚¬'+parseFloat(cd.prices.eur).toFixed(2):'';
     const rarColors={mythic:'#e8703a',rare:'#c8a84b',uncommon:'#9ab0c0',common:'#445566',special:'#b090e0'};
     if(cd.rarity&&rarColors[cd.rarity]){const dot=document.createElement('div');dot.className='ct-rarity-dot';dot.style.background=rarColors[cd.rarity];dot.title=cd.rarity;ctPriceWrap.appendChild(dot);}
     ctPriceWrap.appendChild(ctPrice);
     ctFoot.append(ctMana,ctPriceWrap);info.appendChild(ctFoot);
     tile.append(imgWrap,info);
+    attachTapPop(tile);
     tile.addEventListener('click',()=>M.open(c,deck.id));
     return tile;
   },
@@ -435,14 +436,14 @@ const App={
       const td4=document.createElement('td');td4.style.cssText='font-family:JetBrains Mono,monospace;text-align:center;color:var(--text2)';td4.textContent=cd.cmc||0;
       const td5=document.createElement('td');
       const qc=document.createElement('div');qc.className='qc';
-      const qm=document.createElement('button');qm.className='qb';qm.textContent='−';qm.addEventListener('click',()=>App.chQty(deck.id,c.name,-1));
+      const qm=document.createElement('button');qm.className='qb';qm.textContent='âˆ’';qm.addEventListener('click',()=>App.chQty(deck.id,c.name,-1));
       const qv=document.createElement('span');qv.className='qv';qv.textContent=c.qty;
-      const qp=document.createElement('button');qp.className='qb';qp.textContent='＋';qp.addEventListener('click',()=>App.chQty(deck.id,c.name,1));
+      const qp=document.createElement('button');qp.className='qb';qp.textContent='ï¼‹';qp.addEventListener('click',()=>App.chQty(deck.id,c.name,1));
       qc.append(qm,qv,qp);td5.appendChild(qc);
-      const td6=document.createElement('td');td6.style.cssText='font-family:JetBrains Mono,monospace;font-size:11px;color:var(--green2)';td6.textContent=cd.prices?.eur?'€'+cd.prices.eur:'';
+      const td6=document.createElement('td');td6.style.cssText='font-family:JetBrains Mono,monospace;font-size:11px;color:var(--green2)';td6.textContent=cd.prices?.eur?'â‚¬'+cd.prices.eur:'';
       const td7=document.createElement('td');
       const xb=document.createElement('button');xb.style.cssText='background:none;border:none;color:var(--text3);font-size:15px;cursor:pointer;padding:0 3px;line-height:1';
-      xb.textContent='✕';xb.addEventListener('click',()=>App.chQty(deck.id,c.name,-99));td7.appendChild(xb);
+      xb.textContent='âœ•';xb.addEventListener('click',()=>App.chQty(deck.id,c.name,-99));td7.appendChild(xb);
       tr.append(td0,td1,td2,td3,td4,td5,td6,td7);tbody.appendChild(tr);
     }
     if(!cards.length&&deck.cards.length){
@@ -481,7 +482,7 @@ const App={
         nameRow.appendChild(badge);
       }
       const sub=document.createElement('div');sub.className='di-sub';
-      sub.textContent=count+' cards'+(d.commander?' · '+d.commander:'')+(d.partner?' + '+d.partner:'');
+      sub.textContent=count+' cards'+(d.commander?' Â· '+d.commander:'')+(d.partner?' + '+d.partner:'');
       // Show mechanics tags if any
       const mechs=(d.mechanics||[]);
       const tags=(d.tags||[]);
@@ -496,12 +497,12 @@ const App={
         meta.appendChild(tagRow);
       }
       meta.append(nameRow,sub);
-      const del=document.createElement('button');del.className='di-del';del.textContent='✕';del.addEventListener('click',e=>App.delDeck(d.id,e));
+      const del=document.createElement('button');del.className='di-del';del.textContent='âœ•';del.addEventListener('click',e=>App.delDeck(d.id,e));
       /* context menu: duplicate */
-      const dup=document.createElement('button');dup.className='di-del';dup.textContent='⎘';
+      const dup=document.createElement('button');dup.className='di-del';dup.textContent='âŽ˜';
       dup.title='Duplicate deck';dup.style.marginRight='2px';
       dup.addEventListener('click',e=>{e.stopPropagation();App.dupDeck(d.id);});
-      item.append(document.createTextNode('⚔ '),meta,dup,del);
+      item.append(document.createTextNode('âš” '),meta,dup,del);
       item.addEventListener('click',e=>{if(e.target===del||e.target===dup)return;App.loadDeck(d.id);});
       /* drag-drop handlers */
       item.addEventListener('dragstart',e=>{dragSrc=item;item.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
@@ -523,8 +524,8 @@ const App={
   }
 };
 
-/* ═══ HELPERS ══════════════════════════════════════════════ */
-function shortType(t){return String(t).replace('Legendary ','').replace('Basic ','').split('—')[0].trim();}
+/* â•â•â• HELPERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+function shortType(t){return String(t).replace('Legendary ','').replace('Basic ','').split('â€”')[0].trim();}
 function getTypeTag(tl){
   const t=(tl||'').toLowerCase();
   if(t.includes('land'))return 'land';if(t.includes('instant'))return 'instant';
@@ -533,7 +534,7 @@ function getTypeTag(tl){
   if(t.includes('creature'))return 'creature';return '';
 }
 
-/* ═══ KEYBOARD ═════════════════════════════════════════════ */
+/* â•â•â• KEYBOARD â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){M.close();P.close();}
   if(e.key==='g'&&!e.ctrlKey&&!e.metaKey&&document.activeElement.tagName!=='INPUT')App.setView('grid');
@@ -543,15 +544,15 @@ document.addEventListener('keydown',e=>{
 });
 
 
-/* ═══ BRACKET CALCULATOR ════════════════════════════════════ */
+/* â•â•â• BRACKET CALCULATOR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const BracketCalc={
   _curDeckId:null,
 
-  /* ══════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      OFFICIAL GAME CHANGERS LIST (Wizards of the Coast)
      These cards, when present, push a deck toward Bracket 3+.
      1-3 copies = B3 eligible. Unrestricted use = B4.
-     ══════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   GAME_CHANGERS:[
     /* Fast Mana */
     "Mana Crypt","Mana Vault","Chrome Mox","Mox Diamond","Lotus Petal",
@@ -575,7 +576,7 @@ const BracketCalc={
     "Thassa's Oracle","Hermit Druid","Doomsday"
   ],
 
-  /* Two-card infinite combos — BOTH must be present */
+  /* Two-card infinite combos â€” BOTH must be present */
   COMBO_PAIRS:[
     ["Splinter Twin","Pestermite"],["Splinter Twin","Deceiver Exarch"],
     ["Kiki-Jiki, Mirror Breaker","Pestermite"],
@@ -597,14 +598,14 @@ const BracketCalc={
     ["Blind Obedience","Exquisite Blood"],["Breath of Fury","Combat Celebrant"]
   ],
 
-  /* Mass land denial — instant B4 */
+  /* Mass land denial â€” instant B4 */
   LAND_DENIAL:[
     "Armageddon","Ravages of War","Catastrophe","Jokulhaups","Obliterate",
     "Devastation","Ruination","Price of Glory","Boom // Bust","Cataclysm",
     "Decree of Annihilation","Wildfire","Balancing Act","Impending Disaster"
   ],
 
-  /* Extra turns — sparse ok in B2/B3, chaining/looping = B4 */
+  /* Extra turns â€” sparse ok in B2/B3, chaining/looping = B4 */
   EXTRA_TURNS:[
     "Time Warp","Temporal Manipulation","Capture of Jingzhou","Nexus of Fate",
     "Walk the Aeons","Temporal Mastery","Time Stretch","Beacon of Tomorrows",
@@ -612,7 +613,7 @@ const BracketCalc={
     "Sage of Hours","Teferi, Master of Time"
   ],
 
-  /* Tutors — sparse ok in B2/B3, many = B3/B4 */
+  /* Tutors â€” sparse ok in B2/B3, many = B3/B4 */
   TUTORS:[
     "Mystical Tutor","Enlightened Tutor","Worldly Tutor","Personal Tutor",
     "Diabolic Tutor","Beseech the Mirror","Solve the Equation","Spellseeker",
@@ -623,9 +624,9 @@ const BracketCalc={
     "Tooth and Nail","Natural Order","Pattern of Rebirth"
   ],
 
-  /* ════════════════════════════════════════════════════════
-     ANALYSE — returns bracket 1-5 using official rules
-     ════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     ANALYSE â€” returns bracket 1-5 using official rules
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   analyse(deck){
     if(!deck)return null;
     const names=new Set(deck.cards.map(c=>c.name.toLowerCase()));
@@ -652,45 +653,45 @@ const BracketCalc={
     const tutorHits=this.TUTORS.filter(c=>names.has(c.toLowerCase()));
     const tutorCount=tutorHits.length;
 
-    /* ── Official Bracket Rules ─────────────────────────────
+    /* â”€â”€ Official Bracket Rules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
        B5 = cEDH mindset (auto-flagged when optimised for meta)
        B4 = Game Changers unrestricted + combos + land denial
        B3 = Up to 3 Game Changers, no early combos, sparse extra turns
        B2 = No Game Changers, no combos, sparse tutors/extra turns
        B1 = No Game Changers, no combos, no extra turns, sparse tutors
-       ─────────────────────────────────────────────────────── */
+       â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     let bracket=1;
     const flags=[];
 
     /* B4/B5 triggers: any of these = at minimum B4 */
     if(hasMassLandDenial){
       bracket=Math.max(bracket,4);
-      flags.push({sev:4,icon:'💥',label:'Mass Land Denial',
-        desc:'Destroys all lands — forbidden below Bracket 4.',
+      flags.push({sev:4,icon:'ðŸ’¥',label:'Mass Land Denial',
+        desc:'Destroys all lands â€” forbidden below Bracket 4.',
         cards:landDenialHits});
     }
     if(comboHits.length>0){
       /* B3 allows combos only in "late game" context.
-         If the combo can fire before turn 6 (cheap pieces) → B4 */
+         If the combo can fire before turn 6 (cheap pieces) â†’ B4 */
       const earlyCombo=comboHits.some(pair=>{
         const [a]=pair.split(' + ');
         const cdA=Store.card(a)||{};
         return (cdA.cmc||99)<=3;
       });
       bracket=Math.max(bracket,earlyCombo?4:3);
-      flags.push({sev:earlyCombo?4:3,icon:'♾',
+      flags.push({sev:earlyCombo?4:3,icon:'â™¾',
         label:earlyCombo?'Early Infinite Combo (B4)':'Infinite Combo (B3+)',
-        desc:earlyCombo?'Two-card infinite combo with cheap pieces — Bracket 4.':'Two-card infinite combo present. Keep to late-game for Bracket 3.',
+        desc:earlyCombo?'Two-card infinite combo with cheap pieces â€” Bracket 4.':'Two-card infinite combo present. Keep to late-game for Bracket 3.',
         cards:comboHits});
     }
     if(gcHits.length>3){
       bracket=Math.max(bracket,4);
-      flags.push({sev:4,icon:'⚡',label:`${gcHits.length} Game Changers (B4)`,
+      flags.push({sev:4,icon:'âš¡',label:`${gcHits.length} Game Changers (B4)`,
         desc:`More than 3 Game Changers pushes the deck to Bracket 4.`,
         cards:gcHits});
     } else if(gcHits.length>0){
       bracket=Math.max(bracket,3);
-      flags.push({sev:3,icon:'⚡',label:`${gcHits.length}/3 Game Changers (B3)`,
+      flags.push({sev:3,icon:'âš¡',label:`${gcHits.length}/3 Game Changers (B3)`,
         desc:`Up to 3 Game Changers allowed in Bracket 3. You have ${gcHits.length}.`,
         cards:gcHits});
     }
@@ -698,25 +699,25 @@ const BracketCalc={
     /* Extra turns: sparse in B2/B3, chaining/looping = B4 */
     if(extraTurnCount>=3){
       bracket=Math.max(bracket,4);
-      flags.push({sev:4,icon:'⏰',label:`${extraTurnCount} Extra-Turn Cards (B4)`,
-        desc:'Multiple extra-turn cards imply chaining — Bracket 4 territory.',
+      flags.push({sev:4,icon:'â°',label:`${extraTurnCount} Extra-Turn Cards (B4)`,
+        desc:'Multiple extra-turn cards imply chaining â€” Bracket 4 territory.',
         cards:extraTurnHits});
     } else if(extraTurnCount>0){
       bracket=Math.max(bracket,2);
-      flags.push({sev:2,icon:'⏰',label:`${extraTurnCount} Extra-Turn Card${extraTurnCount>1?'s':''}`,
-        desc:'Sparse extra turns are acceptable in B2/B3 — not intended to be chained.',
+      flags.push({sev:2,icon:'â°',label:`${extraTurnCount} Extra-Turn Card${extraTurnCount>1?'s':''}`,
+        desc:'Sparse extra turns are acceptable in B2/B3 â€” not intended to be chained.',
         cards:extraTurnHits});
     }
 
     /* Tutors: sparse in B2/B3, many = push toward B3 */
     if(tutorCount>=5){
       bracket=Math.max(bracket,3);
-      flags.push({sev:3,icon:'📖',label:`${tutorCount} Tutors (B3+)`,
-        desc:`${tutorCount} tutors make the deck very consistent — Bracket 3.`,
+      flags.push({sev:3,icon:'ðŸ“–',label:`${tutorCount} Tutors (B3+)`,
+        desc:`${tutorCount} tutors make the deck very consistent â€” Bracket 3.`,
         cards:tutorHits.slice(0,8)});
     } else if(tutorCount>0){
       bracket=Math.max(bracket,2);
-      flags.push({sev:2,icon:'📖',label:`${tutorCount} Tutor${tutorCount>1?'s':''}`,
+      flags.push({sev:2,icon:'ðŸ“–',label:`${tutorCount} Tutor${tutorCount>1?'s':''}`,
         desc:'Sparse tutors are fine in B2/B3.',
         cards:tutorHits});
     }
@@ -746,11 +747,11 @@ const BracketCalc={
   BRACKET_COLORS:{1:"b1",2:"b2",3:"b3",4:"b4",5:"b4"},
   BRACKET_NAMES:{1:"Exhibition",2:"Core",3:"Upgraded",4:"Optimized",5:"cEDH"},
   BRACKET_SUMMARIES:{
-    1:"No Game Changers, no combos, no mass land denial, no extra turns. Bracket 1 (Exhibition) — precon-level casual, play for fun and story.",
-    2:"No Game Changers, no infinite combos. Sparse tutors and/or extra turns are fine. Bracket 2 (Core) — average preconstructed deck level.",
-    3:"Up to 3 Game Changers present, or 5+ tutors, or late-game infinite combos. Bracket 3 (Upgraded) — souped-up, faster than precon. Discuss with your pod.",
-    4:"4+ Game Changers, early infinite combos, mass land denial, or chained extra turns. Bracket 4 (Optimized) — bring your strongest, fully optimized deck.",
-    5:"Full cEDH: optimized for the competitive metagame, combo-driven, maximally consistent. Bracket 5 (cEDH) — tournament mindset only."
+    1:"No Game Changers, no combos, no mass land denial, no extra turns. Bracket 1 (Exhibition) â€” precon-level casual, play for fun and story.",
+    2:"No Game Changers, no infinite combos. Sparse tutors and/or extra turns are fine. Bracket 2 (Core) â€” average preconstructed deck level.",
+    3:"Up to 3 Game Changers present, or 5+ tutors, or late-game infinite combos. Bracket 3 (Upgraded) â€” souped-up, faster than precon. Discuss with your pod.",
+    4:"4+ Game Changers, early infinite combos, mass land denial, or chained extra turns. Bracket 4 (Optimized) â€” bring your strongest, fully optimized deck.",
+    5:"Full cEDH: optimized for the competitive metagame, combo-driven, maximally consistent. Bracket 5 (cEDH) â€” tournament mindset only."
   },
 
   render(){
@@ -796,14 +797,14 @@ const BracketCalc={
     document.getElementById("bracket-analysis").style.display="block";
     document.getElementById("br-deck-name").textContent=deck.name;
 
-    /* Score line — show the key numbers */
+    /* Score line â€” show the key numbers */
     const parts=[];
     if(gcCount)parts.push(`${gcCount} Game Changer${gcCount>1?'s':''}`);
     if(comboCount)parts.push(`${comboCount} combo${comboCount>1?'s':''}`);
     if(tutorCount)parts.push(`${tutorCount} tutor${tutorCount>1?'s':''}`);
     if(extraTurnCount)parts.push(`${extraTurnCount} extra turn${extraTurnCount>1?'s':''}`);
     if(hasMassLandDenial)parts.push('mass land denial');
-    document.getElementById("br-score").textContent=parts.length?parts.join(' · '):'No flags';
+    document.getElementById("br-score").textContent=parts.length?parts.join(' Â· '):'No flags';
 
     document.getElementById("br-summary").textContent=this.BRACKET_SUMMARIES[bracket];
     const pill=document.getElementById("br-bracket-pill");
@@ -814,7 +815,7 @@ const BracketCalc={
     /* Flags */
     const flagsEl=document.getElementById("br-flags");flagsEl.innerHTML="";
     if(!flags.length){
-      flagsEl.innerHTML='<div style="font-size:12px;color:var(--green2);padding:10px 0">✓ Clean deck — no flags found. Bracket 1 (Exhibition).</div>';
+      flagsEl.innerHTML='<div style="font-size:12px;color:var(--green2);padding:10px 0">âœ“ Clean deck â€” no flags found. Bracket 1 (Exhibition).</div>';
       return;
     }
     flags.sort((a,b)=>b.sev-a.sev);
@@ -839,11 +840,11 @@ const BracketCalc={
     rulesEl.style.cssText='margin-top:14px;padding:12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);font-size:11px;color:var(--text3);line-height:1.8';
     rulesEl.innerHTML=`
       <div style="font-family:'Cinzel',serif;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin-bottom:6px">Official Bracket Rules</div>
-      <div><span style="color:var(--green2)">B1</span> — No Game Changers · No combos · No extra turns · No land denial · Sparse tutors</div>
-      <div><span style="color:var(--ice)">B2</span> — No Game Changers · No combos · Sparse tutors/extra turns OK</div>
-      <div><span style="color:var(--gold)">B3</span> — Up to 3 Game Changers · No early combos · No mass land denial · Extra turns not chained</div>
-      <div><span style="color:var(--crimson2)">B4</span> — 4+ Game Changers · Combos · Mass land denial · Chained extra turns</div>
-      <div><span style="color:var(--crimson2)">B5</span> — cEDH: competitive metagame mindset, no deck-building restrictions</div>
+      <div><span style="color:var(--green2)">B1</span> â€” No Game Changers Â· No combos Â· No extra turns Â· No land denial Â· Sparse tutors</div>
+      <div><span style="color:var(--ice)">B2</span> â€” No Game Changers Â· No combos Â· Sparse tutors/extra turns OK</div>
+      <div><span style="color:var(--gold)">B3</span> â€” Up to 3 Game Changers Â· No early combos Â· No mass land denial Â· Extra turns not chained</div>
+      <div><span style="color:var(--crimson2)">B4</span> â€” 4+ Game Changers Â· Combos Â· Mass land denial Â· Chained extra turns</div>
+      <div><span style="color:var(--crimson2)">B5</span> â€” cEDH: competitive metagame mindset, no deck-building restrictions</div>
     `;
     flagsEl.appendChild(rulesEl);
   },
@@ -854,6 +855,6 @@ const BracketCalc={
 };
 
 
-/* ═══════════════════════════════════════════════════════════
-   CONFIG — loaded from localStorage, set via Settings panel
-   ═══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   CONFIG â€” loaded from localStorage, set via Settings panel
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
