@@ -1345,11 +1345,12 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
 
   _buildDeckViewer(deck,el){
     const cards=deck.cards;
-    // Sort into groups
     const cmdrs=[deck.commander,deck.partner].filter(Boolean);
-    const lands=cards.filter(c=>!cmdrs.includes(c.name)&&(this._cardData(c)?.type_line||'').toLowerCase().includes('land'));
-    const creatures=cards.filter(c=>!cmdrs.includes(c.name)&&(this._cardData(c)?.type_line||'').toLowerCase().includes('creature')&&!(this._cardData(c)?.type_line||'').toLowerCase().includes('land'));
-    const spells=cards.filter(c=>!cmdrs.includes(c.name)&&!(this._cardData(c)?.type_line||'').toLowerCase().includes('land')&&!(this._cardData(c)?.type_line||'').toLowerCase().includes('creature'));
+    const sections=Object.fromEntries(DECK_CARD_SECTION_ORDER.map(label=>[label,[]]));
+    for(const c of cards){
+      if(cmdrs.includes(c.name))continue;
+      sections[getDeckCardSection(this._cardData(c)?.type_line||'')].push(c);
+    }
 
     // Mana curve
     const curve={};
@@ -1413,9 +1414,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
 
       <div class="fp-dv-pane on" id="fp-dv-list-${deck.id}" style="max-height:320px;overflow-y:auto">
         ${renderGroup('Commander',cards.filter(c=>[deck.commander,deck.partner].includes(c.name)))}
-        ${renderGroup('Creatures',creatures)}
-        ${renderGroup('Spells',spells)}
-        ${renderGroup('Lands',lands)}
+        ${DECK_CARD_SECTION_ORDER.map(label=>renderGroup(label,sections[label])).join('')}
       </div>
 
       <div class="fp-dv-pane" id="fp-dv-stats-${deck.id}">
@@ -1465,12 +1464,13 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
       return count?(total/count).toFixed(1):'--';
     })();
     const cmdrs=[roDeck.commander,roDeck.partner].filter(Boolean);
-    const groups=[
-      ['Commander',cards.filter(c=>cmdrs.includes(c.name))],
-      ['Creatures',cards.filter(c=>!cmdrs.includes(c.name)&&(this._cardData(c)?.type_line||'').toLowerCase().includes('creature')&&!(this._cardData(c)?.type_line||'').toLowerCase().includes('land'))],
-      ['Spells',cards.filter(c=>!cmdrs.includes(c.name)&&!(this._cardData(c)?.type_line||'').toLowerCase().includes('land')&&!(this._cardData(c)?.type_line||'').toLowerCase().includes('creature'))],
-      ['Lands',cards.filter(c=>!cmdrs.includes(c.name)&&(this._cardData(c)?.type_line||'').toLowerCase().includes('land'))]
-    ];
+    const groups=[['Commander',cards.filter(c=>cmdrs.includes(c.name))]];
+    const sections=Object.fromEntries(DECK_CARD_SECTION_ORDER.map(label=>[label,[]]));
+    for(const c of cards){
+      if(cmdrs.includes(c.name))continue;
+      sections[getDeckCardSection(this._cardData(c)?.type_line||'')].push(c);
+    }
+    for(const label of DECK_CARD_SECTION_ORDER)groups.push([label,sections[label]]);
     document.getElementById('pbody').innerHTML=`
       <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px">
         <div class="kpi gold"><div class="kpi-val">${totalCards}</div><div class="kpi-lbl">Cards</div></div>

@@ -216,6 +216,31 @@ const Partner={
   }
 };
 
+const DECK_CARD_SECTION_ORDER=[
+  'Creatures',
+  'Instants',
+  'Sorceries',
+  'Enchantments',
+  'Artifacts',
+  'Planeswalkers',
+  'Battles',
+  'Other Spells',
+  'Lands'
+];
+
+function getDeckCardSection(typeLine=''){
+  const t=String(typeLine||'').toLowerCase();
+  if(t.includes('land')) return 'Lands';
+  if(t.includes('creature')) return 'Creatures';
+  if(t.includes('instant')) return 'Instants';
+  if(t.includes('sorcery')) return 'Sorceries';
+  if(t.includes('enchantment')) return 'Enchantments';
+  if(t.includes('artifact')) return 'Artifacts';
+  if(t.includes('planeswalker')) return 'Planeswalkers';
+  if(t.includes('battle')) return 'Battles';
+  return 'Other Spells';
+}
+
 /* ═══ PARSER ═══════════════════════════════════════════════ */
 const Parser={
   /* Parse a single card line — returns {name, qty, foil, etched, set, collector_number} */
@@ -281,8 +306,11 @@ const Parser={
     }
     const cmdrs=[deck.commander,deck.partner].filter(Boolean);
     const others=deck.cards.filter(c=>!cmdrs.includes(c.name));
-    const lands=[],spells=[];
-    for(const c of others){const cd=Store.card(c.name);if((cd?.type_line||'').toLowerCase().includes('land'))lands.push(c);else spells.push(c);}
+    const sections=Object.fromEntries(DECK_CARD_SECTION_ORDER.map(label=>[label,[]]));
+    for(const c of others){
+      const cd=Store.card(c.name);
+      sections[getDeckCardSection(cd?.type_line||'')].push(c);
+    }
     const fmt=arr=>arr.sort((a,b)=>a.name.localeCompare(b.name)).map(c=>{
       if(format==='csv') return `"${c.name}",${c.qty},${c.foil?'foil':''},${parseFloat(Store.card(c.name)?.prices?.eur||0).toFixed(2)}`;
       const flags=[c.foil&&'*F*',c.etched&&'*E*'].filter(Boolean).join(' ');
@@ -292,8 +320,12 @@ const Parser={
       return `${c.qty} ${c.name}${printInfo}${flags?' '+flags:''}`;
     });
     if(format==='csv'){lines.length=0;lines.push('Name,Qty,Foil,Price_EUR');}
-    if(lands.length){if(format!=='csv')lines.push('// Lands');lines.push(...fmt(lands),'');}
-    if(spells.length){if(format!=='csv')lines.push('// Spells');lines.push(...fmt(spells),'');}
+    for(const label of DECK_CARD_SECTION_ORDER){
+      const arr=sections[label];
+      if(!arr.length)continue;
+      if(format!=='csv')lines.push(`// ${label}`);
+      lines.push(...fmt(arr),'');
+    }
     return lines.join('\n');
   }
 };

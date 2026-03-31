@@ -260,15 +260,18 @@ const App={
     grid.classList.add('show');
     const cards=this._getCards(deck);grid.innerHTML='';
 
-    // Groups: commander, partner (if any), lands, spells
+    // Groups: commander, partner (if any), then detailed card type sections
     const groups=[
       ['Commander','is-cmdr',cards.filter(c=>c.name===deck.commander)],
     ];
     if(deck.partner) groups.push(['Partner','is-partner',cards.filter(c=>c.name===deck.partner)]);
-    groups.push(
-      ['Lands','',cards.filter(c=>{if(c.name===deck.commander||c.name===deck.partner)return false;const cd=Store.card(c.name);return(cd?.type_line||'').toLowerCase().includes('land');})],
-      ['Spells','',cards.filter(c=>{if(c.name===deck.commander||c.name===deck.partner)return false;const cd=Store.card(c.name);return!(cd?.type_line||'').toLowerCase().includes('land');})]
-    );
+    const sections=Object.fromEntries(DECK_CARD_SECTION_ORDER.map(label=>[label,[]]));
+    for(const c of cards){
+      if(c.name===deck.commander||c.name===deck.partner)continue;
+      const cd=Store.card(c.name);
+      sections[getDeckCardSection(cd?.type_line||'')].push(c);
+    }
+    for(const label of DECK_CARD_SECTION_ORDER)groups.push([label,'',sections[label]]);
 
     for(const [label,cls,arr] of groups){
       if(!arr.length)continue;
