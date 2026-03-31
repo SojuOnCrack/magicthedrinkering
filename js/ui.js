@@ -430,7 +430,7 @@ const M={
     G('mc-img').onclick=()=>{if(!cd.img?.normal)return;const zo=document.getElementById('art-zoom-overlay');const zi=document.getElementById('art-zoom-img');zi.src=cd.img.normal;zo.classList.add('open');};
     G('mc-name').textContent=cd.name||cardEntry.name;
     G('mc-mana').innerHTML=fmtMana(cd.mana_cost||'');
-    G('mc-type').textContent=[cd.type_line,cd.rarity,cd.set_name].filter(Boolean).join('  �  ');
+    G('mc-type').textContent=[cd.type_line,cd.rarity,cd.set_name].filter(Boolean).join(' - ');
     G('mc-oracle').textContent=cd.oracle_text||'';
     G('mc-flavor').textContent=cd.flavor_text?`"${cd.flavor_text}"`:'' ;
     G('mc-flavor').style.display=cd.flavor_text?'':'none';
@@ -441,7 +441,7 @@ const M={
     if(pType){
       pBanner.style.display='flex';
       pBanner.className='partner-banner';
-      pBanner.innerHTML=`<span>?</span> This card has <strong>${Partner.label(pType)}</strong> � can be used as a second commander.`;
+      pBanner.innerHTML=`<span>Info</span> This card has <strong>${Partner.label(pType)}</strong> and can be used as a second commander.`;
     } else {pBanner.style.display='none';}
 
     const eur=cd.prices?.eur??null;
@@ -508,27 +508,27 @@ const P={
 
   editDeck(){
     const deck=Store.getDeck(App.curId);if(!deck){Notify.show('No deck loaded','err');return;}
-    this._open('? Edit Deck',true);
+    this._open('Edit Deck',true);
     document.getElementById('pbody').innerHTML=`
       <div style="margin-bottom:16px">
         <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px">Deck Name</label>
-        <input class="ni" id="edit-deck-name" value="${esc(deck.name)}" placeholder="Deck name�" style="font-size:14px;width:100%"
+        <input class="ni" id="edit-deck-name" value="${esc(deck.name)}" placeholder="Deck name..." style="font-size:14px;width:100%"
           onkeydown="if(event.key==='Enter')P._applyDeckEdit()">
       </div>
       <div style="margin-bottom:16px">
         <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px">Visibility</label>
         <div style="display:flex;gap:8px">
-          <button id="vis-public-btn" class="tbtn${deck.public!==false?' gold':''}" onclick="P._setVisibility(true)" style="font-size:11px">?? Public</button>
-          <button id="vis-private-btn" class="tbtn${deck.public===false?' gold':''}" onclick="P._setVisibility(false)" style="font-size:11px">?? Private</button>
+          <button id="vis-public-btn" class="tbtn${deck.public!==false?' gold':''}" onclick="P._setVisibility(true)" style="font-size:11px">Public</button>
+          <button id="vis-private-btn" class="tbtn${deck.public===false?' gold':''}" onclick="P._setVisibility(false)" style="font-size:11px">Private</button>
         </div>
         <div style="font-size:10px;color:var(--text3);margin-top:4px;font-family:'JetBrains Mono',monospace">Public decks are visible to friends on your profile.</div>
       </div>
       <div style="margin-bottom:16px;padding-top:14px;border-top:1px solid var(--border)">
-        <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:8px">?? Style Tags</label>
+        <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:8px">Style Tags</label>
         <div id="edit-tags-picker"></div>
       </div>
       <div style="padding-top:14px;border-top:1px solid var(--border)">
-        <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px">? Mechanics / Archetypes</label>
+        <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px">Mechanics / Archetypes</label>
         <div style="font-size:10px;color:var(--text3);margin-bottom:8px;font-family:'JetBrains Mono',monospace">Select the strategies this deck uses:</div>
         <div id="edit-mechanics-picker"></div>
       </div>
@@ -536,7 +536,7 @@ const P={
     document.getElementById('pfoot').innerHTML='';
     const pf=document.getElementById('pfoot');
     const ca=document.createElement('button');ca.className='tbtn';ca.textContent='Cancel';ca.onclick=()=>P.close();
-    const sv=document.createElement('button');sv.className='tbtn gold';sv.textContent='? Save';sv.onclick=()=>P._applyDeckEdit();
+    const sv=document.createElement('button');sv.className='tbtn gold';sv.textContent='Save';sv.onclick=()=>P._applyDeckEdit();
     pf.append(ca,sv);
     // Render pickers after DOM is ready
     renderTagPicker(deck,'edit-tags-picker');
@@ -566,21 +566,21 @@ const P={
   },
 
   import(){
-    this._open('?? Import Deck');
+    this._open('Import Deck');
     document.getElementById('pbody').innerHTML=`
       <div class="url-import-tabs">
-        <button class="url-import-tab on" id="itab-paste" onclick="P._setImportTab('paste')">?? Paste / File</button>
-        <button class="url-import-tab" id="itab-url" onclick="P._setImportTab('url')">?? Import from URL</button>
+        <button class="url-import-tab on" id="itab-paste" onclick="P._setImportTab('paste')">Paste / File</button>
+        <button class="url-import-tab" id="itab-url" onclick="P._setImportTab('url')">Import from URL</button>
       </div>
 
       <div id="import-paste-panel">
         <div class="dz" id="dz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondrop="P._drop(event)">
           <input type="file" id="fi" accept=".txt,.dec" style="display:none" onchange="P._file(event)">
-          ?? Drag .txt file here or click to browse
+          Drag .txt file here or click to browse
         </div>
         <div style="font-size:11px;color:var(--text3);margin:6px 0 8px">Supports: Moxfield, TappedOut, MTGGoldfish, MTGO, Archidekt, Deckstats &amp; more</div>
-        <input class="ni" id="dname" placeholder="Deck name (auto-detected if empty)">
-        <textarea class="ia" id="ia" placeholder="Paste decklist here�&#10;&#10;// COMMANDER&#10;1 Zur the Enchanter&#10;&#10;// PARTNER (optional)&#10;1 Thrasios, Triton Hero&#10;&#10;1 Sol Ring&#10;2 Island"></textarea>
+        <input class="ni" id="dname" placeholder="Deck name...">
+        <textarea class="ia" id="ia" placeholder="Paste decklist here...&#10;&#10;// COMMANDER&#10;1 Zur the Enchanter&#10;&#10;// PARTNER (optional)&#10;1 Thrasios, Triton Hero&#10;&#10;1 Sol Ring&#10;2 Island"></textarea>
       </div>
 
       <div id="import-url-panel" style="display:none">
@@ -591,7 +591,7 @@ const P={
           oninput="P._urlChanged()" onkeydown="if(event.key==='Enter')P._fetchUrl()">
         <div id="import-url-status" class="url-status"></div>
         <div style="font-size:10px;color:var(--text3);line-height:1.8;font-family:'JetBrains Mono',monospace">
-          ? moxfield.com/decks/... &nbsp; ? archidekt.com/decks/... &nbsp; ? tappedout.net/mtg-decks/...<br>
+          Supported: moxfield.com/decks/... &nbsp; archidekt.com/decks/... &nbsp; tappedout.net/mtg-decks/...<br>
           For Moxfield private decks, export as text and paste instead.
         </div>
       </div>
@@ -599,7 +599,7 @@ const P={
     document.getElementById('pfoot').innerHTML='';
     const pf=document.getElementById('pfoot');
     const cancel=document.createElement('button');cancel.className='tbtn';cancel.textContent='Cancel';cancel.onclick=()=>P.close();
-    const imp=document.createElement('button');imp.className='tbtn gold';imp.id='import-main-btn';imp.textContent='? Import';imp.onclick=()=>P._doImport();
+    const imp=document.createElement('button');imp.className='tbtn gold';imp.id='import-main-btn';imp.textContent='Import';imp.onclick=()=>P._doImport();
     pf.append(cancel,imp);
   },
 
@@ -609,7 +609,7 @@ const P={
     document.getElementById('import-paste-panel').style.display=tab==='paste'?'block':'none';
     document.getElementById('import-url-panel').style.display=tab==='url'?'block':'none';
     const btn=document.getElementById('import-main-btn');
-    if(btn)btn.textContent=tab==='url'?'?? Fetch & Import':'? Import';
+    if(btn)btn.textContent=tab==='url'?'Fetch & Import':'Import';
     if(btn)btn.onclick=tab==='url'?()=>P._fetchUrl():()=>P._doImport();
   },
 
@@ -623,8 +623,8 @@ const P={
     const statusEl=document.getElementById('import-url-status');
     const btn=document.getElementById('import-main-btn');
     const setStatus=(msg,type)=>{if(statusEl){statusEl.textContent=msg;statusEl.className='url-status '+type;statusEl.style.display='block';}};
-    setStatus('Fetching deck�','loading');
-    if(btn)btn.textContent='Fetching�';
+    setStatus('Fetching deck...','loading');
+    if(btn)btn.textContent='Fetching...';
 
     try{
       let text=null,deckName='Imported Deck';
@@ -689,24 +689,24 @@ const P={
                   partner:parsed.partner||'',cards:parsed.cards,created:Date.now(),public:true};
       Store.addDeck(deck);
       enrichDeckCards(deck).then(()=>{Store.updDeck(deck);DB.schedulePush();});
-      setStatus(`? Imported "${deckName}" � ${parsed.cards.length} cards`,'ok');
-      if(btn)btn.textContent='? Imported!';
+      setStatus(`Imported "${deckName}" - ${parsed.cards.length} cards`,'ok');
+      if(btn)btn.textContent='Imported!';
       setTimeout(()=>{P.close();App.loadDeck(deck.id);},800);
-      Notify.show(`"${deckName}" imported � ${parsed.cards.length} cards`,'ok');
+      Notify.show(`"${deckName}" imported - ${parsed.cards.length} cards`,'ok');
     }catch(e){
       setStatus('Error: '+e.message,'err');
-      if(btn)btn.textContent='?? Fetch & Import';
+      if(btn)btn.textContent='Fetch & Import';
     }
   },
   _drop(e){e.preventDefault();document.getElementById('dz').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)this._readFile(f);},
   _file(e){const f=e.target.files[0];if(f)this._readFile(f);},
 
-  /* Deck Update � diff current deck vs new import, show preview, apply */
+  /* Deck Update - diff current deck vs new import, show preview, apply */
   _doUpdate(){
     const text=document.getElementById('ia').value.trim();
     if(!text){Notify.show('Paste a decklist first','err');return;}
     const deck=Store.getDeck(App.curId);
-    if(!deck){Notify.show('No deck loaded � load a deck to update it','err');return;}
+    if(!deck){Notify.show('No deck loaded - load a deck to update it','err');return;}
 
     const parsed=Parser.parse(text);
     if(!parsed.cards.length){Notify.show('No cards recognized','err');return;}
@@ -735,21 +735,21 @@ const P={
     // Build preview HTML
     let html=`<div style="max-height:300px;overflow-y:auto;margin:10px 0">`;
     if(toAdd.length){
-      html+=`<div class="du-section">? Adding (${toAdd.length})</div>`;
-      html+=toAdd.map(c=>`<div class="du-row du-add"><span class="du-qty">${c.qty}�</span>${esc(c.name)}${c.set?`<span style="font-size:9px;color:var(--ice2);margin-left:4px">(${c.set.toUpperCase()})</span>`:''}</div>`).join('');
+      html+=`<div class="du-section">Adding (${toAdd.length})</div>`;
+      html+=toAdd.map(c=>`<div class="du-row du-add"><span class="du-qty">${c.qty}x</span>${esc(c.name)}${c.set?`<span style="font-size:9px;color:var(--ice2);margin-left:4px">(${c.set.toUpperCase()})</span>`:''}</div>`).join('');
     }
     if(toRemove.length){
-      html+=`<div class="du-section">? Removing (${toRemove.length})</div>`;
-      html+=toRemove.map(c=>`<div class="du-row du-rem"><span class="du-qty">${c.qty}�</span>${esc(c.name)}</div>`).join('');
+      html+=`<div class="du-section">Removing (${toRemove.length})</div>`;
+      html+=toRemove.map(c=>`<div class="du-row du-rem"><span class="du-qty">${c.qty}x</span>${esc(c.name)}</div>`).join('');
     }
     const changed=toKeep.filter(k=>k.qty!==k.newQty);
     if(changed.length){
-      html+=`<div class="du-section">? Qty Changed (${changed.length})</div>`;
-      html+=changed.map(c=>`<div class="du-row du-keep"><span class="du-qty">${c.qty}?${c.newQty}�</span>${esc(c.name)}</div>`).join('');
+      html+=`<div class="du-section">Qty Changed (${changed.length})</div>`;
+      html+=changed.map(c=>`<div class="du-row du-keep"><span class="du-qty">${c.qty} -> ${c.newQty}x</span>${esc(c.name)}</div>`).join('');
     }
     html+=`</div>
       <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="tbtn gold" onclick="P._applyUpdate()" style="flex:1">? Apply Update</button>
+        <button class="tbtn gold" onclick="P._applyUpdate()" style="flex:1">Apply Update</button>
         <button class="tbtn" onclick="P._cancelUpdate()">Cancel</button>
       </div>`;
 
@@ -766,7 +766,7 @@ const P={
     }
     previewEl.style.display='block';
     previewEl.innerHTML=`<div style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold2);margin-bottom:8px">
-      Update Preview � "${esc(deck.name)}"
+      Update Preview - "${esc(deck.name)}"
       <span style="color:var(--text3);font-size:10px;margin-left:8px">+${toAdd.length} / -${toRemove.length}</span>
     </div>${html}`;
   },
@@ -794,7 +794,7 @@ const P={
     App.loadDeck(deck.id);
     P._pendingUpdate=null;
     P.close();
-    Notify.show(`Deck updated � +${toAdd.length} added, -${toRemove.length} removed`,'ok');
+    Notify.show(`Deck updated - +${toAdd.length} added, -${toRemove.length} removed`,'ok');
   },
 
   _cancelUpdate(){
@@ -817,12 +817,12 @@ const P={
     const deck={id:Store.uid(),name:customName||parsed.name,commander:parsed.commander||'',partner:parsed.partner||'',cards:parsed.cards,created:Date.now(),public:true};
     Store.addDeck(deck);P.close();App.loadDeck(deck.id);
     enrichDeckCards(deck).then(()=>{Store.updDeck(deck);DB.schedulePush();});
-    Notify.show(`"${deck.name}" � ${parsed.cards.length} cards imported`+(deck.partner?` (Partner: ${deck.partner})`:'')||'','ok');
+    Notify.show(`"${deck.name}" - ${parsed.cards.length} cards imported`+(deck.partner?` (Partner: ${deck.partner})`:'')||'','ok');
   },
 
   export(){
     const deck=Store.getDeck(App.curId);if(!deck){Notify.show('No deck loaded','err');return;}
-    this._open('?? Export � '+deck.name,true);
+    this._open('Export - '+deck.name,true);
     document.getElementById('pbody').innerHTML=`
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         ${['moxfield','mtgo','arena','tappedout','mtggoldfish','archidekt','deckstats','csv'].map(f=>
@@ -835,9 +835,9 @@ const P={
     document.getElementById('pfoot').innerHTML='';
     const pf=document.getElementById('pfoot');
     const cl=document.createElement('button');cl.className='tbtn';cl.textContent='Close';cl.onclick=()=>P.close();
-    const cp=document.createElement('button');cp.className='tbtn';cp.textContent='?? Copy';
+    const cp=document.createElement('button');cp.className='tbtn';cp.textContent='Copy';
     cp.onclick=()=>{navigator.clipboard.writeText(document.getElementById('export-ta').value);Notify.show('Copied!','ok');};
-    const dl=document.createElement('button');dl.className='tbtn gold';dl.textContent='?? Download';
+    const dl=document.createElement('button');dl.className='tbtn gold';dl.textContent='Download';
     dl.onclick=()=>{
       const ext=P._curFmt==='csv'?'csv':'txt';
       const a=document.createElement('a');
@@ -858,7 +858,7 @@ const P={
 
   editCmdr(){
     const deck=Store.getDeck(App.curId);if(!deck)return;
-    this._open('? Commanders',true);
+    this._open('Commanders',true);
     const hasPartner=!!deck.partner;
     document.getElementById('pbody').innerHTML=`
       <div class="partner-toggle" id="partner-toggle-wrap">
@@ -869,16 +869,16 @@ const P={
       </div>
       <div class="cmdr-slots">
         <div class="cmdr-slot active" id="slot-1">
-          <div class="cmdr-slot-label">? Commander</div>
-          <div class="cmdr-slot-name" id="slot-1-name">${esc(deck.commander||'�')}</div>
+          <div class="cmdr-slot-label">Commander</div>
+          <div class="cmdr-slot-name" id="slot-1-name">${esc(deck.commander||'-')}</div>
           <div class="cmdr-slot-ability" id="slot-1-ability"></div>
-          <input class="ni" id="ci-1" value="${esc(deck.commander||'')}" placeholder="Commander name�" oninput="P._updateSlotPreview(1)" style="margin-top:8px;margin-bottom:0">
+          <input class="ni" id="ci-1" value="${esc(deck.commander||'-')}" placeholder="Commander name..." oninput="P._updateSlotPreview(1)" style="margin-top:8px;margin-bottom:0">
         </div>
         <div class="cmdr-slot${hasPartner?' active partner':''}" id="slot-2" style="opacity:${hasPartner?1:.4};transition:opacity .2s">
-          <div class="cmdr-slot-label">? Partner / Background</div>
-          <div class="cmdr-slot-name" id="slot-2-name">${esc(deck.partner||'�')}</div>
+          <div class="cmdr-slot-label">Partner / Background</div>
+          <div class="cmdr-slot-name" id="slot-2-name">${esc(deck.partner||'-')}</div>
           <div class="cmdr-slot-ability" id="slot-2-ability"></div>
-          <input class="ni" id="ci-2" value="${esc(deck.partner||'')}" placeholder="Partner / Background name�" ${hasPartner?'':'disabled'} oninput="P._updateSlotPreview(2)" style="margin-top:8px;margin-bottom:0">
+          <input class="ni" id="ci-2" value="${esc(deck.partner||'-')}" placeholder="Partner / Background name..." ${hasPartner?'':'disabled'} oninput="P._updateSlotPreview(2)" style="margin-top:8px;margin-bottom:0">
         </div>
       </div>
       <p style="font-size:11px;color:var(--text3);margin-top:4px">Partner commanders share the command zone. Both count toward your deck's color identity.</p>
@@ -920,10 +920,10 @@ const P={
     const cd=Store.card(inp.value.trim());
     const nameEl=document.getElementById('slot-'+n+'-name');
     const abilEl=document.getElementById('slot-'+n+'-ability');
-    if(nameEl) nameEl.textContent=inp.value.trim()||'�';
+    if(nameEl) nameEl.textContent=inp.value.trim()||'-';
     if(abilEl){
       const pType=Partner.partnerType(cd);
-      abilEl.textContent=pType?'? '+Partner.label(pType):(cd?'No partner ability':'');
+      abilEl.textContent=pType?'Partner: '+Partner.label(pType):(cd?'No partner ability':'');
     }
   }
 };
@@ -943,7 +943,7 @@ function fmtMana(mc){
   const NUM={bg:'#18202e',border:'#2a3548',text:'#8a9baa'};
   return String(mc).replace(/\{([^}]+)\}/g,(_,s)=>{
     const key=s.toUpperCase();
-    const isNum=s.match(/^\d+$/) || s==='�';
+    const isNum=s.match(/^\d+$/) || s==='X';
     const cfg=isNum?NUM:(CFG[key]||{bg:'#252d3e',border:'#3a4560',text:'#8a9baa',shadow:'none'});
     const shadow=cfg.shadow&&cfg.shadow!=='none'?`,0 0 4px ${cfg.shadow}`:'';
     return `<span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:${cfg.bg};color:${cfg.text};font-size:8px;font-weight:800;margin:0 1px;border:1.5px solid ${cfg.border};flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)${shadow};font-family:'JetBrains Mono',monospace;line-height:1;letter-spacing:0">${s}</span>`;
@@ -986,7 +986,7 @@ const PrintPicker={
     const cd=Store.card(cardEntry.name)||{};
     if(curSet){
       if(cd.set){
-        curSet.textContent='Current: '+(cd.set||'').toUpperCase()+' #'+(cd.collector_number||'?')+' � '+(cd.set_name||'');
+        curSet.textContent='Current: '+(cd.set||'').toUpperCase()+' #'+(cd.collector_number||'?')+' - '+(cd.set_name||'');
         curSet.style.display='block';
       } else {
         curSet.style.display='none';
@@ -1009,14 +1009,14 @@ const PrintPicker={
   async load(){
     const G=id=>document.getElementById(id);
     const load=G('ep-loading');const lst=G('ep-list');const cnt=G('ep-count');
-    if(load){load.style.display='flex';load.textContent='? Loading all printings�';}
+    if(load){load.style.display='flex';load.textContent='Loading all printings...';}
     if(lst)lst.innerHTML='';
 
-    // file:// protocol can't fetch � show helpful message
+    // file:// protocol can't fetch - show helpful message
     if(location.protocol==='file:'){
       if(load){load.style.display='none';}
       if(lst)lst.innerHTML=`<div style="grid-column:1/-1;padding:16px;background:rgba(200,168,75,.08);border:1px solid var(--gold3);border-radius:var(--r);font-size:11px;color:var(--gold);font-family:'JetBrains Mono',monospace;line-height:1.7">
-        ? Edition browsing requires a server connection.<br>
+        Edition browsing requires a server connection.<br>
         <span style="color:var(--text3)">Open in Firefox or a local server to fetch all printings.<br>You can still manually set the set code below.</span><br><br>
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           <input id="ep-manual-set" placeholder="Set code (e.g. CMR)" style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:5px 8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;width:100px">
@@ -1038,7 +1038,7 @@ const PrintPicker={
     const setCode=(document.getElementById('ep-manual-set')?.value||'').trim().toLowerCase();
     const cn=(document.getElementById('ep-manual-cn')?.value||'').trim();
     if(!setCode){Notify.show('Enter a set code','err');return;}
-    Notify.show('Fetching '+setCode.toUpperCase()+'�','inf',2000);
+    Notify.show('Fetching '+setCode.toUpperCase()+'...','inf',2000);
     try{
       const url=`/api/scryfall/cards/${encodeURIComponent(setCode)}/${encodeURIComponent(cn||'1')}`;
       const r=await fetch(url,{method:'GET',headers:{'Accept':'application/json'}});
@@ -1088,7 +1088,7 @@ const PrintPicker={
         ${imgCrop
           ?`<img class="ep-print-img" src="${esc(imgCrop)}" alt="${esc(p.set_name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
           :''}
-        <div class="ep-print-img-ph" style="display:${imgCrop?'none':'flex'}">??</div>
+        <div class="ep-print-img-ph" style="display:${imgCrop?'none':'flex'}">No Art</div>
         <div class="ep-set-code">
           <span class="ep-rarity-dot" style="background:${rarColor}"></span>
           ${esc((p.set||'').toUpperCase())} #${esc(p.collector_number||'?')}
@@ -1099,7 +1099,7 @@ const PrintPicker={
           ${priceUsd?((p.prices?.eur?'&euro;':'$')+priceUsd):'-'}
           ${priceFoil?'<span style="color:var(--purple2);margin-left:4px">'+(p.prices?.eur_foil?'* &euro;':'* $')+priceFoil+'</span>':''}
         </div>
-        <div class="ep-check">?</div>
+        <div class="ep-check">OK</div>
       `;
       card.addEventListener('click',()=>this.selectPrint(p));
       lst.appendChild(card);
@@ -1107,7 +1107,7 @@ const PrintPicker={
   },
 
   async selectPrint(p){
-    Notify.show('Switching to '+p.set_name+'�','inf',1500);
+    Notify.show('Switching to '+p.set_name+'...','inf',1500);
     const slim=await SF.fetchById(p.id,this._name);
     if(!slim){Notify.show('Failed to fetch this printing','err');return;}
 
@@ -1125,11 +1125,11 @@ const PrintPicker={
     // Update the "current set" label
     const curSet=document.getElementById('ep-current-set');
     if(curSet){
-      curSet.textContent='Current: '+(p.set||'').toUpperCase()+' #'+(p.collector_number||'?')+' � '+(p.set_name||'');
+      curSet.textContent='Current: '+(p.set||'').toUpperCase()+' #'+(p.collector_number||'?')+' - '+(p.set_name||'');
       curSet.style.display='block';
     }
 
-    Notify.show('Edition updated ? '+p.set_name+' #'+p.collector_number,'ok');
+    Notify.show('Edition updated - '+p.set_name+' #'+p.collector_number,'ok');
   },
 
   _saveSetToDeck(slim,p){
@@ -1152,7 +1152,7 @@ const PrintPicker={
     if(slim.img?.normal){const imgEl=G('mc-img-el');if(imgEl)imgEl.src=slim.img.normal;}
     // Type line
     const typeEl=G('mc-type');
-    if(typeEl)typeEl.textContent=[slim.type_line,slim.rarity,slim.set_name].filter(Boolean).join('  �  ');
+    if(typeEl)typeEl.textContent=[slim.type_line,slim.rarity,slim.set_name].filter(Boolean).join(' - ');
     // Stats
     const eur=slim.prices?.eur??null;
     const usd=slim.prices?.usd??null;
@@ -1496,3 +1496,5 @@ const TileImgObserver=(()=>{
   },{rootMargin:'100px'});
   return{observe:(img)=>obs.observe(img),disconnect:()=>obs.disconnect()};
 })();
+
+

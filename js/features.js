@@ -1556,8 +1556,8 @@ const WishSection={
       const thumb=img
         ? '<img class="bulk-pool-thumb" src="'+esc(img)+'" loading="lazy" style="width:48px;height:67px;object-fit:cover;border-radius:4px;flex-shrink:0">'
         : '<div style="width:48px;height:67px;background:var(--bg3);border-radius:4px;flex-shrink:0;border:1px solid var(--border)"></div>';
-      const note=r.note?esc(r.note)+" Â· ":"";
-      const priceStr=price?"â‚¬"+price.toFixed(2):"no price data";
+      const note=r.note?esc(r.note)+" · ":"";
+      const priceStr=price?"€"+price.toFixed(2):"no price data";
       row.innerHTML=thumb
         +'<div style="flex:1;min-width:0">'
         +'<div class="bulk-pool-name" style="font-size:13px">'+esc(r.card_name)+"</div>"
@@ -1567,7 +1567,7 @@ const WishSection={
       const delBtn=document.createElement('button');
       delBtn.className='alert-del';
       delBtn.title='Remove';
-      delBtn.textContent='âœ•';
+      delBtn.textContent='X';
       delBtn.addEventListener('click',e=>{e.stopPropagation();WishSection.remove(r.id);});
       row.appendChild(delBtn);
       row.addEventListener("click",e=>{
@@ -1651,7 +1651,7 @@ const TradeSection={
     if(!DB._sb||!DB._user){
       const list=document.getElementById('trade2-list');
       const empty=document.getElementById('trade2-empty');
-      if(list)list.innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);font-size:12px;font-family:JetBrains Mono,monospace">Checking sessionâ€¦</div>';
+      if(list)list.innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);font-size:12px;font-family:JetBrains Mono,monospace">Checking session...</div>';
       if(empty)empty.style.display='none';
       clearTimeout(this._authWait);
       this._authWait=setTimeout(()=>{
@@ -1663,7 +1663,7 @@ const TradeSection={
     }
     clearTimeout(this._authWait);
     const list=document.getElementById('trade2-list');
-    if(list)list.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;font-family:JetBrains Mono,monospace">Loadingâ€¦</div>';
+    if(list)list.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;font-family:JetBrains Mono,monospace">Loading...</div>';
     TradeMgr.render().then(()=>this._renderList());
     this._updateBadge();
   },
@@ -1707,7 +1707,7 @@ const TradeSection={
       const cd=Store.card(r.card_name)||{};
       const img=cd.img&&(cd.img.crop||cd.img.normal)||"";
       const price=parseFloat(cd.prices&&cd.prices.eur||0);
-      const priceLine=r.price_usd?"â‚¬"+parseFloat(r.price_usd).toFixed(2):price?"â‚¬"+price.toFixed(2):"";
+      const priceLine=r.price_usd?"€"+parseFloat(r.price_usd).toFixed(2):price?"€"+price.toFixed(2):"";
       const row=document.createElement("div");
       row.className="trade-card";
       row.style.cursor="pointer";
@@ -1723,7 +1723,7 @@ const TradeSection={
       const delBtn=document.createElement('button');
       delBtn.className='alert-del';
       delBtn.title='Remove';
-      delBtn.textContent='âœ•';
+      delBtn.textContent='X';
       delBtn.addEventListener('click',e=>{e.stopPropagation();TradeSection.remove(r.id);});
       row.appendChild(delBtn);
       row.addEventListener("click",e=>{
