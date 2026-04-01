@@ -154,7 +154,7 @@ const DeckComments={
         <div>
           <span class="comment-author">${esc(authorName)}</span>
           <span class="comment-time">${timeStr}</span>
-          ${isOwn?`<button class="comment-del" onclick="DeckComments.del('${c.id}','${deckId}','${containerId}')">âœ•</button>`:''}
+          ${isOwn?`<button class="comment-del" onclick="DeckComments.del('${c.id}','${deckId}','${containerId}')">X</button>`:''}
         </div>
         <div class="comment-text">${esc(c.comment_text||'')}</div>
       </div>
@@ -464,7 +464,7 @@ const SynergyScanner={
     el.innerHTML='';
     cards.forEach(card=>{
       const img=card.image_uris?.art_crop||card.card_faces?.[0]?.image_uris?.art_crop||'';
-      const price=card.prices?.eur?'â‚¬'+card.prices.eur:'';
+      const price=card.prices?.eur?'€'+card.prices.eur:'';
       const why=this._matchScore((cmdrData.oracle_text||'').toLowerCase(),cmdrKeywords,[],
         (card.oracle_text||'').toLowerCase(),{type_line:card.type_line,color_identity:card.color_identity},
         cmdrData.color_identity||[]).reasons.join(' Â· ')||'EDHREC recommended';
@@ -500,7 +500,7 @@ const SynergyScanner={
                     normal:card.image_uris?.normal||card.card_faces?.[0]?.image_uris?.normal||null}};
     Store.setCard(card.name,cd);Store.saveCache();
     App.render();
-    Notify.show(card.name+' added to deck','ok');
+    Notify.show(`Added ${card.name} to deck`,'ok');
   }
 };
 
@@ -1068,8 +1068,8 @@ Object.assign(App, {
     const deck=Store.getDeck(this.curId);
     if(!deck){Notify.show('Select a deck first','err');return;}
     const existing=deck.cards.find(c=>c.name.toLowerCase()===name.toLowerCase());
-    if(existing){existing.qty++;Store.updDeck(deck);this.render();Notify.show(name+' qty +1','ok');}
-    else{deck.cards.push({name,qty:1,foil:false,etched:false});Store.updDeck(deck);this._fetchCards(deck);Notify.show('Added '+name,'ok');}
+    if(existing){existing.qty++;Store.updDeck(deck);this.render();Notify.show(`Added 1 copy of ${name}`,'ok');}
+    else{deck.cards.push({name,qty:1,foil:false,etched:false});Store.updDeck(deck);this._fetchCards(deck);Notify.show(`Added ${name} to deck`,'ok');}
     this._hideAddRow();
   }
 });
@@ -1215,7 +1215,7 @@ const CardSearch2={
       const d=await r.json();
       this._page=d.has_more?d.next_page:null;
       this._renderCards(d.data||[],grid,true);
-      if(more){more.textContent='Load more results';more.style.display=this._page?'block':'none';}
+      if(more){more.textContent='Show More Cards';more.style.display=this._page?'block':'none';}
     }catch{}
   },
 
@@ -1233,7 +1233,7 @@ const CardSearch2={
       const el=document.createElement('div');
       el.className='cs-card';
       el.innerHTML=`
-        ${imgUrl?`<img class="cs-card-img" src="${esc(imgUrl)}" loading="lazy">`:'<div class="cs-card-img" style="background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text3)">ðŸƒ</div>'}
+        ${imgUrl?`<img class="cs-card-img" src="${esc(imgUrl)}" loading="lazy">`:'<div class="cs-card-img" style="background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text3);font-family:Cinzel,serif;font-size:14px">Card</div>'}
         <div class="cs-card-body">
           <div class="cs-card-name">${esc(card.name)}</div>
           <div class="cs-card-meta">
@@ -1243,11 +1243,12 @@ const CardSearch2={
         </div>
         <div class="cs-actions">
           <button class="cs-action-btn gold" onclick="CardSearch2._addToDeck('${esc(card.name)}','${deckId}')">Add to Deck</button>
-          <button class="cs-action-btn purple" onclick="WishSection.addByName('${esc(card.name)}')">Wishlist</button>
-          <button class="cs-action-btn" onclick="TradeSection.addByName('${esc(card.name)}')">Trade Cards</button>
-          <button class="cs-action-btn" onclick="M.open({name:'${esc(card.name)}',qty:1},null)">Open</button>
+          <button class="cs-action-btn" onclick="M.open({name:'${esc(card.name)}',qty:1},null)">Open Details</button>
+          <button class="cs-action-btn purple" onclick="WishSection.addByName('${esc(card.name)}')">Save</button>
+          <button class="cs-action-btn" onclick="TradeSection.addByName('${esc(card.name)}')">List Trade</button>
         </div>`;
       attachTapPop(el);
+      attachCardTilt(el);
       el.querySelectorAll('.cs-action-btn').forEach(btn=>btn.addEventListener('click',e=>e.stopPropagation()));
       el.addEventListener('click',()=>M.open({name:card.name,qty:1},null));
       grid.appendChild(el);
@@ -1316,13 +1317,13 @@ const CollSection={
     const grid=document.getElementById('coll2-folders');
     const sb=document.getElementById('coll-folder-sidebar');
     if(!grid)return;
-    if(!folders.length){grid.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">No folders yet â€” create one to organise your cards.</div>';return;}
+    if(!folders.length){grid.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">No folders yet - create one to organize your cards.</div>';return;}
     grid.innerHTML='';
     folders.forEach(f=>{
       const count=(this._data()||[]).filter(r=>r.folder===f.id).reduce((sum,r)=>sum+(r.qty||1),0);
       const el=document.createElement('div');
       el.className='folder-card';el.style.cursor='pointer';
-      el.innerHTML=`<div class="folder-icon">ðŸ“</div><div class="folder-name">${esc(f.name)}</div><div class="folder-count">${count} cards</div>`;
+      el.innerHTML=`<div class="folder-ico">FD</div><div class="folder-name">${esc(f.name)}</div><div class="folder-count">${count} cards</div>`;
       el.onclick=()=>{
         document.getElementById('coll2-folder-filter').value=f.id;
         this.filter();
@@ -1335,14 +1336,14 @@ const CollSection={
       sb.innerHTML='<div style="font-size:10px;color:var(--text3);padding:4px 8px 8px;text-transform:uppercase;letter-spacing:.08em;font-family:Cinzel,serif">Folders</div>';
       const allBtn=document.createElement('div');
       allBtn.className='vn-item on';allBtn.style.cursor='pointer';
-      allBtn.innerHTML='<div class="vn-ico">ðŸ“‹</div><div><div class="vn-label">All Cards</div></div>';
+      allBtn.innerHTML='<div class="vn-ico">ALL</div><div><div class="vn-label">All Cards</div></div>';
       allBtn.onclick=()=>{document.getElementById('coll2-folder-filter').value='';this.filter();};
       sb.appendChild(allBtn);
       folders.forEach(f=>{
         const count=(this._data()||[]).filter(r=>r.folder===f.id).reduce((sum,r)=>sum+(r.qty||1),0);
         const btn=document.createElement('div');
         btn.className='vn-item';btn.style.cursor='pointer';
-        btn.innerHTML=`<div class="vn-ico">ðŸ“</div><div><div class="vn-label">${esc(f.name)}</div><div class="vn-sub">${count} cards</div></div>`;
+        btn.innerHTML=`<div class="vn-ico">FD</div><div><div class="vn-label">${esc(f.name)}</div><div class="vn-sub">${count} cards</div></div>`;
         btn.onclick=()=>{document.getElementById('coll2-folder-filter').value=f.id;this.filter();};
         sb.appendChild(btn);
       });
@@ -1407,7 +1408,7 @@ const CollSection={
     const area=document.getElementById('coll2-card-area');
     if(!area)return;
     const data=this._filtered;
-    if(!data.length){area.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)">No cards match.</div>';return;}
+    if(!data.length){area.innerHTML='<div class="empty-panel"><div class="empty-kicker">Collection</div><div class="empty-ico">CL</div><div class="empty-ttl">No Cards Match This View</div><div class="empty-sub">Try a different search, folder, or filter to surface more cards.</div></div>';return;}
 
     // Fetch missing card data
     const missing=data.filter(r=>!MyCollection._cardData(r)?.name);
@@ -1426,15 +1427,16 @@ const CollSection={
         el.className='ct';el.style.cursor='pointer';
         el.title=r.name;
         el.innerHTML=`
-          <div class="ct-img">${img?`<img src="${esc(img)}" loading="lazy" alt="${esc(r.name)}">`:'<div style="width:100%;aspect-ratio:2.5/3.5;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:24px">ðŸƒ</div>'}</div>
-          ${(r.qty||1)>1?`<div class="ct-qty">${r.qty}Ã—</div>`:''}
-          ${r.foil?'<div class="ct-foil">âœ¦ Foil</div>':''}
+          <div class="ct-img">${img?`<img src="${esc(img)}" loading="lazy" alt="${esc(r.name)}">`:'<div style="width:100%;aspect-ratio:2.5/3.5;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:14px;font-family:Cinzel,serif">Card</div>'}</div>
+          ${(r.qty||1)>1?`<div class="ct-qty">${r.qty}x</div>`:''}
+          ${r.foil?'<div class="ct-foil">Foil</div>':''}
           <div class="ct-info"><div class="ct-name">${esc(r.name)}</div>
-            <div class="ct-foot"><span class="ct-type" style="font-size:9px">${esc(cd.type_line?.split('â€”')[0]?.trim()||'')}</span>
+            <div class="ct-foot"><span class="ct-type" style="font-size:9px">${esc(cd.type_line?.split('—')[0]?.trim()||cd.type_line?.split('-')[0]?.trim()||'')}</span>
             ${cd.prices?.eur?`<span class="ct-price">&euro;${cd.prices.eur}</span>`:''}</div>
           </div>`;
         el.onclick=()=>M.open({name:r.name,qty:r.qty||1},null);
         attachTapPop(el);
+        attachCardTilt(el);
       grid.appendChild(el);
       });
       area.appendChild(grid);
@@ -1454,8 +1456,8 @@ const CollSection={
         tr.onmouseleave=()=>tr.style.background='';
         tr.innerHTML=`
           <td style="padding:6px 8px">${img?`<img src="${esc(img)}" style="width:30px;height:42px;object-fit:cover;border-radius:3px;display:block" loading="lazy">`:'<div style="width:30px;height:42px;background:var(--bg3);border-radius:3px"></div>'}</td>
-          <td style="padding:6px 8px;font-family:Cinzel,serif;font-size:11px;color:var(--text)">${esc(r.name)}${r.foil?' <span style="color:var(--purple2);font-size:9px">âœ¦</span>':''}</td>
-          <td style="padding:6px 8px;font-size:10px;color:var(--text3)">${esc((cd.type_line||'').split('â€”')[0].trim())}</td>
+          <td style="padding:6px 8px;font-family:Cinzel,serif;font-size:11px;color:var(--text)">${esc(r.name)}${r.foil?' <span style="color:var(--purple2);font-size:9px">Foil</span>':''}</td>
+          <td style="padding:6px 8px;font-size:10px;color:var(--text3)">${esc((cd.type_line||'').split('—')[0]?.trim()||(cd.type_line||'').split('-')[0]?.trim()||'')}</td>
           <td style="padding:6px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold2);text-align:center">${r.qty||1}</td>
           <td style="padding:6px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green2)">${cd.prices?.eur?'&euro;'+cd.prices.eur:'—'}</td>
           <td style="padding:6px 8px;font-size:10px;color:var(--text3)">${esc(r.folder||'')}</td>`;
@@ -1621,8 +1623,8 @@ const WishSection={
     if(!name){Notify.show('Enter a card name','err');return;}
     if(!DB._sb||!DB._user){Notify.show('Sign in to use Wishlist','err');return;}
     const {error}=await DB._sb.from('wishlist').insert({card_name:name,note,user_id:DB._user.id,user_email:DB._user.email||''});
-    if(error){Notify.show('Could not add to wishlist','err');return;}
-    Notify.show(name+' added to wishlist','ok');
+    if(error){Notify.show('Could not save card','err');return;}
+    Notify.show(`${name} saved to wishlist`,'ok');
     if(nameEl)nameEl.value='';
     if(noteEl)noteEl.value='';
     const ac=document.getElementById('wish2-autocomplete');if(ac)ac.style.display='none';
@@ -1782,8 +1784,8 @@ const TradeSection={
     const payload={card_name:name,qty,condition:cond,user_id:DB._user.id,user_email:DB._user.email||''};
     if(Number.isFinite(priceNum))payload.price_usd=priceNum;
     const {error}=await DB._sb.from('trade_list').insert(payload);
-    if(error){Notify.show('Could not add to trade list','err');return;}
-    Notify.show(name+' listed for trade','ok');
+    if(error){Notify.show('Could not list card','err');return;}
+    Notify.show(`${name} listed for trade`,'ok');
     if(nameEl)nameEl.value='';
     if(priceEl)priceEl.value='';
     TradeAC?.hide?.('trade2-add-name');

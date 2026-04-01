@@ -16,8 +16,8 @@ const TradeMatch={
 
     const statusEl=document.getElementById('trade-match-status');
     const btn=document.getElementById('trade-match-refresh');
-    if(btn)btn.textContent='Scanning...';
-    if(statusEl)statusEl.textContent='Loading trade lists and wishlists...';
+    if(btn)btn.textContent='Scanning Community...';
+    if(statusEl)statusEl.textContent='Loading trade lists, wishlists, and profile data...';
 
     this._hide(['tm-empty','tm-sec-want','tm-sec-have','tm-sec-mutual']);
     ['tm-want-list','tm-have-list','tm-mutual-list'].forEach(id=>{
@@ -81,7 +81,7 @@ const TradeMatch={
               <div class="match-avatar" style="background:hsl(${hue},35%,22%);border:2px solid hsl(${hue},50%,42%)">${esc(prof.username.slice(0,1).toUpperCase())}</div>
               <div style="flex:1;min-width:0">
                 <div class="match-username">${esc(prof.username)}</div>
-                <div class="match-sub">Has ${cards.length} card${cards.length>1?'s':''} you want</div>
+                <div class="match-sub">Has ${cards.length} card${cards.length>1?'s':''} from your wishlist</div>
               </div>
               <div class="match-score">${cards.length} match${cards.length>1?'es':''}</div>
             </div>
@@ -91,9 +91,9 @@ const TradeMatch={
                 return `<span class="match-pill they-have"><span class="match-pill-label">HAVE</span>${esc(t.card_name)}${cd.prices?.eur?' - &euro;'+cd.prices.eur:''}</span>`;
               }).join('')}
             </div>
-            <div style="margin-top:10px;display:flex;gap:8px">
-              <button class="tbtn sm gold" onclick="CommunityNav.viewUser('${uid}','${esc(prof.email)}','${esc(prof.username)}')">View Profile</button>
-              ${mutualIds.has(uid)?'<span class="trade-badge have" style="align-self:center">Mutual match</span>':''}
+            <div class="match-actions">
+              <button class="tbtn sm gold" onclick="CommunityNav.viewUser('${uid}','${esc(prof.email)}','${esc(prof.username)}')">Open Profile</button>
+              ${mutualIds.has(uid)?'<span class="trade-badge have" style="align-self:center">Mutual Trade Fit</span>':''}
             </div>
           `;
           listEl.appendChild(card);
@@ -116,7 +116,7 @@ const TradeMatch={
               <div class="match-avatar" style="background:hsl(${hue},35%,22%);border:2px solid hsl(${hue},50%,42%)">${esc(prof.username.slice(0,1).toUpperCase())}</div>
               <div style="flex:1;min-width:0">
                 <div class="match-username">${esc(prof.username)}</div>
-                <div class="match-sub">Wants ${wishes.length} card${wishes.length>1?'s':''} you have</div>
+                <div class="match-sub">Wants ${wishes.length} card${wishes.length>1?'s':''} you already own</div>
               </div>
               <div class="match-score">${wishes.length} match${wishes.length>1?'es':''}</div>
             </div>
@@ -127,7 +127,9 @@ const TradeMatch={
                 return `<span class="match-pill you-have"><span class="match-pill-label">${inTrade?'TRADE':'HAVE'}</span>${esc(w.card_name)}${cd.prices?.eur?' - &euro;'+cd.prices.eur:''}</span>`;
               }).join('')}
             </div>
-            <button class="tbtn sm" style="margin-top:10px" onclick="CommunityNav.viewUser('${uid}','${esc(prof.email)}','${esc(prof.username)}')">View Profile</button>
+            <div class="match-actions">
+              <button class="tbtn sm" onclick="CommunityNav.viewUser('${uid}','${esc(prof.email)}','${esc(prof.username)}')">Open Profile</button>
+            </div>
           `;
           listEl.appendChild(card);
         }
@@ -144,15 +146,13 @@ const TradeMatch={
           const theyWant=theyWantMap[uid]||[];
           const hue=(uid.charCodeAt(0)*17)%360;
           const card=document.createElement('div');
-          card.className='match-card';
-          card.style.border='1px solid var(--green2)';
-          card.style.background='rgba(58,122,74,.06)';
+          card.className='match-card mutual';
           card.innerHTML=`
             <div class="match-hdr">
               <div class="match-avatar" style="background:hsl(${hue},35%,22%);border:2px solid hsl(${hue},50%,42%)">${esc(prof.username.slice(0,1).toUpperCase())}</div>
               <div style="flex:1;min-width:0">
                 <div class="match-username">${esc(prof.username)}</div>
-                <div class="match-sub">Mutual trade partner</div>
+                <div class="match-sub">Strong two-way trade opportunity</div>
               </div>
               <span class="trade-badge have" style="font-size:11px">Mutual - ${theyHave.length+theyWant.length} cards</span>
             </div>
@@ -166,7 +166,9 @@ const TradeMatch={
                 <div class="match-pills">${theyWant.map(w=>`<span class="match-pill you-have">${esc(w.card_name)}</span>`).join('')}</div>
               </div>
             </div>
-            <button class="tbtn sm gold" style="margin-top:10px" onclick="CommunityNav.viewUser('${uid}','${esc(prof.email)}','${esc(prof.username)}')">View Profile and Initiate Trade</button>
+            <div class="match-actions">
+              <button class="tbtn sm gold" onclick="CommunityNav.viewUser('${uid}','${esc(prof.email)}','${esc(prof.username)}')">Review Trade Partner</button>
+            </div>
           `;
           listEl.appendChild(card);
         }
@@ -176,19 +178,18 @@ const TradeMatch={
       if(!total){
         this._show('tm-empty');
         const emptyEl=document.getElementById('tm-empty');
-        if(emptyEl)emptyEl.innerHTML=`<div class="match-empty">
-          No matches found yet.<br>
-          <span style="font-size:11px;color:var(--text3)">
-            Add cards to your <strong style="color:var(--text2)">Wishlist</strong> and
-            <strong style="color:var(--text2)">Trade Tracker</strong>, then ask friends to do the same.
-          </span>
+        if(emptyEl)emptyEl.innerHTML=`<div class="match-empty-panel">
+          <div style="font-family:'Cinzel',serif;font-size:14px;color:var(--text);margin-bottom:8px">No Trade Matches Yet</div>
+          <div style="font-size:11px;color:var(--text3);line-height:1.7">
+            Add cards to your <strong>Wishlist</strong> and <strong>Trade Tracker</strong>, then invite friends to do the same.
+          </div>
         </div>`;
       }else{
         const emptyEl=document.getElementById('tm-empty');
         if(emptyEl)emptyEl.style.display='none';
       }
 
-      if(statusEl)statusEl.textContent=`Found ${total} potential trade partner${total>1?'s':''} - ${mutualIds.size} mutual`;
+      if(statusEl)statusEl.textContent=`Found ${total} trade lead${total>1?'s':''} with ${mutualIds.size} mutual match${mutualIds.size===1?'':'es'}`;
     }catch(e){
       if(statusEl)statusEl.innerHTML=`<span style="color:var(--crimson2)">Error: ${esc(e.message)}</span>`;
     }

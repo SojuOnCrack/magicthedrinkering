@@ -12,6 +12,34 @@ function attachTapPop(el,cls='tap-pop'){
   el.dataset.tapPopBound='1';
 }
 
+function attachCardTilt(el,intensity=10){
+  if(!el||el.dataset.cardTiltBound)return;
+  const canTilt=window.matchMedia?.('(hover: hover) and (pointer: fine)')?.matches;
+  if(!canTilt)return;
+  const reset=()=>{
+    el.style.setProperty('--tilt-x','0deg');
+    el.style.setProperty('--tilt-y','0deg');
+    el.style.setProperty('--glow-x','50%');
+    el.style.setProperty('--glow-y','35%');
+  };
+  const onMove=(event)=>{
+    const rect=el.getBoundingClientRect();
+    const px=(event.clientX-rect.left)/rect.width;
+    const py=(event.clientY-rect.top)/rect.height;
+    const tiltY=((px-.5)*intensity).toFixed(2)+'deg';
+    const tiltX=((.5-py)*intensity).toFixed(2)+'deg';
+    el.style.setProperty('--tilt-x',tiltX);
+    el.style.setProperty('--tilt-y',tiltY);
+    el.style.setProperty('--glow-x',(px*100).toFixed(1)+'%');
+    el.style.setProperty('--glow-y',(py*100).toFixed(1)+'%');
+  };
+  reset();
+  el.addEventListener('pointermove',onMove);
+  el.addEventListener('pointerleave',reset);
+  el.addEventListener('pointercancel',reset);
+  el.dataset.cardTiltBound='1';
+}
+
 const SearchSuggest={
   _states:{},
   _state(key){
@@ -256,7 +284,7 @@ const CardSearch={
       const res=await fetch(url,{headers:{Accept:'application/json'}});
 
       if(res.status===404){
-        if(status)status.textContent='No cards found.';
+        if(status)status.textContent='No matches yet. Try a card name, keyword, or commander.';
         return;
       }
       if(!res.ok)throw new Error('Scryfall error '+res.status);
@@ -266,7 +294,7 @@ const CardSearch={
       const cards=data.data||[];
 
       if(!append&&!cards.length){
-        if(status)status.textContent='No results.';
+        if(status)status.textContent='No matches yet. Try broader text or fewer filters.';
         return;
       }
 
@@ -310,18 +338,22 @@ const CardSearch={
         </div>
       </div>
       <div class="cs-actions">
-        <button class="cs-action-btn purple${inWish?' on':''}" data-cs-name="${esc(card.name)}" onclick='CardSearch._addWish(this,${safeNameJs})'>
-          ${inWish?'Saved':'Wishlist'}
-        </button>
         <button class="cs-action-btn gold" data-cs-deck onclick='CardSearch._addToDeck(${safeNameJs},this)'>
           Add to Deck
         </button>
+        <button class="cs-action-btn" onclick='CardSearch._openFromSuggest(${safeNameJs})'>
+          Open Details
+        </button>
+        <button class="cs-action-btn purple${inWish?' on':''}" data-cs-name="${esc(card.name)}" onclick='CardSearch._addWish(this,${safeNameJs})'>
+          ${inWish?'Saved':'Save'}
+        </button>
         <button class="cs-action-btn" onclick='CardSearch._addTrade(${safeNameJs},this)'>
-          Trade Cards
+          List Trade
         </button>
       </div>`;
 
     attachTapPop(tile);
+    attachCardTilt(tile);
     tile.querySelectorAll('.cs-action-btn').forEach(btn=>btn.addEventListener('click',e=>e.stopPropagation()));
     tile.addEventListener('click',()=>{
       const slim=SF._slim(card);
@@ -345,7 +377,7 @@ const CardSearch={
 
   _addWish(btn,name){
     WishlistMgr.addByName(name);
-    btn.textContent='Wished';
+    btn.textContent='Saved';
     btn.classList.add('on');
     btn.disabled=true;
   },
@@ -359,10 +391,10 @@ const CardSearch={
     const existing=deck.cards.find(c=>c.name.toLowerCase()===name.toLowerCase());
     if(existing){
       existing.qty++;
-      Notify.show(name+' qty +1 in "'+deck.name+'"','ok');
+      Notify.show(`Added 1 copy of ${name} to "${deck.name}"`,'ok');
     }else{
       deck.cards.push({name,qty:1,foil:false,etched:false});
-      Notify.show(name+' added to "'+deck.name+'"','ok');
+      Notify.show(`Added ${name} to "${deck.name}"`,'ok');
     }
     Store.updDeck(deck);
     if(App.curId===deckId)App.render();
@@ -480,12 +512,12 @@ const M={
     if(deck){
       const setCmdrBtn=document.createElement('button');
       setCmdrBtn.className='ma gold';setCmdrBtn.textContent='Set as Commander';
-      setCmdrBtn.onclick=()=>{deck.commander=cardEntry.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(cardEntry.name+' set as Commander','ok');this.close();};
+      setCmdrBtn.onclick=()=>{deck.commander=cardEntry.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(`${cardEntry.name} is now your commander`,'ok');this.close();};
       G('mc-acts').appendChild(setCmdrBtn);
       if(pType){
         const setPartnerBtn=document.createElement('button');
         setPartnerBtn.className='ma purple';setPartnerBtn.textContent='Set as Partner';
-        setPartnerBtn.onclick=()=>{deck.partner=cardEntry.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(cardEntry.name+' set as Partner','ok');this.close();};
+        setPartnerBtn.onclick=()=>{deck.partner=cardEntry.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(`${cardEntry.name} is now your partner`,'ok');this.close();};
         G('mc-acts').appendChild(setPartnerBtn);
       }
     }
@@ -562,7 +594,7 @@ const P={
     App.renderSidebar();
     App._updHeader(deck);
     P.close();
-    Notify.show('Deck updated','ok');
+    Notify.show('Deck saved','ok');
   },
 
   import(){
@@ -692,7 +724,7 @@ const P={
       setStatus(`Imported "${deckName}" - ${parsed.cards.length} cards`,'ok');
       if(btn)btn.textContent='Imported!';
       setTimeout(()=>{P.close();App.loadDeck(deck.id);},800);
-      Notify.show(`"${deckName}" imported - ${parsed.cards.length} cards`,'ok');
+      Notify.show(`Imported "${deckName}" with ${parsed.cards.length} cards`,'ok');
     }catch(e){
       setStatus('Error: '+e.message,'err');
       if(btn)btn.textContent='Fetch & Import';
@@ -794,7 +826,7 @@ const P={
     App.loadDeck(deck.id);
     P._pendingUpdate=null;
     P.close();
-    Notify.show(`Deck updated - +${toAdd.length} added, -${toRemove.length} removed`,'ok');
+    Notify.show(`Deck updated: ${toAdd.length} added, ${toRemove.length} removed`,'ok');
   },
 
   _cancelUpdate(){
@@ -817,7 +849,7 @@ const P={
     const deck={id:Store.uid(),name:customName||parsed.name,commander:parsed.commander||'',partner:parsed.partner||'',cards:parsed.cards,created:Date.now(),public:true};
     Store.addDeck(deck);P.close();App.loadDeck(deck.id);
     enrichDeckCards(deck).then(()=>{Store.updDeck(deck);DB.schedulePush();});
-    Notify.show(`"${deck.name}" - ${parsed.cards.length} cards imported`+(deck.partner?` (Partner: ${deck.partner})`:'')||'','ok');
+    Notify.show(`Imported "${deck.name}" with ${parsed.cards.length} cards`+(deck.partner?` (Partner: ${deck.partner})`:'')||'','ok');
   },
 
   export(){
@@ -836,7 +868,7 @@ const P={
     const pf=document.getElementById('pfoot');
     const cl=document.createElement('button');cl.className='tbtn';cl.textContent='Close';cl.onclick=()=>P.close();
     const cp=document.createElement('button');cp.className='tbtn';cp.textContent='Copy';
-    cp.onclick=()=>{navigator.clipboard.writeText(document.getElementById('export-ta').value);Notify.show('Copied!','ok');};
+    cp.onclick=()=>{navigator.clipboard.writeText(document.getElementById('export-ta').value);Notify.show('Copied to clipboard','ok');};
     const dl=document.createElement('button');dl.className='tbtn gold';dl.textContent='Download';
     dl.onclick=()=>{
       const ext=P._curFmt==='csv'?'csv':'txt';
@@ -895,7 +927,7 @@ const P={
       const partnerEnabled=document.getElementById('partner-toggle').classList.contains('on');
       deck.partner=partnerEnabled?(document.getElementById('ci-2').value||'').trim():'';
       Store.updDeck(deck);P.close();App.loadDeck(deck.id);
-      Notify.show('Commanders updated','ok');
+      Notify.show('Command zone updated','ok');
       const synBtn=document.getElementById('synergy-btn');
       if(synBtn)synBtn.style.display=deck.commander?'inline-flex':'none';
     };
@@ -1048,7 +1080,7 @@ const PrintPicker={
       Store.setCard(this._name,slim);Store.saveCache();
       this._saveSetToDeck(slim,d);
       this._refreshModal(slim,d);
-      Notify.show('Edition set: '+d.set_name+' #'+d.collector_number,'ok');
+      Notify.show('Printing selected: '+d.set_name+' #'+d.collector_number,'ok');
     }catch(e){Notify.show('Fetch failed','err');}
   },
 
@@ -1129,7 +1161,7 @@ const PrintPicker={
       curSet.style.display='block';
     }
 
-    Notify.show('Edition updated - '+p.set_name+' #'+p.collector_number,'ok');
+    Notify.show('Printing updated: '+p.set_name+' #'+p.collector_number,'ok');
   },
 
   _saveSetToDeck(slim,p){
@@ -1441,7 +1473,7 @@ const AlertMgr={
     const prov=document.getElementById('alert-prov')?.value||'scryfall';
     if(!card||!val){Notify.show('Fill in card and value','err');return;}
     Store.alerts.push({id:Store.uid(),card,cond,val,prov,active:true,triggered:false,created:Date.now()});
-    Store.saveAlerts();this.render();Notify.show(`Alert added for ${card}`,'ok');
+    Store.saveAlerts();this.render();Notify.show(`Alert created for ${card}`,'ok');
     if(document.getElementById('alert-card'))document.getElementById('alert-card').value='';
     if(document.getElementById('alert-val'))document.getElementById('alert-val').value='';
   },

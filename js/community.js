@@ -120,7 +120,7 @@ const BulkPool={
         price_usd:price,created_at:new Date().toISOString()
       });
       if(error)throw error;
-      Notify.show(`Added ${qty}× ${name}`,'ok');
+      Notify.show(`Added ${qty}x ${name} to the pool`,'ok');
       document.getElementById('bulk-add-name').value='';
       document.getElementById('bulk-add-qty').value='1';
       // Pre-fetch card data so image shows in the pool list
@@ -181,7 +181,7 @@ const BulkPool={
         added++;
       }catch(e){failed++;console.warn('bulk insert failed:',line.name,e?.message||e);}
     }
-    if(added>0)Notify.show(`Added ${added} card${added!==1?'s':''} to pool`+(failed>0?` (${failed} failed)`:''),'ok');
+    if(added>0)Notify.show(`Added ${added} card${added!==1?'s':''} to the pool`+(failed>0?` (${failed} failed)`:''),'ok');
     else Notify.show(`All inserts failed — check Supabase permissions`,'err');
     // Pre-fetch card images for all added cards
     this._pasteLines.forEach(line=>SF.fetch(line.name,()=>{}));
@@ -404,8 +404,8 @@ const BulkPool={
     if(!deckId){Notify.show('Load a deck in the Forge first','err');return;}
     const deck=Store.getDeck(deckId);if(!deck)return;
     const existing=deck.cards.find(c=>c.name.toLowerCase()===name.toLowerCase());
-    if(existing){existing.qty++;Notify.show(name+' qty +1','ok');}
-    else{deck.cards.push({name,qty:1,foil:false,etched:false});Notify.show(name+' added to deck','ok');}
+    if(existing){existing.qty++;Notify.show(`Added 1 copy of ${name}`,'ok');}
+    else{deck.cards.push({name,qty:1,foil:false,etched:false});Notify.show(`Added ${name} to deck`,'ok');}
     Store.updDeck(deck);
     if(App.curId===deckId)App.render();
   },
@@ -467,7 +467,7 @@ const TradeMgr={
     if(!DB._sb||!DB._user)return;
     const payload=await this._buildInsertPayload(name,{qty,condition:cond});
     await DB._sb.from('trade_list').insert(payload);
-    Notify.show(name+' added to trade list','ok');
+    Notify.show(`${name} listed for trade`,'ok');
     if(nameEl)nameEl.value='';
     TradeAC?.hide?.('trade-add-name');
     this.render();
@@ -483,7 +483,7 @@ const TradeMgr={
     const{error}=await DB._sb.from('trade_list').insert(payload);
     if(!error){
       this._data.unshift(payload);
-      Notify.show('🤝 "'+cardName+'" → Trade list','ok');
+      Notify.show(`${cardName} listed for trade`,'ok');
     }else{Notify.show('Could not add to trade list','err');}
   },
 
@@ -496,7 +496,7 @@ const TradeMgr={
     } else {
       const payload=await this._buildInsertPayload(cardName);
       await DB._sb.from('trade_list').insert(payload);
-      Notify.show(cardName+' listed for trade','ok');
+      Notify.show(`${cardName} listed for trade`,'ok');
     }
     await this.render();
     MyCollection._renderCards();
@@ -668,7 +668,7 @@ const WishlistMgr={
     }
     const payload=await this._buildInsertPayload(name,note);
     await DB._sb.from('wishlist').insert(payload);
-    Notify.show(name+' added to wishlist','ok');
+    Notify.show(`${name} saved to wishlist`,'ok');
     document.getElementById('wish-add-name').value='';
     if(document.getElementById('wish-add-note'))document.getElementById('wish-add-note').value='';
     this.render();
@@ -684,7 +684,7 @@ const WishlistMgr={
     const{error}=await DB._sb.from('wishlist').insert(payload);
     if(!error){
       this._data.unshift(payload);
-      Notify.show('⭐ "'+cardName+'" → Wishlist','ok');
+      Notify.show(`${cardName} saved to wishlist`,'ok');
     }else{Notify.show('Could not add to wishlist','err');}
   },
 
@@ -697,7 +697,7 @@ const WishlistMgr={
     } else {
       const payload=await this._buildInsertPayload(cardName,'');
       await DB._sb.from('wishlist').insert(payload);
-      Notify.show(cardName+' added to wishlist','ok');
+      Notify.show(`${cardName} saved to wishlist`,'ok');
     }
     await this.render();
     MyCollection._renderCards();
@@ -732,7 +732,7 @@ const WishlistMgr={
         if(cached&&cached.name){
           M.open({name:r.card_name,qty:1},null);
         } else {
-          Notify.show('Loading card data…','inf',1500);
+          Notify.show('Loading card details...','inf',1500);
           SF.fetch(r.card_name,()=>{M.open({name:r.card_name,qty:1},null);});
         }
       });
@@ -874,9 +874,9 @@ const CommunityNav={
   async _renderAllUsers(){
     const el=document.getElementById('community-content');if(!el)return;
     if(!DB._sb||!DB._user){
-      el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">Sign in to see users.</div>';return;
+      el.innerHTML='<div class="empty-panel"><div class="empty-kicker">Community</div><div class="empty-ico">CM</div><div class="empty-ttl">Sign In To Browse Players</div><div class="empty-sub">Join the community area to follow players, compare decks, and discover trade opportunities.</div></div>';return;
     }
-    el.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px">Loading users…</div>';
+    el.innerHTML='<div class="community-list-shell"><div class="community-list-sub">Loading community members...</div></div>';
     try{
       // Upsert own profile so current user appears to others
       // Use cached nickname if available, else fallback to email prefix
@@ -892,13 +892,13 @@ const CommunityNav={
       if(error)throw error;
 
       if(!data?.length){
-        el.innerHTML=`<div style="padding:16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);font-size:12px;line-height:1.8">
-          <div style="font-family:'Cinzel',serif;color:var(--gold2);margin-bottom:8px">No other users found yet</div>
-          <div style="color:var(--text2)">Other users need to open the app once to auto-create their profile.</div>
-          <div style="color:var(--text3);margin-top:10px">Or run this SQL in your Supabase SQL Editor to backfill everyone:</div>
-          <pre style="background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);padding:10px;margin-top:8px;font-size:10px;color:var(--ice);overflow-x:auto">INSERT INTO profiles (id, email, username)
-SELECT id, email, split_part(email,'@',1)
-FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
+        el.innerHTML=`<div class="empty-panel"><div class="empty-kicker">Community</div><div class="empty-ico">CM</div><div class="empty-ttl">No Other Players Yet</div><div class="empty-sub">Other users need to open the app once before they appear here. You can also backfill profiles in Supabase.</div><pre style="background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);padding:10px;margin-top:14px;font-size:10px;color:var(--ice);overflow-x:auto">INSERT INTO profiles (id, email, username)
+
+
+
+
+
+
         </div>`;
         return;
       }
@@ -906,10 +906,10 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
       const{data:friends}=await DB._sb.from('friendships').select('friend_id').eq('user_id',DB._user.id);
       const friendIds=new Set((friends||[]).map(f=>f.friend_id));
 
-      el.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)">${data.length} users</div>
-        <button class="tbtn sm" onclick="CommunityNav._renderAllUsers()" style="font-size:9px">🔄 Refresh</button>
-      </div>`;
+      el.innerHTML=`<div class="community-list-shell"><div class="community-list-head"><div><div class="community-list-title">All Players</div><div class="community-list-sub">${data.length} visible community profile${data.length===1?'':'s'}</div></div><button class="tbtn sm" onclick="CommunityNav._renderAllUsers()" style="font-size:9px">Refresh</button></div></div>`;
+
+
+
 
       for(const u of data){
         const isFriend=friendIds.has(u.id);
@@ -918,23 +918,23 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         const card=document.createElement('div');card.className='friend-card';card.id='user-card-'+u.id;
         card.innerHTML=`
           <div class="friend-avatar" style="background:hsl(${hue},35%,22%);border-color:hsl(${hue},50%,42%)">${esc(displayName.slice(0,1).toUpperCase())}</div>
-          <div style="flex:1;min-width:0">
+          <div class="friend-card-copy">
             <div class="friend-name">${esc(displayName)}</div>
             <div class="friend-meta">${communityMetaLabel()}</div>
           </div>
-          <button class="tbtn sm ${isFriend?'':'gold'}" id="friend-btn-${u.id}"
-            onclick="CommunityNav.${isFriend?'removeFriend':'addFriend'}('${u.id}','${esc(u.email||'')}','${esc(displayName)}')">
-            ${isFriend?'✓ Following':'+ Follow'}
-          </button>
-          <button class="tbtn sm" onclick="CommunityNav.viewUser('${u.id}','${esc(u.email||'')}','${esc(displayName)}')">View →</button>
+          <div class="friend-card-actions">
+            <button class="tbtn sm ${isFriend?'':'gold'}" id="friend-btn-${u.id}" onclick="CommunityNav.${isFriend?'removeFriend':'addFriend'}('${u.id}','${esc(u.email||'')}','${esc(displayName)}')">${isFriend?'Following':'Follow'}</button>
+            <button class="tbtn sm" onclick="CommunityNav.viewUser('${u.id}','${esc(u.email||'')}','${esc(displayName)}')">Open Profile</button>
+          </div>
         `;
         el.appendChild(card);
       }
     }catch(e){
-      el.innerHTML=`<div style="color:var(--crimson2);padding:12px;font-family:'JetBrains Mono',monospace;font-size:11px">
-        Error: ${esc(e.message)}<br>
-        <span style="color:var(--text3);font-size:10px">Make sure you ran supabase_schema.sql and that the profiles table exists.</span>
-      </div>`;
+      el.innerHTML=`<div style="color:var(--crimson2);padding:12px;font-family:'JetBrains Mono',monospace;font-size:11px">Error: ${esc(e.message)}<br><span style="color:var(--text3);font-size:10px">Make sure you ran supabase_schema.sql and that the profiles table exists.</span></div>`;
+
+
+
+
     }
   },
 
@@ -942,35 +942,38 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
   async _renderMyFriends(){
     const el=document.getElementById('community-content');if(!el)return;
     if(!DB._sb||!DB._user){
-      el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">Sign in to see friends.</div>';return;
+      el.innerHTML='<div class="empty-panel"><div class="empty-kicker">Community</div><div class="empty-ico">FR</div><div class="empty-ttl">Sign In To See Your Friends</div><div class="empty-sub">Your followed players and quick profile access will appear here.</div></div>';return;
     }
-    el.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px">Loading…</div>';
+    el.innerHTML='<div class="community-list-shell"><div class="community-list-sub">Loading followed players...</div></div>';
     try{
       const{data}=await DB._sb.from('friendships')
         .select('friend_id,friend_email,friend_username').eq('user_id',DB._user.id);
       if(!data?.length){
-        el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">Not following anyone yet.<br>Go to All Users to follow people.</div>';return;
+        el.innerHTML='<div class="empty-panel"><div class="empty-kicker">Following</div><div class="empty-ico">FR</div><div class="empty-ttl">You Are Not Following Anyone Yet</div><div class="empty-sub">Open All Users and follow a few players to build your personal community shelf.</div></div>';return;
       }
-      el.innerHTML=`<div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">${data.length} following</div>`;
+      el.innerHTML=`<div class="community-list-shell"><div class="community-list-head"><div><div class="community-list-title">Following</div><div class="community-list-sub">${data.length} player${data.length===1?'':'s'} in your list</div></div></div></div>`;
       for(const f of data){
         const displayName=communityDisplayName(f.friend_username,f.friend_email);
         const hue=(f.friend_id.charCodeAt(0)*17)%360;
         const card=document.createElement('div');card.className='friend-card';
         card.innerHTML=`
           <div class="friend-avatar" style="background:hsl(${hue},35%,22%);border-color:hsl(${hue},50%,42%)">${esc(displayName.slice(0,1).toUpperCase())}</div>
-          <div style="flex:1;min-width:0">
+          <div class="friend-card-copy">
             <div class="friend-name">${esc(displayName)}</div>
             <div class="friend-meta">${communityMetaLabel()}</div>
+            <div class="friend-hint">Quick access to decks, trade list, and wishlist</div>
           </div>
-          <button class="tbtn sm" onclick="CommunityNav.viewUser('${f.friend_id}','${esc(f.friend_email||'')}','${esc(displayName)}')">View →</button>
-          <button class="alert-del" onclick="CommunityNav.removeFriend('${f.friend_id}')">✕</button>
+          <div class="friend-card-actions">
+            <button class="tbtn sm" onclick="CommunityNav.viewUser('${f.friend_id}','${esc(f.friend_email||'')}','${esc(displayName)}')">Open Profile</button>
+            <button class="tbtn sm" onclick="CommunityNav.removeFriend('${f.friend_id}')">Unfollow</button>
+          </div>
         `;
         el.appendChild(card);
       }
-    }catch(e){el.innerHTML=`<div style="color:var(--crimson2);padding:12px">Error: ${esc(e.message)}</div>`;}
+    }catch(e){
+      el.innerHTML=`<div style="color:var(--crimson2);padding:12px">Error: ${esc(e.message)}</div>`;
+    }
   },
-
-  // ── Follow / Unfollow ────────────────────────────────────
   async addFriend(friendId,email,username){
     if(!DB._sb||!DB._user)return;
     try{
@@ -978,7 +981,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         user_id:DB._user.id,friend_id:friendId,friend_email:email,friend_username:username
       });
       const btn=document.getElementById('friend-btn-'+friendId);
-      if(btn){btn.textContent='✓ Following';btn.classList.remove('gold');}
+      if(btn){btn.textContent='Following';btn.classList.remove('gold');}
       Notify.show('Following '+username,'ok');
     }catch(e){Notify.show('Failed: '+e.message,'err');}
   },
@@ -1001,40 +1004,40 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
 
     // Skeleton placeholder while loading
     el.innerHTML=`
+      <div class="fp-shell">
+      <button class="fp-back-btn" onclick="CommunityNav.go(CommunityNav.cur||'friends')">Back to Community</button>
       <div class="fp-header">
-        <button onclick="CommunityNav.go(CommunityNav.cur||'friends')"
-          style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:22px;padding:0 4px 0 0;line-height:1;flex-shrink:0">←</button>
         <div class="fp-avatar" style="background:hsl(${hue},30%,18%);border-color:hsl(${hue},45%,38%);color:hsl(${hue},60%,70%)">${esc(initial)}</div>
         <div style="flex:1;min-width:0">
           <div class="fp-name">${esc(name)}</div>
           <div class="fp-email">${communityMetaLabel()}</div>
           <div class="fp-stats">
-            <div class="fp-stat">Decks: <span id="fp-deck-count">…</span></div>
-            <div class="fp-stat">Cards: <span id="fp-card-count">…</span></div>
-            <div class="fp-stat">Value: <span id="fp-total-val">…</span></div>
+            <div class="fp-stat">Decks: <span id="fp-deck-count">...</span></div>
+            <div class="fp-stat">Cards: <span id="fp-card-count">...</span></div>
+            <div class="fp-stat">Value: <span id="fp-total-val">...</span></div>
           </div>
         </div>
         <div class="fp-actions">
           <div id="fp-friend-btn"></div>
         </div>
       </div>
-      <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
-                  color:var(--text3);margin-bottom:12px;display:flex;align-items:center;gap:10px">
-        Public Decks
-        <span id="fp-bracket-legend" style="margin-left:auto;display:flex;gap:6px;font-size:9px;font-family:'JetBrains Mono',monospace;text-transform:none;letter-spacing:0"></span>
+      <div class="fp-section-head" style="margin-bottom:0">
+        <div class="fp-section-title">Public Decks</div>
+        <span id="fp-bracket-legend" class="fp-section-sub" style="margin-left:auto;display:flex;gap:6px;text-transform:none;letter-spacing:0"></span>
       </div>
       <div id="fp-decks-grid" class="fp-deck-grid">
         ${[1,2,3].map(()=>`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;height:140px;animation:shim 1.6s ease-in-out infinite;background:linear-gradient(90deg,var(--bg2),var(--bg3),var(--bg2));background-size:300%"></div>`).join('')}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px">
-        <div>
-          <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">🤝 Trade List</div>
-          <div id="fp-trade-list"><div style="color:var(--text3);font-size:12px">Loading…</div></div>
+      <div class="fp-section-grid" style="margin-top:4px">
+        <div class="fp-section">
+          <div class="fp-section-head"><div class="fp-section-title">Trade List</div><div class="fp-section-sub">Cards available to swap</div></div>
+          <div id="fp-trade-list"><div style="color:var(--text3);font-size:12px">Loading...</div></div>
         </div>
-        <div>
-          <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">⭐ Wishlist</div>
-          <div id="fp-wish-list"><div style="color:var(--text3);font-size:12px">Loading…</div></div>
+        <div class="fp-section">
+          <div class="fp-section-head"><div class="fp-section-title">Wishlist</div><div class="fp-section-sub">Cards this player is hunting</div></div>
+          <div id="fp-wish-list"><div style="color:var(--text3);font-size:12px">Loading...</div></div>
         </div>
+      </div>
       </div>`;
 
     if(!DB._sb)return;
@@ -1060,14 +1063,14 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     const totalVal=decks.reduce((s,d)=>s+d.cards.reduce((a,c)=>a+(parseFloat(this._cardData(c)?.prices?.eur||0)*c.qty),0),0);
     const dc=document.getElementById('fp-deck-count');if(dc)dc.textContent=decks.length;
     const cc=document.getElementById('fp-card-count');if(cc)cc.textContent=totalCards.toLocaleString();
-    const vc=document.getElementById('fp-total-val');if(vc)vc.textContent='€'+totalVal.toFixed(0);
+    const vc=document.getElementById('fp-total-val');if(vc)vc.textContent=String.fromCharCode(8364)+totalVal.toFixed(0);
 
     // ── Friend button ─────────────────────────────────────────
     const fbEl=document.getElementById('fp-friend-btn');
     if(fbEl&&DB._user&&DB._user.id!==userId){
       const btn=document.createElement('button');
       btn.className='tbtn'+(isFriend?' sm':' sm gold');
-      btn.textContent=isFriend?'✓ Friends':'+ Follow';
+      btn.textContent=isFriend?'Following':'Follow';
       btn.onclick=()=>isFriend?CommunityNav.removeFriend(userId):CommunityNav.addFriend(userId,email,name);
       fbEl.appendChild(btn);
     }
@@ -1104,14 +1107,14 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           <div class="fp-deck-title">${esc(d.name)}</div>
           <div class="fp-deck-meta">
             <span>${totalDeckCards} cards</span>
-            <span>€${totalDeckVal.toFixed(0)}</span>
+            <span>�${totalDeckVal.toFixed(0)}</span>
             ${d.partner?`<span>${esc(d.partner)}</span>`:''}
           </div>
         </div>
         <div class="fp-deck-footer">
-          <button class="tbtn sm" style="font-size:10px" data-action="view-fp-deck" data-deck-id="${d.id}">👁 View Deck</button>
-          <button class="tbtn sm gold" style="font-size:10px" data-action="import-fp-deck" data-deck-id="${d.id}">⬇ Import</button>
-          <button class="tbtn sm" style="font-size:10px;margin-left:auto" data-action="comment-fp-deck" data-deck-id="${d.id}">💬</button>
+          <button class="tbtn sm" style="font-size:10px" data-action="view-fp-deck" data-deck-id="${d.id}">View Deck</button>
+          <button class="tbtn sm gold" style="font-size:10px" data-action="import-fp-deck" data-deck-id="${d.id}">Import</button>
+          <button class="tbtn sm" style="font-size:10px;margin-left:auto" data-action="comment-fp-deck" data-deck-id="${d.id}">Comments</button>
         </div>
         <div class="fp-deck-viewer" id="fp-viewer-${d.id}"></div>`;
 
@@ -1134,7 +1137,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         this._profileWarmJobs.set(warmKey,job);
       }
     } else {
-      grid.innerHTML='<div class="fp-empty-state">No public decks yet.</div>';
+      grid.innerHTML='<div class="fp-empty-state">No public decks shared yet.</div>';
     }
 
     // ── Trade list ────────────────────────────────────────────
@@ -1142,7 +1145,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     const myCardSet=new Set(Store.decks.flatMap(d=>d.cards.map(cc=>cc.name.toLowerCase())));
     const tEl=document.getElementById('fp-trade-list');
     if(tEl){
-      if(!trades.length){tEl.innerHTML='<div class="fp-empty-state compact">Nothing listed for trade.</div>';}
+      if(!trades.length){tEl.innerHTML='<div class="fp-empty-state compact">No trade cards listed yet.</div>';}
       else{
         tEl.innerHTML='';
         const tradeList=document.createElement('div');
@@ -1156,23 +1159,23 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           row.innerHTML=`
             ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-card-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy">`:'<div class="fp-card-thumb card-skeleton"></div>'}
             <span class="fp-card-name">${esc(t.card_name)}</span>
-            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${t.qty}× ${t.condition||'NM'}</span>
-            ${iHave?'<span class="fp-have-badge">✓ Have</span>':''}
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${t.qty}x ${t.condition||'NM'}</span>
+            ${iHave?'<span class="fp-have-badge">Have</span>':""}
             ${cd.prices?.eur?`<span class="fp-card-price">&euro;${parseFloat(cd.prices.eur).toFixed(2)}</span>`:''}
           `;
           if(!alreadyWanted){
             const wantBtn=document.createElement('button');
             wantBtn.className='fp-want-btn';
-            wantBtn.textContent='⭐ Want';
+            wantBtn.textContent='Want';
             wantBtn.title='Add to my wishlist';
             wantBtn.onclick=()=>{
               WishlistMgr.addByName(t.card_name);
-              wantBtn.textContent='⭐ Added';wantBtn.classList.add('on');wantBtn.disabled=true;
+              wantBtn.textContent='Saved';wantBtn.classList.add('on');wantBtn.disabled=true;
             };
             row.appendChild(wantBtn);
           } else {
             const badge=document.createElement('span');
-            badge.className='fp-want-btn on';badge.textContent='⭐ On list';badge.style.cursor='default';
+            badge.className='fp-want-btn on';badge.textContent='On list';badge.style.cursor='default';
             row.appendChild(badge);
           }
           tradeList.appendChild(row);
@@ -1185,7 +1188,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     // ── Wishlist ──────────────────────────────────────────────
     const wEl=document.getElementById('fp-wish-list');
     if(wEl){
-      if(!wishes.length){wEl.innerHTML='<div class="fp-empty-state compact">Empty wishlist.</div>';}
+      if(!wishes.length){wEl.innerHTML='<div class="fp-empty-state compact">No wishlist cards saved yet.</div>';}
       else{
         wEl.innerHTML='';
         const wishList=document.createElement('div');
@@ -1201,26 +1204,26 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
             ${cd.prices?.eur?`<span class="fp-card-price">&euro;${parseFloat(cd.prices.eur).toFixed(2)}</span>`:''}
           `;
           if(iHave){
-            /* I own this card they want — offer it */
+            /* I own this card they want - offer it */
             const offerBtn=document.createElement('button');
             offerBtn.className='fp-trade-badge';offerBtn.style.cursor='pointer';
-            offerBtn.textContent='🤝 Offer';offerBtn.title='Add to your trade list so they can see it';
+            offerBtn.textContent='Offer';offerBtn.title='Add to your trade list so they can see it';
             offerBtn.onclick=()=>{
               TradeMgr.toggleCard(w.card_name);
-              offerBtn.textContent='🤝 Listed';offerBtn.style.cursor='default';offerBtn.disabled=true;
+              offerBtn.textContent='Listed';offerBtn.style.cursor='default';offerBtn.disabled=true;
             };
             row.appendChild(offerBtn);
           } else if(!alsoWant){
-            /* I don't have it — I can also want it */
+            /* I don't have it - I can also want it */
             const alsoBtn=document.createElement('button');
-            alsoBtn.className='fp-want-btn';alsoBtn.textContent='⭐ Also want';alsoBtn.title='Add to my wishlist too';
+            alsoBtn.className='fp-want-btn';alsoBtn.textContent='Also want';alsoBtn.title='Add to my wishlist too';
             alsoBtn.onclick=()=>{
               WishlistMgr.addByName(w.card_name);
-              alsoBtn.textContent='⭐ Added';alsoBtn.classList.add('on');alsoBtn.disabled=true;
+              alsoBtn.textContent='Saved';alsoBtn.classList.add('on');alsoBtn.disabled=true;
             };
             row.appendChild(alsoBtn);
           } else {
-            const b=document.createElement('span');b.className='fp-want-btn on';b.textContent='⭐ On list';b.style.cursor='default';row.appendChild(b);
+            const b=document.createElement('span');b.className='fp-want-btn on';b.textContent='On list';b.style.cursor='default';row.appendChild(b);
           }
           wishList.appendChild(row);
         });
@@ -1387,12 +1390,12 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
         const iWant=myWishCards.has(card.name.toLowerCase());
         const wantBtn=(!iOwn&&!iWant)
           ?`<button class="fp-want-btn" data-action="wish" data-card="${esc(card.name)}" title="Add to my wishlist"
-              onclick="WishlistMgr.addByName('${esc(card.name).replace(/'/g,'\\&#39;')}');this.textContent='⭐';this.classList.add('on');this.disabled=true;">⭐</button>`
-          :iWant?'<span class="fp-want-btn on" style="cursor:default;padding:2px 5px">⭐</span>'
-          :'<span class="fp-have-badge">✓</span>';
+              onclick="WishlistMgr.addByName('${esc(card.name).replace(/'/g,'\\&#39;')}');this.textContent='Saved';this.classList.add('on');this.disabled=true;">Save</button>`
+          :iWant?'<span class="fp-want-btn on" style="cursor:default;padding:2px 5px">Saved</span>'
+          :'<span class="fp-have-badge">Owned</span>';
         return `<div class="fp-mini-card" onclick="M.open({name:'${esc(card.name).replace(/'/g,"\\'")}',qty:${card.qty||1}},null)">
           ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-mini-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy" alt="${esc(card.name)}">`:'<div class="fp-mini-thumb"></div>'}
-          ${card.qty>1?`<div class="fp-mini-badge">${card.qty}×</div>`:''}
+          ${card.qty>1?`<div class="fp-mini-badge">${card.qty}x</div>`:''}
           <div class="fp-mini-info">
             <div class="fp-mini-name">${esc(card.name)}</div>
             <div class="fp-mini-meta"><span>${price?this._fmtMoney(price,0):'--'}</span><span>${shortType(cd.type_line||'')}</span></div>
@@ -1405,11 +1408,11 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
 
     el.innerHTML=`
       <div class="fp-dv-tabs">
-        <div class="fp-dv-tab on" onclick="CommunityNav._fpTab(this,'fp-dv-list-${deck.id}')">📋 Cards</div>
-        <div class="fp-dv-tab" onclick="CommunityNav._fpTab(this,'fp-dv-stats-${deck.id}')">📊 Stats</div>
-        <div class="fp-dv-tab" onclick="CommunityNav._fpTab(this,'fp-dv-comments-${deck.id}')">💬 Comments</div>
-        <button style="margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;padding:4px 10px;font-size:16px"
-          onclick="document.getElementById('fp-viewer-${deck.id}').classList.remove('open');document.querySelector('[data-deck-id=\'${deck.id}\']')?.closest('.fp-deck-card')?.classList.remove('expanded')">✕</button>
+        <div class="fp-dv-tab on" onclick="CommunityNav._fpTab(this,'fp-dv-list-${deck.id}')">Cards</div>
+        <div class="fp-dv-tab" onclick="CommunityNav._fpTab(this,'fp-dv-stats-${deck.id}')">Stats</div>
+        <div class="fp-dv-tab" onclick="CommunityNav._fpTab(this,'fp-dv-comments-${deck.id}')">Comments</div>
+        <button class="fp-dv-close"
+          onclick="document.getElementById('fp-viewer-${deck.id}').classList.remove('open');document.querySelector('[data-deck-id=\'${deck.id}\']')?.closest('.fp-deck-card')?.classList.remove('expanded')">X</button>
       </div>
 
       <div class="fp-dv-pane on" id="fp-dv-list-${deck.id}" style="max-height:320px;overflow-y:auto">
@@ -1420,7 +1423,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
       <div class="fp-dv-pane" id="fp-dv-stats-${deck.id}">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
           <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--gold2);font-weight:600">€${totalVal.toFixed(0)}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--gold2);font-weight:600">&euro;${totalVal.toFixed(0)}</div>
             <div style="font-size:9px;color:var(--text3);font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:.08em">Value</div>
           </div>
           <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
@@ -1440,7 +1443,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           <div class="fp-card-row">
             ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-card-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy">`:'<div class="fp-card-thumb" style="background:var(--bg3)"></div>'}
             <span class="fp-card-name">${esc(c.name)}</span>
-            <span class="fp-card-price" style="font-size:11px">€${v.toFixed(2)}</span>
+            <span class="fp-card-price" style="font-size:11px">&euro;${v.toFixed(2)}</span>
           </div>`;}).join('')}
       </div>
 
@@ -1532,7 +1535,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
                    partner:deck.partner||'',cards,created:Date.now(),public:true};
     Store.addDeck(newDeck);App.renderSidebar();App.loadDeck(newDeck.id);
     Menu.go('forge');
-    Notify.show('Deck imported: '+newDeck.name,'ok');
+    Notify.show('Imported deck copy: '+newDeck.name,'ok');
   },
 
   // ── My Profile + Nickname change ────────────────────────
@@ -1554,23 +1557,23 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     const avatarCard=ProfilePrefs?.getAvatarCard?.()||'';
 
     el.innerHTML=`
-      <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px 0 28px;border-bottom:1px solid var(--border);margin-bottom:20px">
+      <div class="profile-shell">
+      <div class="profile-hero">
         <div class="friend-avatar" id="profile-avatar-preview" style="width:64px;height:64px;font-size:28px;background:hsl(${hue},35%,22%);border-color:hsl(${hue},50%,42%)">${esc(username.slice(0,1).toUpperCase())}</div>
         <div style="text-align:center">
           <div style="font-family:'Cinzel',serif;font-size:20px;color:var(--gold2);font-weight:700">${esc(username)}</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-top:4px">Private profile</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-top:4px">Private profile settings</div>
         </div>
         <div style="display:flex;gap:16px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">
           <span>${Store.decks.length} decks</span>
           <span>${Store.decks.reduce((sum,d)=>sum+d.cards.reduce((acc,c)=>acc+(c.qty||0),0),0)} cards</span>
         </div>
       </div>
-
       <!-- Nickname change -->
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:16px">
-        <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">
-          Change Nickname
-        </div>
+      <div class="profile-card">
+        <div class="profile-card-title">Change Nickname</div>
+
+
         ${canChange ? `
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <input id="profile-nickname-inp" class="auth-field" value="${esc(username)}"
@@ -1586,17 +1589,17 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
             Current: <span style="color:var(--gold2)">${esc(username)}</span>
           </div>
           <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">
-            ⏳ Next change available in <strong style="color:var(--gold)">${daysLeft} day${daysLeft===1?'':'s'}</strong>
+            Next change available in <strong style="color:var(--gold)">${daysLeft} days</strong>
             ${lastChange?`(last changed ${lastChange.toLocaleDateString()})`:''} 
           </div>
         `}
         <div id="profile-nickname-status" style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:10px"></div>
       </div>
 
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:16px">
-        <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">
-          Profile Picture
-        </div>
+      <div class="profile-card">
+        <div class="profile-card-title">Profile Picture</div>
+
+
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <input id="profile-avatar-card-inp" class="auth-field" value="${esc(avatarCard)}"
             placeholder="Favourite card name" style="flex:1;min-width:180px;margin-bottom:0">
@@ -1609,14 +1612,14 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
       </div>
 
       <!-- My public decks toggle -->
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px">
-        <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">
-          My Decks — Visibility
+      <div class="profile-card">
+        <div class="profile-card-title">
+          Deck Visibility
         </div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Toggle which decks friends can see when they view your profile:</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Choose which decks other players can see on your public profile.</div>
         <div id="profile-deck-visibility"></div>
       </div>
-    `;
+      </div>`;
 
     // Render deck visibility toggles
     this._renderDeckVisibility();
@@ -1636,7 +1639,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
           <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3)">${esc(deck.commander||'No commander')}</div>
         </div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${isPublic?'var(--green2)':'var(--text3)'}">
-          ${isPublic?'👁 Visible':'🔒 Private'}
+          ${isPublic?'Visible':'Private'}
         </div>
         <div class="toggle-switch ${isPublic?'on':''}" onclick="CommunityNav._toggleDeckPublic('${deck.id}',this)" style="flex-shrink:0">
           <div class="toggle-knob"></div>
@@ -1653,7 +1656,7 @@ FROM auth.users ON CONFLICT (id) DO NOTHING;</pre>
     Store.updDeck(deck);
     toggleEl.classList.toggle('on',deck.public);
     const label=toggleEl.previousElementSibling;
-    if(label){label.style.color=deck.public?'var(--green2)':'var(--text3)';label.textContent=deck.public?'👁 Visible':'🔒 Private';}
+    if(label){label.style.color=deck.public?'var(--green2)':'var(--text3)';label.textContent=deck.public?'Visible':'Private';}
     if(DB._sb&&DB._user){
       DB._sb.from('decks').update({public:deck.public}).eq('id',deckId).eq('user_id',DB._user.id).then(({error})=>{
         if(!error)Notify.show(deck.name+(deck.public?' now visible to friends':' now private'),'ok');

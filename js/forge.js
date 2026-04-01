@@ -72,6 +72,7 @@ const App={
     document.getElementById('empty').style.display='flex';
     document.getElementById('card-grid').classList.remove('show');
     document.getElementById('list-wrap').classList.remove('show');
+    this._syncScryfallDropzone();
     MobileNav?.syncDeckButton?.();
   },
 
@@ -104,7 +105,7 @@ const App={
     Store.delDeck(id);
     if(this.curId===id){this.curId=null;this.showEmpty();this._updHeader(null);}
     this.renderSidebar();
-    Notify.show('Deck deleted','inf');
+    Notify.show('Deck removed','inf');
   },
 
   loadDeck(id){
@@ -123,7 +124,132 @@ const App={
     if(synBtn)synBtn.style.display=deck.commander?'inline-flex':'none';
     // Auto-sync to Supabase if signed in
     if(DB._user)DB.schedulePush();
+    this._syncScryfallDropzone();
     MobileNav?.syncDeckButton?.();
+  },
+
+  _syncScryfallDropzone(){
+    const dz=document.getElementById('forge-scryfall-drop');
+    if(!dz)return;
+    dz.style.display=this.curId?'flex':'none';
+    dz.classList.remove('drag');
+  },
+
+  _onScryfallDragOver(e){
+    if(!this.curId)return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect='copy';
+    document.getElementById('forge-scryfall-drop')?.classList.add('drag');
+  },
+
+  _onScryfallDragLeave(e){
+    const dz=document.getElementById('forge-scryfall-drop');
+    if(!dz)return;
+    if(!e.currentTarget?.contains?.(e.relatedTarget))dz.classList.remove('drag');
+  },
+
+  async _onScryfallDrop(e){
+    e.preventDefault();
+    const dz=document.getElementById('forge-scryfall-drop');
+    dz?.classList.remove('drag');
+    if(!this.curId){Notify.show('Open a deck first','err');return;}
+    const file=e.dataTransfer?.files?.[0];
+    if(!file){Notify.show('Drop a Scryfall card image file','err');return;}
+    await this._addDroppedScryfallFile(file);
+  },
+
+  _parseScryfallFilename(filename){
+    const base=String(filename||'').replace(/\.[^.]+$/,'').toLowerCase().trim();
+    const m=base.match(/^([a-z0-9]+)-([a-z0-9]+)-(.+)$/i);
+    if(!m)return null;
+    const set=m[1].toLowerCase();
+    const collector_number=m[2];
+    const slug=m[3].replace(/--+/g,'-');
+    const nameGuess=slug
+      .split('-')
+      .filter(Boolean)
+      .map(part=>part==='s' ? "'s" : part)
+      .join(' ')
+      .replace(/\s+'s\b/g,"'s")
+      .replace(/\b\w/g,ch=>ch.toUpperCase());
+    return {set,collector_number,slug,nameGuess,filename:base};
+  },
+
+  async _fetchDroppedScryfallCard(parsed){
+    const exactUrl=`/api/scryfall/cards/${encodeURIComponent(parsed.set)}/${encodeURIComponent(parsed.collector_number)}`;
+    try{
+      const res=await fetch(exactUrl,{headers:{Accept:'application/json'}});
+      if(res.ok){
+        const data=await res.json();
+        return {card:data,match:'exact'};
+      }
+    }catch{}
+    try{
+      const byName=await fetch(`/api/scryfall/cards/named?exact=${encodeURIComponent(parsed.nameGuess)}`,{headers:{Accept:'application/json'}});
+      if(byName.ok){
+        const data=await byName.json();
+        return {card:data,match:'name'};
+      }
+    }catch{}
+    return null;
+  },
+
+  async _addDroppedScryfallFile(file){
+    const parsed=this._parseScryfallFilename(file.name);
+    if(!parsed){
+      Notify.show('Could not read the Scryfall filename','err');
+      return;
+    }
+    Notify.show(`Matching ${parsed.nameGuess}...`,'inf',1800);
+    const result=await this._fetchDroppedScryfallCard(parsed);
+    if(!result?.card){
+      Notify.show('Could not match dropped Scryfall card','err');
+      return;
+    }
+    const slim=SF._slim?SF._slim(result.card):result.card;
+    if(slim?.name){
+      Store.setCard(slim.name,slim);
+      Store.saveCache?.();
+    }
+    this._addDroppedCardToDeck({
+      name:result.card.name||parsed.nameGuess,
+      set:(result.card.set||parsed.set||'').toLowerCase(),
+      collector_number:String(result.card.collector_number||parsed.collector_number||'')
+    },result.match);
+  },
+
+  _addDroppedCardToDeck(cardRef,matchType='exact'){
+    const deck=Store.getDeck(this.curId);
+    if(!deck)return;
+    const existing=deck.cards.find(c=>c.name.toLowerCase()===String(cardRef.name).toLowerCase());
+    let updatedPrinting=false;
+    if(existing){
+      existing.qty=(existing.qty||0)+1;
+      if(cardRef.set&&cardRef.collector_number&&(existing.set!==cardRef.set||String(existing.collector_number||'')!==String(cardRef.collector_number))){
+        existing.set=cardRef.set;
+        existing.collector_number=cardRef.collector_number;
+        updatedPrinting=true;
+      }else{
+        if(!existing.set&&cardRef.set)existing.set=cardRef.set;
+        if(!existing.collector_number&&cardRef.collector_number)existing.collector_number=cardRef.collector_number;
+      }
+    }else{
+      deck.cards.push({
+        name:cardRef.name,
+        qty:1,
+        foil:false,
+        etched:false,
+        set:cardRef.set||'',
+        collector_number:cardRef.collector_number||''
+      });
+    }
+    Store.updDeck(deck);
+    this._updHeader(deck);
+    this.render();
+    if(DB._user)DB.schedulePush();
+    const matchLabel=matchType==='exact'?'exact printing':'card match';
+    if(updatedPrinting)Notify.show(`Added ${cardRef.name} and updated to the dropped ${matchLabel}`,'ok');
+    else Notify.show(`Added ${cardRef.name} from Scryfall drop`,'ok');
   },
 
   _fetchCards(deck){
@@ -177,7 +303,7 @@ const App={
     }
     const typeEl=tile.querySelector('.ct-type');if(typeEl)typeEl.textContent=shortType(cd.type_line||'');
     const manaEl=tile.querySelector('.ct-mana');if(manaEl)manaEl.innerHTML=fmtMana(cd.mana_cost||'');
-    const priceEl=tile.querySelector('.ct-price');if(priceEl)priceEl.textContent=cd.prices?.eur?'â‚¬'+cd.prices.eur:'';
+    const priceEl=tile.querySelector('.ct-price');if(priceEl)priceEl.textContent=cd.prices?.eur?'€'+cd.prices.eur:'';
     const ovType=tile.querySelector('.ov-type');if(ovType)ovType.textContent=cd.type_line||'';
     const ovText=tile.querySelector('.ov-text');if(ovText)ovText.textContent=cd.oracle_text||'';
   },
@@ -249,6 +375,7 @@ const App={
   render(){
     const deck=Store.getDeck(this.curId);
     document.getElementById('empty').style.display=deck?'none':'flex';
+    this._syncScryfallDropzone();
     if(!deck)return;
     this._updHeader(deck);
     if(this._view==='grid')this._renderGrid(deck);else this._renderList(deck);
@@ -281,8 +408,8 @@ const App={
       for(const c of arr)grid.appendChild(this._makeTile(c,deck));
     }
     if(!cards.length&&deck.cards.length){
-      const msg=document.createElement('div');msg.style.cssText='grid-column:1/-1;padding:40px;text-align:center;color:var(--text3);font-size:14px';
-      msg.textContent='No cards match the filter.';grid.appendChild(msg);
+      const msg=document.createElement('div');msg.className='empty-panel';msg.style.gridColumn='1 / -1';
+      msg.innerHTML='<div class="empty-kicker">Deck View</div><div class="empty-ico">DB</div><div class="empty-ttl">No Cards Match Right Now</div><div class="empty-sub">Clear a filter or search term to bring the full deck back into view.</div>';grid.appendChild(msg);
     }
   },
 
@@ -379,13 +506,14 @@ const App={
     const ovType=document.createElement('div');ovType.className='ov-type';ovType.textContent=cd.type_line||'';
     const ovText=document.createElement('div');ovText.className='ov-text';ovText.textContent=cd.oracle_text||'';
     const ovBtns=document.createElement('div');ovBtns.className='ov-btns';
-    const rmB=document.createElement('button');rmB.className='ovb rm';rmB.textContent='Remove';
-    rmB.addEventListener('click',e=>{e.stopPropagation();App.chQty(deck.id,c.name,-1);});
     const addB=document.createElement('button');addB.className='ovb add';addB.textContent='Add Copy';
     addB.addEventListener('click',e=>{e.stopPropagation();App.chQty(deck.id,c.name,1);});
-    ovBtns.append(rmB,addB);
-    if(!isCmdr){const setCB=document.createElement('button');setCB.className='ovb set-cmdr';setCB.textContent='â™› Cmdr';setCB.addEventListener('click',e=>{e.stopPropagation();deck.commander=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(c.name+' â†’ Commander','ok');});ovBtns.appendChild(setCB);}
-    if(hasP&&!isPartner&&!isCmdr){const setPB=document.createElement('button');setPB.className='ovb set-partner';setPB.textContent='âŠ• Partner';setPB.addEventListener('click',e=>{e.stopPropagation();deck.partner=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(c.name+' â†’ Partner','ok');});ovBtns.appendChild(setPB);}
+    ovBtns.append(addB);
+    if(!isCmdr){const setCB=document.createElement('button');setCB.className='ovb set-cmdr';setCB.textContent='Make Commander';setCB.addEventListener('click',e=>{e.stopPropagation();deck.commander=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(`${c.name} is now your commander`,'ok');});ovBtns.appendChild(setCB);}
+    if(hasP&&!isPartner&&!isCmdr){const setPB=document.createElement('button');setPB.className='ovb set-partner';setPB.textContent='Make Partner';setPB.addEventListener('click',e=>{e.stopPropagation();deck.partner=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(`${c.name} is now your partner`,'ok');});ovBtns.appendChild(setPB);}
+    const rmB=document.createElement('button');rmB.className='ovb rm';rmB.textContent='Remove';
+    rmB.addEventListener('click',e=>{e.stopPropagation();App.chQty(deck.id,c.name,-1);});
+    ovBtns.append(rmB);
     ov.append(ovName,ovType,ovText,ovBtns);imgWrap.appendChild(ov);
 
     const info=document.createElement('div');info.className='ct-info';
@@ -398,7 +526,7 @@ const App={
       const ctSet=document.createElement('div');
       ctSet.style.cssText='font-family:"JetBrains Mono",monospace;font-size:8px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
       ctSet.textContent=setStr+(cnStr?' #'+cnStr:'');
-      ctSet.title=`Set: ${setStr}${cnStr?' Â· #'+cnStr:''}`;
+      ctSet.title=`Set: ${setStr}${cnStr?' · #'+cnStr:''}`;
       info.appendChild(ctName);info.appendChild(ctType);info.appendChild(ctSet);
     } else {
       info.append(ctName,ctType);
@@ -406,13 +534,14 @@ const App={
     const ctMana=document.createElement('div');ctMana.className='ct-mana';ctMana.innerHTML=fmtMana(cd.mana_cost||'');
     const ctFoot=document.createElement('div');ctFoot.className='ct-foot';
     const ctPriceWrap=document.createElement('div');ctPriceWrap.style.cssText='display:flex;align-items:center;gap:3px';
-    const ctPrice=document.createElement('div');ctPrice.className='ct-price';ctPrice.textContent=cd.prices?.eur?'â‚¬'+parseFloat(cd.prices.eur).toFixed(2):'';
+    const ctPrice=document.createElement('div');ctPrice.className='ct-price';ctPrice.textContent=cd.prices?.eur?'€'+parseFloat(cd.prices.eur).toFixed(2):'';
     const rarColors={mythic:'#e8703a',rare:'#c8a84b',uncommon:'#9ab0c0',common:'#445566',special:'#b090e0'};
     if(cd.rarity&&rarColors[cd.rarity]){const dot=document.createElement('div');dot.className='ct-rarity-dot';dot.style.background=rarColors[cd.rarity];dot.title=cd.rarity;ctPriceWrap.appendChild(dot);}
     ctPriceWrap.appendChild(ctPrice);
     ctFoot.append(ctMana,ctPriceWrap);info.appendChild(ctFoot);
     tile.append(imgWrap,info);
     attachTapPop(tile);
+    attachCardTilt(tile);
     tile.addEventListener('click',()=>M.open(c,deck.id));
     return tile;
   },
@@ -441,19 +570,19 @@ const App={
       const td4=document.createElement('td');td4.style.cssText='font-family:JetBrains Mono,monospace;text-align:center;color:var(--text2)';td4.textContent=cd.cmc||0;
       const td5=document.createElement('td');
       const qc=document.createElement('div');qc.className='qc';
-      const qm=document.createElement('button');qm.className='qb';qm.textContent='âˆ’';qm.addEventListener('click',()=>App.chQty(deck.id,c.name,-1));
+      const qm=document.createElement('button');qm.className='qb';qm.textContent='-';qm.addEventListener('click',()=>App.chQty(deck.id,c.name,-1));
       const qv=document.createElement('span');qv.className='qv';qv.textContent=c.qty;
-      const qp=document.createElement('button');qp.className='qb';qp.textContent='ï¼‹';qp.addEventListener('click',()=>App.chQty(deck.id,c.name,1));
+      const qp=document.createElement('button');qp.className='qb';qp.textContent='+';qp.addEventListener('click',()=>App.chQty(deck.id,c.name,1));
       qc.append(qm,qv,qp);td5.appendChild(qc);
-      const td6=document.createElement('td');td6.style.cssText='font-family:JetBrains Mono,monospace;font-size:11px;color:var(--green2)';td6.textContent=cd.prices?.eur?'â‚¬'+cd.prices.eur:'';
+      const td6=document.createElement('td');td6.style.cssText='font-family:JetBrains Mono,monospace;font-size:11px;color:var(--green2)';td6.textContent=cd.prices?.eur?'€'+cd.prices.eur:'';
       const td7=document.createElement('td');
       const xb=document.createElement('button');xb.style.cssText='background:none;border:none;color:var(--text3);font-size:15px;cursor:pointer;padding:0 3px;line-height:1';
-      xb.textContent='âœ•';xb.addEventListener('click',()=>App.chQty(deck.id,c.name,-99));td7.appendChild(xb);
+      xb.textContent='X';xb.addEventListener('click',()=>App.chQty(deck.id,c.name,-99));td7.appendChild(xb);
       tr.append(td0,td1,td2,td3,td4,td5,td6,td7);tbody.appendChild(tr);
     }
     if(!cards.length&&deck.cards.length){
       const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=8;
-      td.style.cssText='text-align:center;padding:30px;color:var(--text3);font-size:14px';td.textContent='No cards match the filter.';tr.appendChild(td);tbody.appendChild(tr);
+      td.style.padding='22px';td.innerHTML='<div class="empty-panel"><div class="empty-kicker">Deck View</div><div class="empty-ico">DB</div><div class="empty-ttl">No Cards Match Right Now</div><div class="empty-sub">Clear a filter or search term to bring the full deck back into view.</div></div>';tr.appendChild(td);tbody.appendChild(tr);
     }
   },
 
@@ -466,7 +595,7 @@ const App={
   renderSidebar(){
     const list=document.getElementById('deck-list');
     const decks=Store.decks;
-    if(!decks.length){list.innerHTML='<div style="padding:14px;font-size:11px;color:var(--text3);text-align:center">No decks yet</div>';MobileNav?.syncDeckButton?.();return;}
+    if(!decks.length){list.innerHTML='<div class="empty-panel" style="margin:8px"><div class="empty-kicker">Decks</div><div class="empty-ico">DB</div><div class="empty-ttl">No Decks Yet</div><div class="empty-sub">Import your first list or start a new brew to fill this shelf.</div></div>';MobileNav?.syncDeckButton?.();return;}
     list.innerHTML='';
     let dragSrc=null;
     for(const d of decks){
@@ -502,7 +631,7 @@ const App={
         meta.appendChild(tagRow);
       }
       meta.append(nameRow,sub);
-      const del=document.createElement('button');del.className='di-del';del.textContent='âœ•';del.addEventListener('click',e=>App.delDeck(d.id,e));
+      const del=document.createElement('button');del.className='di-del';del.textContent='X';del.addEventListener('click',e=>App.delDeck(d.id,e));
       /* context menu: duplicate */
       const dup=document.createElement('button');dup.className='di-del';dup.textContent='âŽ˜';
       dup.title='Duplicate deck';dup.style.marginRight='2px';
