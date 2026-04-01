@@ -26,7 +26,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <script>
-window.APP_VERSION = '202604011602';
+window.APP_VERSION = '202604011608';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -327,47 +327,27 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <div class="forge-kpi"><div class="forge-kpi-label">Avg CMC</div><div class="forge-kpi-value" id="forge-kpi-cmc">0.0</div></div>
         <div class="forge-kpi accent"><div class="forge-kpi-label">Value</div><div class="forge-kpi-value" id="forge-kpi-value">€0</div></div>
       </div>
-      <div id="forge-workspace">
-        <div id="card-area" ondragover="App._onScryfallDragOver(event)" ondragleave="App._onScryfallDragLeave(event)" ondrop="App._onScryfallDrop(event)">
-          <div id="empty">
-            <div class="empty-ico">Deck</div>
-            <div class="empty-ttl">Start Your Next Deck</div>
-            <div class="empty-sub">Import a list from Moxfield or MTGO, or start a fresh brew from scratch.</div>
-            <button class="tbtn gold" onclick="P.import()">Import Deck</button>
-          </div>
-          <div id="card-grid"></div>
-          <div id="list-wrap"><table id="ltbl">
-            <thead><tr>
-              <th style="width:38px"></th>
-              <th onclick="App.sortBy('name')">Name</th>
-              <th>Mana</th>
-              <th onclick="App.sortBy('type')">Type</th>
-              <th onclick="App.sortBy('cmc')" style="width:50px">CMC</th>
-              <th style="width:72px">Qty</th>
-              <th onclick="App.sortBy('price')" style="width:66px">Price</th>
-              <th style="width:28px"></th>
-            </tr></thead>
-            <tbody id="ltbody"></tbody>
-          </table></div>
+      <div id="card-area" ondragover="App._onScryfallDragOver(event)" ondragleave="App._onScryfallDragLeave(event)" ondrop="App._onScryfallDrop(event)">
+        <div id="empty">
+          <div class="empty-ico">Deck</div>
+          <div class="empty-ttl">Start Your Next Deck</div>
+          <div class="empty-sub">Import a list from Moxfield or MTGO, or start a fresh brew from scratch.</div>
+          <button class="tbtn gold" onclick="P.import()">Import Deck</button>
         </div>
-        <aside id="forge-inspector">
-          <div class="forge-panel">
-            <div class="forge-panel-kicker">Card Inspector</div>
-            <div id="forge-inspector-body" class="forge-inspector-empty">
-              <div class="forge-inspector-empty-title">Pick a card in this deck</div>
-              <div class="forge-inspector-empty-copy">Hover a deck card or load a deck and details, printings, and quick actions stay visible here.</div>
-            </div>
-          </div>
-          <div class="forge-panel">
-            <div class="forge-panel-kicker">Live Advice</div>
-            <div id="forge-advice-list" class="forge-advice-list">
-              <div class="forge-advice-card">
-                <div class="forge-advice-title">Open a deck to begin</div>
-                <div class="forge-advice-copy">We will surface balance, curve, and support suggestions here while you build.</div>
-              </div>
-            </div>
-          </div>
-        </aside>
+        <div id="card-grid"></div>
+        <div id="list-wrap"><table id="ltbl">
+          <thead><tr>
+            <th style="width:38px"></th>
+            <th onclick="App.sortBy('name')">Name</th>
+            <th>Mana</th>
+            <th onclick="App.sortBy('type')">Type</th>
+            <th onclick="App.sortBy('cmc')" style="width:50px">CMC</th>
+            <th style="width:72px">Qty</th>
+            <th onclick="App.sortBy('price')" style="width:66px">Price</th>
+            <th style="width:28px"></th>
+          </tr></thead>
+          <tbody id="ltbody"></tbody>
+        </table></div>
       </div>
     </div>
 

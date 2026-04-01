@@ -1,7 +1,7 @@
 ﻿/* CommanderForge â€” forge: App (deck editor), BracketCalc */
 
 const App={
-  curId:null,_view:'grid',_filter:'all',_search:'',_sort:'name',_cmcFilter:null,_inspectorName:'',
+  curId:null,_view:'grid',_filter:'all',_search:'',_sort:'name',_cmcFilter:null,
 
   async init(){
     Store.load();
@@ -73,7 +73,6 @@ const App={
     document.getElementById('card-grid').classList.remove('show');
     document.getElementById('list-wrap').classList.remove('show');
     this._clearScryfallDragState();
-    this._renderBuilderChrome(null);
     MobileNav?.syncDeckButton?.();
   },
 
@@ -123,17 +122,10 @@ const App={
     // Show synergy button if commander is set
     const synBtn=document.getElementById('synergy-btn');
     if(synBtn)synBtn.style.display=deck.commander?'inline-flex':'none';
-    this._inspectorName=deck.commander||deck.partner||deck.cards[0]?.name||'';
     // Auto-sync to Supabase if signed in
     if(DB._user)DB.schedulePush();
     this._clearScryfallDragState();
     MobileNav?.syncDeckButton?.();
-  },
-
-  _pickInspectorCard(name){
-    if(!name)return;
-    this._inspectorName=name;
-    this._renderInspector(Store.getDeck(this.curId));
   },
 
   _getScryfallDropTarget(){
@@ -252,7 +244,6 @@ const App={
       });
     }
     Store.updDeck(deck);
-    this._inspectorName=cardRef.name;
     this._updHeader(deck);
     this.render();
     if(DB._user)DB.schedulePush();
@@ -489,7 +480,6 @@ const App={
     const wrap=document.getElementById('forge-builder-kpis');
     if(!deck){
       if(wrap)wrap.style.display='none';
-      this._renderInspector(null);
       this._renderAdvice(null,[]);
       return;
     }
@@ -505,7 +495,6 @@ const App={
       'forge-kpi-value':'€'+metrics.value.toFixed(0)
     };
     Object.entries(vals).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.textContent=val;});
-    this._renderInspector(deck);
     this._renderAdvice(deck,this._deckAdvice(deck,metrics));
   },
 
@@ -517,57 +506,6 @@ const App={
       return;
     }
     el.innerHTML=items.map(item=>`<div class="forge-advice-card ${item.tone||''}"><div class="forge-advice-title">${esc(item.title)}</div><div class="forge-advice-copy">${esc(item.copy)}</div></div>`).join('');
-  },
-
-  _renderInspector(deck){
-    const el=document.getElementById('forge-inspector-body');
-    if(!el)return;
-    if(!deck){
-      el.className='forge-inspector-empty';
-      el.innerHTML='<div class="forge-inspector-empty-title">Pick a card in this deck</div><div class="forge-inspector-empty-copy">Hover a deck card or load a deck and details, printings, and quick actions stay visible here.</div>';
-      return;
-    }
-    const name=this._inspectorName||deck.commander||deck.partner||deck.cards[0]?.name||'';
-    if(!name){
-      el.className='forge-inspector-empty';
-      el.innerHTML='<div class="forge-inspector-empty-title">No cards in this deck yet</div><div class="forge-inspector-empty-copy">Add your commander or drop cards in and the inspector will track them here.</div>';
-      return;
-    }
-    const cardEntry=deck.cards.find(c=>c.name===name)||{name,qty:(name===deck.commander||name===deck.partner)?1:0};
-    const cd=Store.card(name)||{};
-    const flags=this._cardRoleFlags(cd);
-    const img=cd.img?.normal||cd.img?.crop||'';
-    const canPartner=Partner.hasPartner(cd);
-    const isCmdr=name===deck.commander;
-    const isPartner=name===deck.partner;
-    const setInfo=(cardEntry.set||cd.set)?`${String(cardEntry.set||cd.set).toUpperCase()}${(cardEntry.collector_number||cd.collector_number)?' #'+String(cardEntry.collector_number||cd.collector_number):''}`:'Deck card';
-    const price=parseFloat(cd.prices?.eur||0)||0;
-    const role=flags.land?'Land':flags.ramp?'Ramp':flags.draw?'Draw':flags.removal?'Removal':'Core';
-    el.className='';
-    el.innerHTML=`
-      ${img?`<img class="forge-inspector-card" src="${esc(img)}" alt="${esc(name)}" loading="lazy">`:'<div class="forge-inspector-card"></div>'}
-      <div class="forge-inspector-name">${esc(name)}</div>
-      <div class="forge-inspector-meta"><span class="forge-inspector-set">${esc(setInfo)}</span><span class="forge-inspector-price">${price?'€'+price.toFixed(2):'No price data'}</span></div>
-      <div class="forge-inspector-type">${esc(cd.type_line||'Card details will appear here')}</div>
-      <div class="forge-inspector-text">${esc(cd.oracle_text||'Open details or hover another card to inspect different printings, text, and actions.')}</div>
-      <div class="forge-inspector-stats">
-        <div class="forge-inspector-stat"><div class="forge-inspector-stat-label">Copies</div><div class="forge-inspector-stat-value">${cardEntry.qty||1}</div></div>
-        <div class="forge-inspector-stat"><div class="forge-inspector-stat-label">CMC</div><div class="forge-inspector-stat-value">${cd.cmc??0}</div></div>
-        <div class="forge-inspector-stat"><div class="forge-inspector-stat-label">Role</div><div class="forge-inspector-stat-value">${role}</div></div>
-        <div class="forge-inspector-stat"><div class="forge-inspector-stat-label">Status</div><div class="forge-inspector-stat-value">${isCmdr?'Commander':isPartner?'Partner':'Main Deck'}</div></div>
-      </div>
-      <div class="forge-inspector-actions">
-        <button class="tbtn gold" type="button" data-fi-action="open">Open Details</button>
-        <button class="tbtn" type="button" data-fi-action="add">Add Copy</button>
-        ${!isCmdr?'<button class="tbtn" type="button" data-fi-action="cmdr">Set Commander</button>':''}
-        ${canPartner&&!isPartner&&!isCmdr?'<button class="tbtn purple" type="button" data-fi-action="partner">Set Partner</button>':''}
-        <button class="tbtn" type="button" data-fi-action="remove">Remove</button>
-      </div>`;
-    el.querySelector('[data-fi-action="open"]')?.addEventListener('click',()=>M.open(cardEntry,deck.id));
-    el.querySelector('[data-fi-action="add"]')?.addEventListener('click',()=>this.chQty(deck.id,name,1));
-    el.querySelector('[data-fi-action="remove"]')?.addEventListener('click',()=>this.chQty(deck.id,name,-1));
-    el.querySelector('[data-fi-action="cmdr"]')?.addEventListener('click',()=>{deck.commander=name;Store.updDeck(deck);this._updHeader(deck);this.render();Notify.show(`${name} is now your commander`,'ok');});
-    el.querySelector('[data-fi-action="partner"]')?.addEventListener('click',()=>{deck.partner=name;Store.updDeck(deck);this._updHeader(deck);this.render();Notify.show(`${name} is now your partner`,'ok');});
   },
 
   _bulkPoolSummary:{value:0,updated:0},
@@ -685,7 +623,6 @@ const App={
     tile.append(imgWrap,info);
     attachTapPop(tile);
     attachCardTilt(tile);
-    tile.addEventListener('mouseenter',()=>this._pickInspectorCard(c.name));
     tile.addEventListener('click',()=>M.open(c,deck.id));
     return tile;
   },
@@ -699,7 +636,6 @@ const App={
       const cd=Store.card(c.name)||{};
       const isCmdr=c.name===deck.commander,isPartner=c.name===deck.partner;
       const tr=document.createElement('tr');
-      tr.addEventListener('mouseenter',()=>this._pickInspectorCard(c.name));
       if(isCmdr)tr.className='cmdr-row';else if(isPartner)tr.className='partner-row';
       const tag=getTypeTag(cd.type_line||'');
       const td0=document.createElement('td');
