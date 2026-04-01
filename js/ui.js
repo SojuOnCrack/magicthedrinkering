@@ -151,6 +151,10 @@ document.addEventListener('click',e=>{
     SearchSuggest.hide('cs-suggest');
     SearchSuggest.hide('cs2-suggest');
   }
+  if(!e.target.closest('.cmdr-input-wrap')){
+    P?._hideCommanderAC?.(1);
+    P?._hideCommanderAC?.(2);
+  }
 });
 
 const Menu={
@@ -879,6 +883,8 @@ const P={
     pf.append(cl,cp,dl);
   },
   _curFmt:'moxfield',
+  _cmdrAC:{1:[],2:[]},
+  _cmdrACTimer:null,
   _setFmt(f){
     this._curFmt=f;
     document.querySelectorAll('[id^="efmt-"]').forEach(b=>{b.classList.toggle('gold',b.id==='efmt-'+f);});
@@ -890,6 +896,7 @@ const P={
 
   editCmdr(){
     const deck=Store.getDeck(App.curId);if(!deck)return;
+    this._cmdrAC={1:[],2:[]};
     this._open('Commanders',true);
     const hasPartner=!!deck.partner;
     document.getElementById('pbody').innerHTML=`
@@ -902,15 +909,21 @@ const P={
       <div class="cmdr-slots">
         <div class="cmdr-slot active" id="slot-1">
           <div class="cmdr-slot-label">Commander</div>
-          <div class="cmdr-slot-name" id="slot-1-name">${esc(deck.commander||'-')}</div>
+          <div class="cmdr-slot-name" id="slot-1-name">${esc(deck.commander||'No commander selected')}</div>
           <div class="cmdr-slot-ability" id="slot-1-ability"></div>
-          <input class="ni" id="ci-1" value="${esc(deck.commander||'-')}" placeholder="Commander name..." oninput="P._updateSlotPreview(1)" style="margin-top:8px;margin-bottom:0">
+          <div class="cmdr-input-wrap">
+            <input class="ni" id="ci-1" value="${esc(deck.commander||'')}" placeholder="Commander name..." autocomplete="off" oninput="P._onCommanderType(1,this.value)" onkeydown="P._onCommanderKey(1,event)" style="margin-top:8px;margin-bottom:0">
+            <div class="cmdr-ac" id="cmdr-ac-1" style="display:none"></div>
+          </div>
         </div>
         <div class="cmdr-slot${hasPartner?' active partner':''}" id="slot-2" style="opacity:${hasPartner?1:.4};transition:opacity .2s">
           <div class="cmdr-slot-label">Partner / Background</div>
-          <div class="cmdr-slot-name" id="slot-2-name">${esc(deck.partner||'-')}</div>
+          <div class="cmdr-slot-name" id="slot-2-name">${esc(deck.partner||'No partner selected')}</div>
           <div class="cmdr-slot-ability" id="slot-2-ability"></div>
-          <input class="ni" id="ci-2" value="${esc(deck.partner||'-')}" placeholder="Partner / Background name..." ${hasPartner?'':'disabled'} oninput="P._updateSlotPreview(2)" style="margin-top:8px;margin-bottom:0">
+          <div class="cmdr-input-wrap">
+            <input class="ni" id="ci-2" value="${esc(deck.partner||'')}" placeholder="Partner / Background name..." autocomplete="off" ${hasPartner?'':'disabled'} oninput="P._onCommanderType(2,this.value)" onkeydown="P._onCommanderKey(2,event)" style="margin-top:8px;margin-bottom:0">
+            <div class="cmdr-ac" id="cmdr-ac-2" style="display:none"></div>
+          </div>
         </div>
       </div>
       <p style="font-size:11px;color:var(--text3);margin-top:4px">Partner commanders share the command zone. Both count toward your deck's color identity.</p>
@@ -932,6 +945,7 @@ const P={
       if(synBtn)synBtn.style.display=deck.commander?'inline-flex':'none';
     };
     pf.append(ca,sv);
+    document.getElementById('ci-1')?.focus();
   },
 
   _togglePartner(){
@@ -945,6 +959,7 @@ const P={
     slot2.classList.toggle('active',on);slot2.classList.toggle('partner',on);
     slot2.style.opacity=on?1:.4;
     inp2.disabled=!on;
+    if(!on)this._hideCommanderAC(2);
   },
 
   _updateSlotPreview(n){
@@ -952,11 +967,78 @@ const P={
     const cd=Store.card(inp.value.trim());
     const nameEl=document.getElementById('slot-'+n+'-name');
     const abilEl=document.getElementById('slot-'+n+'-ability');
-    if(nameEl) nameEl.textContent=inp.value.trim()||'-';
+    if(nameEl) nameEl.textContent=inp.value.trim()||(n===1?'No commander selected':'No partner selected');
     if(abilEl){
       const pType=Partner.partnerType(cd);
       abilEl.textContent=pType?'Partner: '+Partner.label(pType):(cd?'No partner ability':'');
     }
+  },
+
+  _hideCommanderAC(slot){
+    const box=document.getElementById('cmdr-ac-'+slot);
+    if(box)box.style.display='none';
+    this._cmdrAC[slot]=[];
+  },
+
+  async _fetchCommanderAC(slot,val){
+    try{
+      const r=await fetch(`/api/scryfall/cards/autocomplete?q=${encodeURIComponent(val.trim())}&include_extras=false`,{headers:{Accept:'application/json'}});
+      if(!r.ok)return this._hideCommanderAC(slot);
+      const d=await r.json();
+      this._cmdrAC[slot]=(d.data||[]).slice(0,8);
+      this._renderCommanderAC(slot);
+    }catch{
+      this._hideCommanderAC(slot);
+    }
+  },
+
+  _renderCommanderAC(slot){
+    const box=document.getElementById('cmdr-ac-'+slot);
+    if(!box)return;
+    const items=this._cmdrAC[slot]||[];
+    if(!items.length){box.style.display='none';return;}
+    box.innerHTML='';
+    items.forEach(name=>{
+      const row=document.createElement('button');
+      row.type='button';
+      row.className='cmdr-ac-item';
+      row.innerHTML=`<span class="cmdr-ac-name">${esc(name)}</span><span class="cmdr-ac-hint">Use as ${slot===1?'commander':'partner'}</span>`;
+      row.addEventListener('mousedown',e=>{
+        e.preventDefault();
+        this._pickCommanderAC(slot,name);
+      });
+      box.appendChild(row);
+    });
+    box.style.display='block';
+  },
+
+  _pickCommanderAC(slot,name){
+    const inp=document.getElementById('ci-'+slot);
+    if(!inp)return;
+    inp.value=name;
+    this._hideCommanderAC(slot);
+    this._updateSlotPreview(slot);
+  },
+
+  _onCommanderType(slot,val){
+    this._updateSlotPreview(slot);
+    clearTimeout(this._cmdrACTimer);
+    if(!val||val.trim().length<2){this._hideCommanderAC(slot);return;}
+    this._cmdrACTimer=setTimeout(()=>this._fetchCommanderAC(slot,val),140);
+  },
+
+  _onCommanderKey(slot,e){
+    const items=this._cmdrAC[slot]||[];
+    if(e.key==='Enter'&&items.length){
+      e.preventDefault();
+      this._pickCommanderAC(slot,items[0]);
+      return true;
+    }
+    if(e.key==='Escape'){
+      this._hideCommanderAC(slot);
+      return true;
+    }
+    return false;
   }
 };
 

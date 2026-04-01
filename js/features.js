@@ -1550,13 +1550,13 @@ const WishSection={
     list.innerHTML="";
     data.forEach(r=>{
       const cd=Store.card(r.card_name)||{};
-      const img=cd.img&&(cd.img.crop||cd.img.normal)||"";
+      const img=cd.img&&(cd.img.normal||cd.img.crop)||"";
       const price=parseFloat(cd.prices&&cd.prices.eur||0);
       const row=document.createElement("div");
-      row.className="trade-card";
+      row.className="bulk-pool-card";
       row.style.cursor="pointer";
       const thumb=img
-        ? '<img class="bulk-pool-thumb" src="'+esc(img)+'" loading="lazy" style="width:48px;height:67px;object-fit:cover;border-radius:4px;flex-shrink:0">'
+        ? '<img class="bulk-pool-thumb" src="'+esc(img)+'" loading="lazy" style="width:48px;height:67px;object-fit:contain;border-radius:4px;flex-shrink:0;background:var(--bg3)">'
         : '<div style="width:48px;height:67px;background:var(--bg3);border-radius:4px;flex-shrink:0;border:1px solid var(--border)"></div>';
       const note=r.note?esc(r.note)+" · ":"";
       const priceStr=price?"€"+price.toFixed(2):"no price data";
