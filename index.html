@@ -26,7 +26,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <script>
-window.APP_VERSION = '202604011452';
+window.APP_VERSION = '202604011500';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -318,15 +318,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <button class="tbtn sm" onclick="App._hideAddRow()" style="font-size:10px;color:var(--text3)">X</button>
         <div id="forge-add-ac" style="display:none;position:absolute;top:100%;left:10px;right:10px;background:var(--bg2);border:1px solid var(--gold3);border-radius:0 0 8px 8px;z-index:200;max-height:200px;overflow-y:auto"></div>
       </div>
-      <div id="card-area">
-        <div id="forge-scryfall-drop" style="display:none;margin:10px 10px 0;padding:12px 14px;border:1px dashed var(--gold3);border-radius:12px;background:linear-gradient(180deg,rgba(200,168,75,.08),rgba(12,18,31,.76));color:var(--text2);font-size:12px;align-items:center;justify-content:space-between;gap:12px"
-          ondragover="App._onScryfallDragOver(event)" ondragleave="App._onScryfallDragLeave(event)" ondrop="App._onScryfallDrop(event)">
-          <div>
-            <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold2);margin-bottom:3px">Scryfall Drop</div>
-            <div style="font-size:11px;color:var(--text3)">Drop a card image from Scryfall here to add that exact printing to the current deck.</div>
-          </div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ice2);white-space:nowrap">set + collector + name</div>
-        </div>
+      <div id="card-area" ondragover="App._onScryfallDragOver(event)" ondragleave="App._onScryfallDragLeave(event)" ondrop="App._onScryfallDrop(event)">
         <div id="empty">
           <div class="empty-ico">Deck</div>
           <div class="empty-ttl">Start Your Next Deck</div>

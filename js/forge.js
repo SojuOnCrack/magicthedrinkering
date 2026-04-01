@@ -72,7 +72,7 @@ const App={
     document.getElementById('empty').style.display='flex';
     document.getElementById('card-grid').classList.remove('show');
     document.getElementById('list-wrap').classList.remove('show');
-    this._syncScryfallDropzone();
+    this._clearScryfallDragState();
     MobileNav?.syncDeckButton?.();
   },
 
@@ -124,34 +124,34 @@ const App={
     if(synBtn)synBtn.style.display=deck.commander?'inline-flex':'none';
     // Auto-sync to Supabase if signed in
     if(DB._user)DB.schedulePush();
-    this._syncScryfallDropzone();
+    this._clearScryfallDragState();
     MobileNav?.syncDeckButton?.();
   },
 
-  _syncScryfallDropzone(){
-    const dz=document.getElementById('forge-scryfall-drop');
-    if(!dz)return;
-    dz.style.display=this.curId?'flex':'none';
-    dz.classList.remove('drag');
+  _getScryfallDropTarget(){
+    return document.getElementById('card-area');
+  },
+
+  _clearScryfallDragState(){
+    this._getScryfallDropTarget()?.classList.remove('scryfall-drag');
   },
 
   _onScryfallDragOver(e){
     if(!this.curId)return;
     e.preventDefault();
     e.dataTransfer.dropEffect='copy';
-    document.getElementById('forge-scryfall-drop')?.classList.add('drag');
+    this._getScryfallDropTarget()?.classList.add('scryfall-drag');
   },
 
   _onScryfallDragLeave(e){
-    const dz=document.getElementById('forge-scryfall-drop');
-    if(!dz)return;
-    if(!e.currentTarget?.contains?.(e.relatedTarget))dz.classList.remove('drag');
+    const target=this._getScryfallDropTarget();
+    if(!target)return;
+    if(!e.currentTarget?.contains?.(e.relatedTarget))target.classList.remove('scryfall-drag');
   },
 
   async _onScryfallDrop(e){
     e.preventDefault();
-    const dz=document.getElementById('forge-scryfall-drop');
-    dz?.classList.remove('drag');
+    this._clearScryfallDragState();
     if(!this.curId){Notify.show('Open a deck first','err');return;}
     const file=e.dataTransfer?.files?.[0];
     if(!file){Notify.show('Drop a Scryfall card image file','err');return;}
@@ -375,7 +375,7 @@ const App={
   render(){
     const deck=Store.getDeck(this.curId);
     document.getElementById('empty').style.display=deck?'none':'flex';
-    this._syncScryfallDropzone();
+    this._clearScryfallDragState();
     if(!deck)return;
     this._updHeader(deck);
     if(this._view==='grid')this._renderGrid(deck);else this._renderList(deck);

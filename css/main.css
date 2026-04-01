@@ -224,6 +224,16 @@ input,textarea,select{font-family:'JetBrains Mono',monospace;border:none;outline
 
 /* ── CARD AREA ── */
 #card-area{flex:1;overflow-y:auto;padding:14px;position:relative;}
+#card-area.scryfall-drag::after{
+  content:'Drop Scryfall card image to add that printing';
+  position:absolute;inset:14px;
+  display:flex;align-items:center;justify-content:center;
+  border:1px dashed var(--gold2);border-radius:16px;
+  background:linear-gradient(180deg,rgba(200,168,75,.14),rgba(10,16,27,.86));
+  box-shadow:0 0 0 1px rgba(200,168,75,.22),0 18px 34px rgba(0,0,0,.24);
+  color:var(--gold4);font-family:'Cinzel',serif;font-size:12px;letter-spacing:.08em;
+  text-transform:uppercase;pointer-events:none;z-index:4;
+}
 #card-grid{display:none;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;}
 #card-grid.show{display:grid;}
 .sec-hdr{grid-column:1/-1;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.14em;
@@ -1735,11 +1745,7 @@ textarea.ia:focus{border-color:var(--gold3);}
 .friend-card-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;}
 .friend-meta{font-size:10px;}
 .friend-hint{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--text3);}
-#forge-scryfall-drop{transition:border-color .18s,background .18s,box-shadow .18s,transform .18s;}
-#forge-scryfall-drop.drag{
-  border-color:var(--gold2) !important;
-  background:linear-gradient(180deg,rgba(200,168,75,.16),rgba(18,27,43,.94)) !important;
-  box-shadow:0 0 0 1px var(--gold3),0 18px 32px rgba(0,0,0,.18);
-  transform:translateY(-1px);
-}
+#card-area.scryfall-drag #card-grid,
+#card-area.scryfall-drag #list-wrap,
+#card-area.scryfall-drag #empty{filter:saturate(.85) brightness(.92);}
 
