@@ -1552,26 +1552,38 @@ const WishSection={
       const cd=Store.card(r.card_name)||{};
       const img=cd.img&&(cd.img.normal||cd.img.crop)||"";
       const price=parseFloat(cd.prices&&cd.prices.eur||0);
+      const priceStr=price?"€"+price.toFixed(2):"No price data";
+      const setInfo=cd.set?(cd.set.toUpperCase()+(cd.collector_number?" #"+cd.collector_number:"")):"Wishlist";
+      const rarity=cd.rarity||"common";
+      const rarityClass={common:'cs-rarity-c',uncommon:'cs-rarity-u',rare:'cs-rarity-r',mythic:'cs-rarity-m'}[rarity]||'';
+      const note=r.note?esc(r.note):"Wanted card";
       const row=document.createElement("div");
-      row.className="bulk-pool-card";
+      row.className="cs-card";
       row.style.cursor="pointer";
-      const thumb=img
-        ? '<img class="bulk-pool-thumb" src="'+esc(img)+'" loading="lazy" style="width:48px;height:67px;object-fit:contain;border-radius:4px;flex-shrink:0;background:var(--bg3)">'
-        : '<div style="width:48px;height:67px;background:var(--bg3);border-radius:4px;flex-shrink:0;border:1px solid var(--border)"></div>';
-      const note=r.note?esc(r.note)+" · ":"";
-      const priceStr=price?"€"+price.toFixed(2):"no price data";
-      row.innerHTML=thumb
-        +'<div style="flex:1;min-width:0">'
-        +'<div class="bulk-pool-name" style="font-size:13px">'+esc(r.card_name)+"</div>"
-        +'<div class="bulk-pool-meta">'+note+priceStr+"</div>"
-        +"</div>"
-        +'<span class="trade-badge want">Wanted</span>';
+      row.innerHTML=`
+        ${img
+          ? `<img class="cs-card-img" src="${esc(img)}" loading="lazy" alt="${esc(r.card_name)}">`
+          : `<div class="cs-card-img" style="display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px">No image</div>`}
+        <div class="cs-card-body">
+          <div class="cs-card-name" title="${esc(r.card_name)}">${esc(r.card_name)}</div>
+          <div class="cs-card-meta">
+            <span class="${rarityClass}">${setInfo}</span>
+            <span class="cs-card-price">${esc(priceStr)}</span>
+          </div>
+          <div style="margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);min-height:28px">
+            ${note}
+          </div>
+        </div>
+        <div class="cs-actions">
+          <button class="cs-action-btn purple on" type="button">Wanted</button>
+        </div>`;
       const delBtn=document.createElement('button');
       delBtn.className='alert-del';
       delBtn.title='Remove';
       delBtn.textContent='X';
       delBtn.addEventListener('click',e=>{e.stopPropagation();WishSection.remove(r.id);});
       row.appendChild(delBtn);
+      row.querySelectorAll('.cs-action-btn').forEach(btn=>btn.addEventListener('click',e=>e.stopPropagation()));
       row.addEventListener("click",e=>{
         if(e.target.closest(".alert-del"))return;
         M.open({name:r.card_name,qty:1},null);
