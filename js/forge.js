@@ -1,7 +1,7 @@
 ﻿/* CommanderForge â€” forge: App (deck editor), BracketCalc */
 
 const App={
-  curId:null,_view:'grid',_filter:'all',_search:'',_sort:'name',_cmcFilter:null,
+  curId:null,_view:'grid',_filter:'all',_search:'',_sort:'name',_cmcFilter:null,_inspectorName:'',
 
   async init(){
     Store.load();
@@ -73,6 +73,7 @@ const App={
     document.getElementById('card-grid').classList.remove('show');
     document.getElementById('list-wrap').classList.remove('show');
     this._clearScryfallDragState();
+    this._renderBuilderChrome(null);
     MobileNav?.syncDeckButton?.();
   },
 
@@ -122,10 +123,17 @@ const App={
     // Show synergy button if commander is set
     const synBtn=document.getElementById('synergy-btn');
     if(synBtn)synBtn.style.display=deck.commander?'inline-flex':'none';
+    this._inspectorName=deck.commander||deck.partner||deck.cards[0]?.name||'';
     // Auto-sync to Supabase if signed in
     if(DB._user)DB.schedulePush();
     this._clearScryfallDragState();
     MobileNav?.syncDeckButton?.();
+  },
+
+  _pickInspectorCard(name){
+    if(!name)return;
+    this._inspectorName=name;
+    this._renderInspector(Store.getDeck(this.curId));
   },
 
   _getScryfallDropTarget(){
@@ -244,6 +252,7 @@ const App={
       });
     }
     Store.updDeck(deck);
+    this._inspectorName=cardRef.name;
     this._updHeader(deck);
     this.render();
     if(DB._user)DB.schedulePush();
@@ -376,6 +385,7 @@ const App={
     const deck=Store.getDeck(this.curId);
     document.getElementById('empty').style.display=deck?'none':'flex';
     this._clearScryfallDragState();
+    this._renderBuilderChrome(deck);
     if(!deck)return;
     this._updHeader(deck);
     if(this._view==='grid')this._renderGrid(deck);else this._renderList(deck);
@@ -425,6 +435,139 @@ const App={
       });
     });
     return {unique:unique.size,copies:totalCopies,value:totalValue,decks:Store.decks.length};
+  },
+
+  _cardRoleFlags(cd){
+    const type=String(cd?.type_line||'').toLowerCase();
+    const text=String(cd?.oracle_text||'').toLowerCase();
+    const land=type.includes('land');
+    const rock=type.includes('artifact')&&(/\{t\}:\s*add/.test(text)||text.includes('add one mana'));
+    const treasure=text.includes('treasure token')||text.includes('create a treasure');
+    const landRamp=(text.includes('search your library')&&text.includes('land'))||text.includes('additional land');
+    const draw=text.includes('draw ')||text.includes('investigate')||text.includes('connive');
+    const removal=(text.includes('destroy target')||text.includes('exile target')||text.includes('counter target')||text.includes('return target')||text.includes('fight target'));
+    const wipe=removal&&(text.includes('all creatures')||text.includes('each creature')||text.includes('each permanent')||text.includes('all artifacts')||text.includes('all enchantments'));
+    return {land,ramp:!land&&(rock||treasure||landRamp),draw:!land&&draw,removal:!land&&removal,wipe:!land&&wipe,creature:type.includes('creature')};
+  },
+
+  _deckMetrics(deck){
+    let total=0,lands=0,ramp=0,draw=0,removal=0,wipes=0,creatures=0,value=0,cmcTotal=0,cmcCards=0;
+    (deck.cards||[]).forEach(card=>{
+      const qty=card.qty||1;
+      const cd=Store.card(card.name)||{};
+      const flags=this._cardRoleFlags(cd);
+      total+=qty;
+      if(flags.land)lands+=qty;
+      if(flags.ramp)ramp+=qty;
+      if(flags.draw)draw+=qty;
+      if(flags.removal)removal+=qty;
+      if(flags.wipe)wipes+=qty;
+      if(flags.creature)creatures+=qty;
+      if(!flags.land){
+        cmcTotal+=(Number(cd.cmc||0)*qty);
+        cmcCards+=qty;
+      }
+      value+=(parseFloat(cd.prices?.eur||0)||0)*qty;
+    });
+    return {total,lands,ramp,draw,removal,wipes,creatures,value,avgCmc:cmcCards?cmcTotal/cmcCards:0};
+  },
+
+  _deckAdvice(deck,metrics){
+    const advice=[];
+    if(!deck.commander)advice.push({tone:'warn',title:'Set a commander first',copy:'The command zone drives your color identity and makes every recommendation more accurate.'});
+    if(metrics.total<100)advice.push({tone:'warn',title:`${100-metrics.total} cards still missing`,copy:'Keep filling the list so curve and support suggestions reflect the final shell.'});
+    if(metrics.lands<36)advice.push({tone:'warn',title:'Land count looks light',copy:`You are at ${metrics.lands} lands. Most commander decks feel steadier around 36 to 38.`});
+    if(metrics.ramp<10)advice.push({tone:'warn',title:'Ramp is below target',copy:`Only ${metrics.ramp} ramp pieces found. Try to reach 10 to 12 so the deck gets online faster.`});
+    if(metrics.draw<8)advice.push({tone:'warn',title:'Card draw is thin',copy:`Only ${metrics.draw} draw effects found. More draw keeps the deck from stalling after early trades.`});
+    if(metrics.removal<8)advice.push({tone:'warn',title:'Interaction is light',copy:`You currently have ${metrics.removal} removal pieces. Add a few more answers so the deck can recover from behind.`});
+    if(metrics.avgCmc>3.7)advice.push({tone:'warn',title:'Curve is getting heavy',copy:`Average CMC is ${metrics.avgCmc.toFixed(1)}. Trim a few expensive spells or add cheaper setup cards.`});
+    if(!advice.length)advice.push({tone:'good',title:'Deck shell looks healthy',copy:`Curve, mana, and support ratios are in a solid spot. This is a great moment to tune for synergy and finishers.`});
+    return advice.slice(0,4);
+  },
+
+  _renderBuilderChrome(deck){
+    const wrap=document.getElementById('forge-builder-kpis');
+    if(!deck){
+      if(wrap)wrap.style.display='none';
+      this._renderInspector(null);
+      this._renderAdvice(null,[]);
+      return;
+    }
+    if(wrap)wrap.style.display='grid';
+    const metrics=this._deckMetrics(deck);
+    const vals={
+      'forge-kpi-cards':`${metrics.total} / 100`,
+      'forge-kpi-lands':String(metrics.lands),
+      'forge-kpi-ramp':String(metrics.ramp),
+      'forge-kpi-removal':String(metrics.removal),
+      'forge-kpi-draw':String(metrics.draw),
+      'forge-kpi-cmc':metrics.avgCmc.toFixed(1),
+      'forge-kpi-value':'€'+metrics.value.toFixed(0)
+    };
+    Object.entries(vals).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.textContent=val;});
+    this._renderInspector(deck);
+    this._renderAdvice(deck,this._deckAdvice(deck,metrics));
+  },
+
+  _renderAdvice(deck,items){
+    const el=document.getElementById('forge-advice-list');
+    if(!el)return;
+    if(!deck||!items?.length){
+      el.innerHTML='<div class="forge-advice-card"><div class="forge-advice-title">Open a deck to begin</div><div class="forge-advice-copy">We will surface balance, curve, and support suggestions here while you build.</div></div>';
+      return;
+    }
+    el.innerHTML=items.map(item=>`<div class="forge-advice-card ${item.tone||''}"><div class="forge-advice-title">${esc(item.title)}</div><div class="forge-advice-copy">${esc(item.copy)}</div></div>`).join('');
+  },
+
+  _renderInspector(deck){
+    const el=document.getElementById('forge-inspector-body');
+    if(!el)return;
+    if(!deck){
+      el.className='forge-inspector-empty';
+      el.innerHTML='<div class="forge-inspector-empty-title">Pick a card in this deck</div><div class="forge-inspector-empty-copy">Hover a deck card or load a deck and details, printings, and quick actions stay visible here.</div>';
+      return;
+    }
+    const name=this._inspectorName||deck.commander||deck.partner||deck.cards[0]?.name||'';
+    if(!name){
+      el.className='forge-inspector-empty';
+      el.innerHTML='<div class="forge-inspector-empty-title">No cards in this deck yet</div><div class="forge-inspector-empty-copy">Add your commander or drop cards in and the inspector will track them here.</div>';
+      return;
+    }
+    const cardEntry=deck.cards.find(c=>c.name===name)||{name,qty:(name===deck.commander||name===deck.partner)?1:0};
+    const cd=Store.card(name)||{};
+    const flags=this._cardRoleFlags(cd);
+    const img=cd.img?.normal||cd.img?.crop||'';
+    const canPartner=Partner.hasPartner(cd);
+    const isCmdr=name===deck.commander;
+    const isPartner=name===deck.partner;
+    const setInfo=(cardEntry.set||cd.set)?`${String(cardEntry.set||cd.set).toUpperCase()}${(cardEntry.collector_number||cd.collector_number)?' #'+String(cardEntry.collector_number||cd.collector_number):''}`:'Deck card';
+    const price=parseFloat(cd.prices?.eur||0)||0;
+    const role=flags.land?'Land':flags.ramp?'Ramp':flags.draw?'Draw':flags.removal?'Removal':'Core';
+    el.className='';
+    el.innerHTML=`
+      ${img?`<img class="forge-inspector-card" src="${esc(img)}" alt="${esc(name)}" loading="lazy">`:'<div class="forge-inspector-card"></div>'}
+      <div class="forge-inspector-name">${esc(name)}</div>
+      <div class="forge-inspector-meta"><span class="forge-inspector-set">${esc(setInfo)}</span><span class="forge-inspector-price">${price?'€'+price.toFixed(2):'No price data'}</span></div>
+      <div class="forge-inspector-type">${esc(cd.type_line||'Card details will appear here')}</div>
+      <div class="forge-inspector-text">${esc(cd.oracle_text||'Open details or hover another card to inspect different printings, text, and actions.')}</div>
+      <div class="forge-inspector-stats">
+        <div class="forge-inspector-stat"><div class="forge-inspector-stat-label">Copies</div><div class="forge-inspector-stat-value">${cardEntry.qty||1}</div></div>
+        <div class="forge-inspector-stat"><div class="forge-inspector-stat-label">CMC</div><div class="forge-inspector-stat-value">${cd.cmc??0}</div></div>
+        <div class="forge-inspector-stat"><div class="forge-inspector-stat-label">Role</div><div class="forge-inspector-stat-value">${role}</div></div>
+        <div class="forge-inspector-stat"><div class="forge-inspector-stat-label">Status</div><div class="forge-inspector-stat-value">${isCmdr?'Commander':isPartner?'Partner':'Main Deck'}</div></div>
+      </div>
+      <div class="forge-inspector-actions">
+        <button class="tbtn gold" type="button" data-fi-action="open">Open Details</button>
+        <button class="tbtn" type="button" data-fi-action="add">Add Copy</button>
+        ${!isCmdr?'<button class="tbtn" type="button" data-fi-action="cmdr">Set Commander</button>':''}
+        ${canPartner&&!isPartner&&!isCmdr?'<button class="tbtn purple" type="button" data-fi-action="partner">Set Partner</button>':''}
+        <button class="tbtn" type="button" data-fi-action="remove">Remove</button>
+      </div>`;
+    el.querySelector('[data-fi-action="open"]')?.addEventListener('click',()=>M.open(cardEntry,deck.id));
+    el.querySelector('[data-fi-action="add"]')?.addEventListener('click',()=>this.chQty(deck.id,name,1));
+    el.querySelector('[data-fi-action="remove"]')?.addEventListener('click',()=>this.chQty(deck.id,name,-1));
+    el.querySelector('[data-fi-action="cmdr"]')?.addEventListener('click',()=>{deck.commander=name;Store.updDeck(deck);this._updHeader(deck);this.render();Notify.show(`${name} is now your commander`,'ok');});
+    el.querySelector('[data-fi-action="partner"]')?.addEventListener('click',()=>{deck.partner=name;Store.updDeck(deck);this._updHeader(deck);this.render();Notify.show(`${name} is now your partner`,'ok');});
   },
 
   _bulkPoolSummary:{value:0,updated:0},
@@ -542,6 +685,7 @@ const App={
     tile.append(imgWrap,info);
     attachTapPop(tile);
     attachCardTilt(tile);
+    tile.addEventListener('mouseenter',()=>this._pickInspectorCard(c.name));
     tile.addEventListener('click',()=>M.open(c,deck.id));
     return tile;
   },
@@ -555,6 +699,7 @@ const App={
       const cd=Store.card(c.name)||{};
       const isCmdr=c.name===deck.commander,isPartner=c.name===deck.partner;
       const tr=document.createElement('tr');
+      tr.addEventListener('mouseenter',()=>this._pickInspectorCard(c.name));
       if(isCmdr)tr.className='cmdr-row';else if(isPartner)tr.className='partner-row';
       const tag=getTypeTag(cd.type_line||'');
       const td0=document.createElement('td');
