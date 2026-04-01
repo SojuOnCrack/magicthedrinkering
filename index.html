@@ -26,7 +26,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <script>
-window.APP_VERSION = '202604011627';
+window.APP_VERSION = '202604011632';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -65,8 +65,8 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
     </div>
     <div style="width:1px;height:28px;background:var(--border)"></div>
     <div class="view-toggle" id="view-toggle-wrap">
-      <button class="vtb on" id="vt-g" onclick="App.setView('grid')">Grid</button>
-      <button class="vtb"    id="vt-l" onclick="App.setView('list')">List</button>
+      <button class="vtb on" id="vt-g" onclick="App.setView('grid')" title="Gallery view">Gallery</button>
+      <button class="vtb"    id="vt-l" onclick="App.setView('list')" title="Edit view">Edit</button>
     </div>
     <button class="tbtn" onclick="P.export()">Export</button>
     <button class="tbtn gold" onclick="P.import()">Import</button>
