@@ -722,7 +722,7 @@ const P={
       if(!parsed.cards.length)throw new Error('No cards found in deck');
 
       const deck={id:Store.uid(),name:deckName,commander:parsed.commander||'',
-                  partner:parsed.partner||'',cards:parsed.cards,created:Date.now(),public:true};
+                  partner:parsed.partner||'',cards:parsed.cards,sideboard:parsed.sideboard||[],maybeboard:parsed.maybeboard||[],created:Date.now(),public:true};
       Store.addDeck(deck);
       enrichDeckCards(deck).then(()=>{Store.updDeck(deck);DB.schedulePush();});
       setStatus(`Imported "${deckName}" - ${parsed.cards.length} cards`,'ok');
@@ -850,7 +850,7 @@ const P={
     const parsed=Parser.parse(text);
     if(!parsed.cards.length){Notify.show('No cards recognized','err');return;}
     const customName=document.getElementById('dname').value.trim();
-    const deck={id:Store.uid(),name:customName||parsed.name,commander:parsed.commander||'',partner:parsed.partner||'',cards:parsed.cards,created:Date.now(),public:true};
+    const deck={id:Store.uid(),name:customName||parsed.name,commander:parsed.commander||'',partner:parsed.partner||'',cards:parsed.cards,sideboard:parsed.sideboard||[],maybeboard:parsed.maybeboard||[],created:Date.now(),public:true};
     Store.addDeck(deck);P.close();App.loadDeck(deck.id);
     enrichDeckCards(deck).then(()=>{Store.updDeck(deck);DB.schedulePush();});
     Notify.show(`Imported "${deck.name}" with ${parsed.cards.length} cards`+(deck.partner?` (Partner: ${deck.partner})`:'')||'','ok');

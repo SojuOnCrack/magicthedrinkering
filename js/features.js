@@ -895,10 +895,10 @@ const UndoMgr={
   _snapshot:null,_timer:null,_countdown:null,_remaining:5,
   DURATION:5000,
 
-  record(deckId,cardName,snapshot){
+  record(deckId,cardName,snapshot,zone='main'){
     /* snapshot = array copy of deck.cards before removal */
     clearTimeout(this._timer);clearInterval(this._countdown);
-    this._snapshot={deckId,cardName,cards:[...snapshot]};
+    this._snapshot={deckId,cardName,cards:[...snapshot],zone};
     this._remaining=5;
     const toast=document.getElementById('undo-toast');
     const msg=document.getElementById('undo-msg');
@@ -916,9 +916,14 @@ const UndoMgr={
 
   undo(){
     if(!this._snapshot)return;
-    const{deckId,cards}=this._snapshot;
+    const{deckId,cards,zone}=this._snapshot;
     const deck=Store.getDeck(deckId);
-    if(deck){deck.cards=cards;Store.updDeck(deck);App.render();Notify.show('â†© Card restored','ok');}
+    if(deck){
+      if(zone==='sideboard')deck.sideboard=cards;
+      else if(zone==='maybeboard')deck.maybeboard=cards;
+      else deck.cards=cards;
+      Store.updDeck(deck);App.render();Notify.show('â†© Card restored','ok');
+    }
     this.dismiss();
   },
 
@@ -1100,17 +1105,18 @@ Object.assign(App, {
     const deck=Store.getDeck(this.curId);
     if(!deck){Notify.show('Select a deck first','err');return;}
     const qty=Math.max(1,parseInt(document.getElementById('forge-add-qty')?.value||'1',10)||1);
-    const existing=deck.cards.find(c=>c.name.toLowerCase()===name.toLowerCase());
+    const zoneCards=this._zoneArray(deck);
+    const existing=zoneCards.find(c=>c.name.toLowerCase()===name.toLowerCase());
     if(existing){
       existing.qty+=qty;
       Store.updDeck(deck);
       this.render();
       Notify.show(`Added ${qty} ${qty===1?'copy':'copies'} of ${name}`,'ok');
     }else{
-      deck.cards.push({name,qty,foil:false,etched:false});
+      zoneCards.push({name,qty,foil:false,etched:false});
       Store.updDeck(deck);
       this._fetchCards(deck);
-      Notify.show(`Added ${name} to deck`,'ok');
+      Notify.show(`Added ${name} to ${this._zone}`,'ok');
     }
     const inp=document.getElementById('forge-add-inp');
     if(inp){inp.value='';inp.focus();}

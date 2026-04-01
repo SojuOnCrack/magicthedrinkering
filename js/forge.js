@@ -1,7 +1,7 @@
 ﻿/* CommanderForge â€” forge: App (deck editor), BracketCalc */
 
 const App={
-  curId:null,_view:'grid',_filter:'all',_search:'',_sort:'name',_cmcFilter:null,
+  curId:null,_view:'grid',_filter:'all',_search:'',_sort:'name',_cmcFilter:null,_zone:'main',
 
   async init(){
     Store.load();
@@ -31,7 +31,7 @@ const App={
       /* Phase-2 warm: pre-load card data for the active deck before rendering */
       const activeDeck=Store.getDeck(last);
       if(activeDeck){
-        const names=[activeDeck.commander,activeDeck.partner,...activeDeck.cards.map(c=>c.name)].filter(Boolean);
+        const names=[activeDeck.commander,activeDeck.partner,...activeDeck.cards.map(c=>c.name),...(activeDeck.sideboard||[]).map(c=>c.name),...(activeDeck.maybeboard||[]).map(c=>c.name)].filter(Boolean);
         await Store.warmCards(names);
       }
       this.loadDeck(last);
@@ -78,14 +78,17 @@ const App={
   },
 
   newDeck(){
-    const deck={id:Store.uid(),name:'New Deck',commander:'',partner:'',cards:[],created:Date.now(),public:true};
+    const deck={id:Store.uid(),name:'New Deck',commander:'',partner:'',cards:[],sideboard:[],maybeboard:[],created:Date.now(),public:true};
     Store.addDeck(deck);this.renderSidebar();this.loadDeck(deck.id);setTimeout(()=>P.editCmdr(),100);
   },
 
   dupDeck(id){
     const src=Store.getDeck(id);if(!src)return;
     const copy={...src,id:Store.uid(),name:src.name+' (copy)',
-                cards:src.cards.map(c=>({...c})),created:Date.now(),public:true};
+                cards:(src.cards||[]).map(c=>({...c})),
+                sideboard:(src.sideboard||[]).map(c=>({...c})),
+                maybeboard:(src.maybeboard||[]).map(c=>({...c})),
+                created:Date.now(),public:true};
     Store.addDeck(copy);this.renderSidebar();
     Notify.show('Deck duplicated','ok');
     if(DB._user)DB.schedulePush();
@@ -111,10 +114,13 @@ const App={
 
   loadDeck(id){
     const deck=Store.getDeck(id);if(!deck)return;
+    deck.sideboard=deck.sideboard||[];
+    deck.maybeboard=deck.maybeboard||[];
+    this._zone='main';
     SF.cancelBatch(); /* abort in-flight fetches from previous deck */
     this.curId=id;Store.saveCur(id);this.renderSidebar();this._updHeader(deck);this._showShareBtn&&this._showShareBtn();
     /* Warm IDB cache for this deck before rendering (async, non-blocking) */
-    const deckNames=[deck.commander,deck.partner,...deck.cards.map(c=>c.name)].filter(Boolean);
+    const deckNames=[deck.commander,deck.partner,...deck.cards.map(c=>c.name),...(deck.sideboard||[]).map(c=>c.name),...(deck.maybeboard||[]).map(c=>c.name)].filter(Boolean);
     Store.warmCards(deckNames).then(()=>this.render());
     this._fetchCards(deck);
     // Show share button
@@ -132,6 +138,49 @@ const App={
 
   _getScryfallDropTarget(){
     return document.getElementById('card-area');
+  },
+
+  _zoneArray(deck,zone=this._zone){
+    if(zone==='sideboard')return deck.sideboard||(deck.sideboard=[]);
+    if(zone==='maybeboard')return deck.maybeboard||(deck.maybeboard=[]);
+    return deck.cards||(deck.cards=[]);
+  },
+
+  _setZone(zone){
+    if(!this.curId)return;
+    this._zone=zone;
+    ['main','maybeboard','sideboard'].forEach(key=>{
+      document.getElementById(`forge-zone-${key}`)?.classList.toggle('on',key===zone);
+    });
+    this.render();
+  },
+
+  _updateZoneCounts(deck){
+    const counts={
+      main:(deck.cards||[]).reduce((s,c)=>s+(c.qty||0),0),
+      maybeboard:(deck.maybeboard||[]).reduce((s,c)=>s+(c.qty||0),0),
+      sideboard:(deck.sideboard||[]).reduce((s,c)=>s+(c.qty||0),0)
+    };
+    Object.entries(counts).forEach(([key,val])=>{
+      const el=document.getElementById(`forge-zone-count-${key}`);
+      if(el)el.textContent=val;
+    });
+  },
+
+  _moveCardZone(deck,name,fromZone,toZone){
+    if(fromZone===toZone)return;
+    const from=this._zoneArray(deck,fromZone);
+    const to=this._zoneArray(deck,toZone);
+    const idx=from.findIndex(c=>c.name===name);
+    if(idx<0)return;
+    const card={...from[idx]};
+    from.splice(idx,1);
+    const existing=to.find(c=>c.name.toLowerCase()===name.toLowerCase());
+    if(existing)existing.qty=(existing.qty||0)+(card.qty||1);
+    else to.push(card);
+    Store.updDeck(deck);
+    this.render();
+    Notify.show(`Moved ${name} to ${toZone}`,'ok');
   },
 
   _clearScryfallDragState(){
@@ -223,7 +272,8 @@ const App={
   _addDroppedCardToDeck(cardRef,matchType='exact'){
     const deck=Store.getDeck(this.curId);
     if(!deck)return;
-    const existing=deck.cards.find(c=>c.name.toLowerCase()===String(cardRef.name).toLowerCase());
+    const zoneCards=this._zoneArray(deck);
+    const existing=zoneCards.find(c=>c.name.toLowerCase()===String(cardRef.name).toLowerCase());
     let updatedPrinting=false;
     if(existing){
       existing.qty=(existing.qty||0)+1;
@@ -236,7 +286,7 @@ const App={
         if(!existing.collector_number&&cardRef.collector_number)existing.collector_number=cardRef.collector_number;
       }
     }else{
-      deck.cards.push({
+      zoneCards.push({
         name:cardRef.name,
         qty:1,
         foil:false,
@@ -256,12 +306,13 @@ const App={
 
   _fetchCards(deck){
     const cmdrs=[deck.commander,deck.partner].filter(Boolean);
+    const allZoneCards=[...(deck.cards||[]),...(deck.sideboard||[]),...(deck.maybeboard||[])];
     const seenNames=new Set();
     const allItems=[];
     for(const name of cmdrs){
       if(!seenNames.has(name)&&!Store.card(name)){seenNames.add(name);allItems.push({name});}
     }
-    for(const c of deck.cards){
+    for(const c of allZoneCards){
       if(seenNames.has(c.name))continue;
       seenNames.add(c.name);
       const cached=Store.card(c.name);
@@ -328,20 +379,25 @@ const App={
   resort(){this._sort=document.getElementById('srt').value;this.render();},
   sortBy(k){this._sort=k;document.getElementById('srt').value=k;this.render();},
 
-  chQty(deckId,name,delta){
+  chQty(deckId,name,delta,zone=this._zone){
     const deck=Store.getDeck(deckId);if(!deck)return;
-    const c=deck.cards.find(x=>x.name===name);if(!c)return;
-    const snapBefore=[...deck.cards.map(x=>({...x}))]; /* snapshot before mutating */
+    const zoneCards=this._zoneArray(deck,zone);
+    const c=zoneCards.find(x=>x.name===name);if(!c)return;
+    const snapBefore=[...zoneCards.map(x=>({...x}))]; /* snapshot before mutating */
     c.qty=Math.max(0,c.qty+delta);
     const removed=c.qty===0;
-    if(removed)deck.cards=deck.cards.filter(x=>x.name!==name);
+    if(removed){
+      if(zone==='sideboard')deck.sideboard=zoneCards.filter(x=>x.name!==name);
+      else if(zone==='maybeboard')deck.maybeboard=zoneCards.filter(x=>x.name!==name);
+      else deck.cards=zoneCards.filter(x=>x.name!==name);
+    }
     Store.updDeck(deck);this.render();
     /* Show undo toast when a card is fully removed */
-    if(removed)UndoMgr.record(deckId,name,snapBefore);
+    if(removed)UndoMgr.record(deckId,name,snapBefore,zone);
   },
 
   _getCards(deck){
-    let cards=[...deck.cards];
+    let cards=[...this._zoneArray(deck)];
     if(this._search)cards=cards.filter(c=>c.name.toLowerCase().includes(this._search));
     /* CMC filter from mana curve click */
     if(this._cmcFilter!==null&&this._cmcFilter!==undefined){
@@ -377,9 +433,12 @@ const App={
   render(){
     const deck=Store.getDeck(this.curId);
     document.getElementById('empty').style.display=deck?'none':'flex';
+    const zoneSwitch=document.getElementById('forge-zone-switch');
+    if(zoneSwitch)zoneSwitch.style.display=deck?'flex':'none';
     this._clearScryfallDragState();
     this._renderBuilderChrome(deck);
     if(!deck)return;
+    this._updateZoneCounts(deck);
     this._updHeader(deck);
     if(this._view==='grid')this._renderGrid(deck);else this._renderList(deck);
   },
@@ -390,14 +449,15 @@ const App={
     grid.classList.add('show');
     const cards=this._getCards(deck);grid.innerHTML='';
 
-    // Groups: commander, partner (if any), then detailed card type sections
-    const groups=[
-      ['Commander','is-cmdr',cards.filter(c=>c.name===deck.commander)],
-    ];
-    if(deck.partner) groups.push(['Partner','is-partner',cards.filter(c=>c.name===deck.partner)]);
+    // Groups: commander/partner only on mainboard, then detailed card type sections
+    const groups=[];
+    if(this._zone==='main'){
+      groups.push(['Commander','is-cmdr',cards.filter(c=>c.name===deck.commander)]);
+      if(deck.partner) groups.push(['Partner','is-partner',cards.filter(c=>c.name===deck.partner)]);
+    }
     const sections=Object.fromEntries(DECK_CARD_SECTION_ORDER.map(label=>[label,[]]));
     for(const c of cards){
-      if(c.name===deck.commander||c.name===deck.partner)continue;
+      if(this._zone==='main'&&(c.name===deck.commander||c.name===deck.partner))continue;
       const cd=Store.card(c.name);
       sections[getDeckCardSection(cd?.type_line||'')].push(c);
     }
@@ -410,9 +470,11 @@ const App={
       grid.appendChild(hdr);
       for(const c of arr)grid.appendChild(this._makeTile(c,deck));
     }
-    if(!cards.length&&deck.cards.length){
+    if(!cards.length){
       const msg=document.createElement('div');msg.className='empty-panel';msg.style.gridColumn='1 / -1';
-      msg.innerHTML='<div class="empty-kicker">Deck View</div><div class="empty-ico">DB</div><div class="empty-ttl">No Cards Match Right Now</div><div class="empty-sub">Clear a filter or search term to bring the full deck back into view.</div>';grid.appendChild(msg);
+      const zoneLabel=this._zone==='main'?'Mainboard':(this._zone==='maybeboard'?'Maybeboard':'Sideboard');
+      const body=this._zoneArray(deck).length?'Clear a filter or search term to bring this zone back into view.':`Add cards into ${zoneLabel} with the Add flow above.`;
+      msg.innerHTML=`<div class="empty-kicker">${esc(zoneLabel)}</div><div class="empty-ico">DB</div><div class="empty-ttl">Nothing Here Right Now</div><div class="empty-sub">${esc(body)}</div>`;grid.appendChild(msg);
     }
   },
 
@@ -590,12 +652,15 @@ const App={
     const ovText=document.createElement('div');ovText.className='ov-text';ovText.textContent=cd.oracle_text||'';
     const ovBtns=document.createElement('div');ovBtns.className='ov-btns';
     const addB=document.createElement('button');addB.className='ovb add';addB.textContent='Add Copy';
-    addB.addEventListener('click',e=>{e.stopPropagation();App.chQty(deck.id,c.name,1);});
+    addB.addEventListener('click',e=>{e.stopPropagation();App.chQty(deck.id,c.name,1,App._zone);});
     ovBtns.append(addB);
-    if(!isCmdr){const setCB=document.createElement('button');setCB.className='ovb set-cmdr';setCB.textContent='Make Commander';setCB.addEventListener('click',e=>{e.stopPropagation();deck.commander=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(`${c.name} is now your commander`,'ok');});ovBtns.appendChild(setCB);}
-    if(hasP&&!isPartner&&!isCmdr){const setPB=document.createElement('button');setPB.className='ovb set-partner';setPB.textContent='Make Partner';setPB.addEventListener('click',e=>{e.stopPropagation();deck.partner=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(`${c.name} is now your partner`,'ok');});ovBtns.appendChild(setPB);}
+    if(App._zone==='main'&&!isCmdr){const setCB=document.createElement('button');setCB.className='ovb set-cmdr';setCB.textContent='Make Commander';setCB.addEventListener('click',e=>{e.stopPropagation();deck.commander=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(`${c.name} is now your commander`,'ok');});ovBtns.appendChild(setCB);}
+    if(App._zone==='main'&&hasP&&!isPartner&&!isCmdr){const setPB=document.createElement('button');setPB.className='ovb set-partner';setPB.textContent='Make Partner';setPB.addEventListener('click',e=>{e.stopPropagation();deck.partner=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(`${c.name} is now your partner`,'ok');});ovBtns.appendChild(setPB);}
+    const moveB=document.createElement('button');moveB.className='ovb set-cmdr';moveB.textContent=App._zone==='main'?'Move to Maybe':'Move to Main';
+    moveB.addEventListener('click',e=>{e.stopPropagation();App._moveCardZone(deck,c.name,App._zone,App._zone==='main'?'maybeboard':'main');});
+    ovBtns.appendChild(moveB);
     const rmB=document.createElement('button');rmB.className='ovb rm';rmB.textContent='Remove';
-    rmB.addEventListener('click',e=>{e.stopPropagation();App.chQty(deck.id,c.name,-1);});
+    rmB.addEventListener('click',e=>{e.stopPropagation();App.chQty(deck.id,c.name,-1,App._zone);});
     ovBtns.append(rmB);
     ov.append(ovName,ovType,ovText,ovBtns);imgWrap.appendChild(ov);
 
@@ -634,13 +699,14 @@ const App={
     document.getElementById('list-wrap').classList.add('show');
     const tbody=document.getElementById('ltbody');
     const cards=this._getCards(deck);tbody.innerHTML='';
-    const groups=[
-      ['Commander',cards.filter(c=>c.name===deck.commander)],
-      ['Partner',deck.partner?cards.filter(c=>c.name===deck.partner):[]]
-    ];
+    const groups=[];
+    if(this._zone==='main'){
+      groups.push(['Commander',cards.filter(c=>c.name===deck.commander)]);
+      groups.push(['Partner',deck.partner?cards.filter(c=>c.name===deck.partner):[]]);
+    }
     const sections=Object.fromEntries(DECK_CARD_SECTION_ORDER.map(label=>[label,[]]));
     for(const c of cards){
-      if(c.name===deck.commander||c.name===deck.partner)continue;
+      if(this._zone==='main'&&(c.name===deck.commander||c.name===deck.partner))continue;
       const cd=Store.card(c.name);
       sections[getDeckCardSection(cd?.type_line||'')].push(c);
     }
@@ -656,7 +722,7 @@ const App={
       tbody.appendChild(htr);
       for(const c of groupCards){
       const cd=Store.card(c.name)||{};
-      const isCmdr=c.name===deck.commander,isPartner=c.name===deck.partner;
+      const isCmdr=this._zone==='main'&&c.name===deck.commander,isPartner=this._zone==='main'&&c.name===deck.partner;
       const tr=document.createElement('tr');
       if(isCmdr)tr.className='cmdr-row';else if(isPartner)tr.className='partner-row';
       const tag=getTypeTag(cd.type_line||'');
@@ -673,20 +739,28 @@ const App={
       const td4=document.createElement('td');td4.style.cssText='font-family:JetBrains Mono,monospace;text-align:center;color:var(--text2)';td4.textContent=cd.cmc||0;
       const td5=document.createElement('td');
       const qc=document.createElement('div');qc.className='qc';
-      const qm=document.createElement('button');qm.className='qb';qm.textContent='-';qm.addEventListener('click',()=>App.chQty(deck.id,c.name,-1));
+      const qm=document.createElement('button');qm.className='qb';qm.textContent='-';qm.addEventListener('click',()=>App.chQty(deck.id,c.name,-1,this._zone));
       const qv=document.createElement('span');qv.className='qv';qv.textContent=c.qty;
-      const qp=document.createElement('button');qp.className='qb';qp.textContent='+';qp.addEventListener('click',()=>App.chQty(deck.id,c.name,1));
+      const qp=document.createElement('button');qp.className='qb';qp.textContent='+';qp.addEventListener('click',()=>App.chQty(deck.id,c.name,1,this._zone));
       qc.append(qm,qv,qp);td5.appendChild(qc);
       const td6=document.createElement('td');td6.style.cssText='font-family:JetBrains Mono,monospace;font-size:11px;color:var(--green2)';td6.textContent=cd.prices?.eur?'€'+cd.prices.eur:'';
       const td7=document.createElement('td');
+      const moveBtn=document.createElement('button');
+      moveBtn.style.cssText='background:none;border:none;color:var(--gold2);font-size:11px;cursor:pointer;padding:0 5px;line-height:1';
+      moveBtn.textContent=this._zone==='main'?'MB':(this._zone==='maybeboard'?'MD':'MD');
+      moveBtn.title=this._zone==='main'?'Move to Maybeboard':'Move to Mainboard';
+      moveBtn.addEventListener('click',()=>App._moveCardZone(deck,c.name,this._zone,this._zone==='main'?'maybeboard':'main'));
+      td7.appendChild(moveBtn);
       const xb=document.createElement('button');xb.style.cssText='background:none;border:none;color:var(--text3);font-size:15px;cursor:pointer;padding:0 3px;line-height:1';
       xb.textContent='X';xb.addEventListener('click',()=>App.chQty(deck.id,c.name,-99));td7.appendChild(xb);
       tr.append(td0,td1,td2,td3,td4,td5,td6,td7);tbody.appendChild(tr);
       }
     }
-    if(!cards.length&&deck.cards.length){
+    if(!cards.length){
       const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=8;
-      td.style.padding='22px';td.innerHTML='<div class="empty-panel"><div class="empty-kicker">Deck View</div><div class="empty-ico">DB</div><div class="empty-ttl">No Cards Match Right Now</div><div class="empty-sub">Clear a filter or search term to bring the full deck back into view.</div></div>';tr.appendChild(td);tbody.appendChild(tr);
+      const zoneLabel=this._zone==='main'?'Mainboard':(this._zone==='maybeboard'?'Maybeboard':'Sideboard');
+      const body=this._zoneArray(deck).length?'Clear a filter or search term to bring this zone back into view.':`Add cards into ${zoneLabel} with the Add flow above.`;
+      td.style.padding='22px';td.innerHTML=`<div class="empty-panel"><div class="empty-kicker">${esc(zoneLabel)}</div><div class="empty-ico">DB</div><div class="empty-ttl">Nothing Here Right Now</div><div class="empty-sub">${esc(body)}</div></div>`;tr.appendChild(td);tbody.appendChild(tr);
     }
   },
 

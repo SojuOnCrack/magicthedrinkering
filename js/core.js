@@ -275,7 +275,7 @@ const Parser={
 
   parse(text){
     const lines=text.split('\n');
-    let commander=null,partner=null,cards=[],name='Imported Deck',isCmd=false,isPartner=false;
+    let commander=null,partner=null,cards=[],sideboard=[],maybeboard=[],name='Imported Deck',isCmd=false,isPartner=false,zone='main';
     for(const raw of lines){
       const line=raw.trim();
       if(!line) continue;
@@ -283,17 +283,22 @@ const Parser={
         const h=line.slice(2).trim().toLowerCase();
         if(h==='commander'||h==='commanders') isCmd=true;
         else if(h==='partner'||h==='background'||h==='co-commander'){isPartner=true;isCmd=false;}
-        else{isCmd=false;isPartner=false;if(h) name=line.slice(2).trim()||name;}
+        else if(h==='maybeboard'||h==='maybe board'){zone='maybeboard';isCmd=false;isPartner=false;}
+        else if(h==='sideboard'||h==='side board'){zone='sideboard';isCmd=false;isPartner=false;}
+        else if(DECK_CARD_SECTION_ORDER.includes(line.slice(2).trim())){zone='main';isCmd=false;isPartner=false;}
+        else{isCmd=false;isPartner=false;if(h){name=line.slice(2).trim()||name;zone='main';}}
         continue;
       }
-      if(/^SB:/i.test(line)) continue;
-      const entry=this.parseLine(line);
+      const sbLine=/^SB:/i.test(line);
+      const entry=this.parseLine(sbLine?line.replace(/^SB:\s*/i,''):line);
       if(!entry) continue;
       if(isCmd&&!commander){commander=entry.name;isCmd=false;}
       else if(isPartner&&!partner){partner=entry.name;isPartner=false;}
-      cards.push(entry);
+      else if(sbLine||zone==='sideboard')sideboard.push(entry);
+      else if(zone==='maybeboard')maybeboard.push(entry);
+      else cards.push(entry);
     }
-    return{commander,partner,cards,name};
+    return{commander,partner,cards,sideboard,maybeboard,name};
   },
 
   exportTxt(deck,format='moxfield'){
@@ -326,9 +331,43 @@ const Parser={
       if(format!=='csv')lines.push(`// ${label}`);
       lines.push(...fmt(arr),'');
     }
+    const maybe=deck.maybeboard||[];
+    if(maybe.length){
+      if(format!=='csv')lines.push('// Maybeboard');
+      lines.push(...fmt(maybe),'');
+    }
+    const side=deck.sideboard||[];
+    if(side.length){
+      if(format!=='csv')lines.push('// Sideboard');
+      lines.push(...fmt(side),'');
+    }
     return lines.join('\n');
   }
 };
+
+function normalizeDeckZones(payload){
+  let parsed=payload;
+  if(typeof parsed==='string'){
+    try{parsed=JSON.parse(parsed||'[]');}catch{parsed=[];}
+  }
+  if(Array.isArray(parsed))return{cards:parsed,sideboard:[],maybeboard:[]};
+  if(parsed&&typeof parsed==='object'){
+    return{
+      cards:Array.isArray(parsed.main)?parsed.main:(Array.isArray(parsed.cards)?parsed.cards:[]),
+      sideboard:Array.isArray(parsed.sideboard)?parsed.sideboard:[],
+      maybeboard:Array.isArray(parsed.maybeboard)?parsed.maybeboard:[]
+    };
+  }
+  return{cards:[],sideboard:[],maybeboard:[]};
+}
+
+function serializeDeckZones(deck){
+  return JSON.stringify({
+    main:deck.cards||[],
+    sideboard:deck.sideboard||[],
+    maybeboard:deck.maybeboard||[]
+  });
+}
 
 /* ═══ SCRYFALL ═════════════════════════════════════════════ */
 const SF={

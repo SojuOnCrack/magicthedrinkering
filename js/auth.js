@@ -75,7 +75,12 @@ const DB={
   },
 
   _deckCardsForCloud(deck){
-    return (deck.cards||[]).map(card=>this._cardSnapshot(card));
+    const mapZone=arr=>(arr||[]).map(card=>this._cardSnapshot(card));
+    return {
+      main:mapZone(deck.cards),
+      sideboard:mapZone(deck.sideboard),
+      maybeboard:mapZone(deck.maybeboard)
+    };
   },
 
   _listingSnapshot(cardName,extra={}){
@@ -106,12 +111,15 @@ const DB={
   },
 
   _normalizeCloudDeck(row){
+    const zones=normalizeDeckZones(row.cards||'[]');
     return {
       id:row.id,
       name:row.name,
       commander:row.commander||'',
       partner:row.partner||'',
-      cards:JSON.parse(row.cards||'[]'),
+      cards:zones.cards,
+      sideboard:zones.sideboard,
+      maybeboard:zones.maybeboard,
       created:new Date(row.created_at||Date.now()).getTime(),
       updated:new Date(row.updated_at||row.created_at||Date.now()).getTime(),
       cloudUpdatedAt:new Date(row.updated_at||row.created_at||Date.now()).getTime(),
@@ -235,7 +243,7 @@ const DB={
       const payload=cloudDecks.map(d=>({
         id:d.id,user_id:this._user?.id||'',
         name:d.name,commander:d.commander||'',partner:d.partner||'',
-        cards:JSON.stringify(this._deckCardsForCloud(d)),public:d.public!==false,
+        cards:serializeDeckZones({...d,cards:this._deckCardsForCloud(d).main,sideboard:this._deckCardsForCloud(d).sideboard,maybeboard:this._deckCardsForCloud(d).maybeboard}),public:d.public!==false,
         updated_at:new Date().toISOString()
       }));
       OfflineQueue.push({type:'upsert',table:'decks',payload});
@@ -251,7 +259,7 @@ const DB={
       const allRows=this._cloudDecks().map(d=>({
         id:d.id,user_id:this._user.id,
         name:d.name,commander:d.commander||'',partner:d.partner||'',
-        cards:JSON.stringify(this._deckCardsForCloud(d)),public:d.public!==false,
+        cards:serializeDeckZones({...d,cards:this._deckCardsForCloud(d).main,sideboard:this._deckCardsForCloud(d).sideboard,maybeboard:this._deckCardsForCloud(d).maybeboard}),public:d.public!==false,
         created_at:new Date(d.created||Date.now()).toISOString(),
         updated_at:new Date(this._deckTimestamp(d)).toISOString()
       }));
@@ -311,7 +319,9 @@ const DB={
       const names=[...new Set(Store.decks.flatMap(d=>[
         d.commander,
         d.partner,
-        ...(d.cards||[]).map(c=>c.name)
+        ...(d.cards||[]).map(c=>c.name),
+        ...((d.sideboard||[]).map(c=>c.name)),
+        ...((d.maybeboard||[]).map(c=>c.name))
       ]).filter(Boolean))];
       await Store.warmCards(names);
       const missing=names.filter(n=>!Store.card(n));
@@ -336,7 +346,7 @@ const DB={
       deck_name:deck.name,
       commander:deck.commander||'',
       partner:deck.partner||'',
-      cards:JSON.stringify(deck.cards),
+      cards:serializeDeckZones(deck),
       created_at:new Date().toISOString()
     });
     if(error)throw error;
@@ -347,7 +357,7 @@ const DB={
     if(!this._sb)return null;
     const{data,error}=await this._sb.from('shared_decks').select('*').eq('token',token).single();
     if(error||!data)return null;
-    return{name:data.deck_name,commander:data.commander,partner:data.partner||'',cards:JSON.parse(data.cards||'[]')};
+    return{name:data.deck_name,commander:data.commander,partner:data.partner||'',...normalizeDeckZones(data.cards||'[]')};
   }
 };
 

@@ -26,7 +26,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <script>
-window.APP_VERSION = '202604011636';
+window.APP_VERSION = '202604011659';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -330,6 +330,11 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <div class="forge-kpi"><div class="forge-kpi-label">Draw</div><div class="forge-kpi-value" id="forge-kpi-draw">0</div></div>
         <div class="forge-kpi"><div class="forge-kpi-label">Avg CMC</div><div class="forge-kpi-value" id="forge-kpi-cmc">0.0</div></div>
         <div class="forge-kpi accent"><div class="forge-kpi-label">Value</div><div class="forge-kpi-value" id="forge-kpi-value">€0</div></div>
+      </div>
+      <div id="forge-zone-switch" class="forge-zone-switch">
+        <button class="forge-zone-btn on" id="forge-zone-main" onclick="App._setZone('main')">Mainboard <span id="forge-zone-count-main">0</span></button>
+        <button class="forge-zone-btn" id="forge-zone-maybeboard" onclick="App._setZone('maybeboard')">Maybeboard <span id="forge-zone-count-maybeboard">0</span></button>
+        <button class="forge-zone-btn" id="forge-zone-sideboard" onclick="App._setZone('sideboard')">Sideboard <span id="forge-zone-count-sideboard">0</span></button>
       </div>
       <div id="card-area" ondragover="App._onScryfallDragOver(event)" ondragleave="App._onScryfallDragLeave(event)" ondrop="App._onScryfallDrop(event)">
         <div id="empty">
