@@ -73,6 +73,7 @@ const App={
     document.getElementById('card-grid').classList.remove('show');
     document.getElementById('list-wrap').classList.remove('show');
     this._clearScryfallDragState();
+    this._hideAddRow?.();
     MobileNav?.syncDeckButton?.();
   },
 
@@ -122,6 +123,8 @@ const App={
     // Show synergy button if commander is set
     const synBtn=document.getElementById('synergy-btn');
     if(synBtn)synBtn.style.display=deck.commander?'inline-flex':'none';
+    if(window.innerWidth>768)this.setView('list');
+    this._showAddRow?.();
     // Auto-sync to Supabase if signed in
     if(DB._user)DB.schedulePush();
     this._clearScryfallDragState();
@@ -632,7 +635,27 @@ const App={
     document.getElementById('list-wrap').classList.add('show');
     const tbody=document.getElementById('ltbody');
     const cards=this._getCards(deck);tbody.innerHTML='';
+    const groups=[
+      ['Commander',cards.filter(c=>c.name===deck.commander)],
+      ['Partner',deck.partner?cards.filter(c=>c.name===deck.partner):[]]
+    ];
+    const sections=Object.fromEntries(DECK_CARD_SECTION_ORDER.map(label=>[label,[]]));
     for(const c of cards){
+      if(c.name===deck.commander||c.name===deck.partner)continue;
+      const cd=Store.card(c.name);
+      sections[getDeckCardSection(cd?.type_line||'')].push(c);
+    }
+    for(const label of DECK_CARD_SECTION_ORDER)groups.push([label,sections[label]]);
+    for(const [groupLabel,groupCards] of groups){
+      if(!groupCards?.length)continue;
+      const htr=document.createElement('tr');
+      htr.className='list-sec-row';
+      const htd=document.createElement('td');
+      htd.colSpan=8;
+      htd.innerHTML=`<div class="list-sec-hdr">${esc(groupLabel)} <span class="sc">${groupCards.reduce((s,c)=>s+(c.qty||0),0)}</span></div>`;
+      htr.appendChild(htd);
+      tbody.appendChild(htr);
+      for(const c of groupCards){
       const cd=Store.card(c.name)||{};
       const isCmdr=c.name===deck.commander,isPartner=c.name===deck.partner;
       const tr=document.createElement('tr');
@@ -660,6 +683,7 @@ const App={
       const xb=document.createElement('button');xb.style.cssText='background:none;border:none;color:var(--text3);font-size:15px;cursor:pointer;padding:0 3px;line-height:1';
       xb.textContent='X';xb.addEventListener('click',()=>App.chQty(deck.id,c.name,-99));td7.appendChild(xb);
       tr.append(td0,td1,td2,td3,td4,td5,td6,td7);tbody.appendChild(tr);
+      }
     }
     if(!cards.length&&deck.cards.length){
       const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=8;
