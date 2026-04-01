@@ -155,6 +155,15 @@ const App={
     this.render();
   },
 
+  _toggleInsights(force){
+    const wrap=document.getElementById('forge-insights');
+    if(!wrap)return;
+    const collapsed=typeof force==='boolean'?force:!wrap.classList.contains('collapsed');
+    wrap.classList.toggle('collapsed',collapsed);
+    const state=document.querySelector('#forge-insights-toggle .forge-insights-toggle-state');
+    if(state)state.textContent=collapsed?'Show':'Hide';
+  },
+
   _recordChange(action,detail,zone=this._zone){
     this._history.unshift({action,detail,zone,ts:Date.now()});
     this._history=this._history.slice(0,10);
@@ -577,12 +586,16 @@ const App={
 
   _renderBuilderChrome(deck){
     const wrap=document.getElementById('forge-builder-kpis');
+    const insightsState=document.querySelector('#forge-insights-toggle .forge-insights-toggle-state');
     if(!deck){
       if(wrap)wrap.style.display='none';
+      this._toggleInsights(true);
       this._renderAdvice(null,[]);
       return;
     }
     if(wrap)wrap.style.display='grid';
+    const insights=document.getElementById('forge-insights');
+    if(insightsState&&insights)insightsState.textContent=insights.classList.contains('collapsed')?'Show':'Hide';
     const metrics=this._deckMetrics(deck);
     const vals={
       'forge-kpi-cards':`${metrics.total} / 100`,

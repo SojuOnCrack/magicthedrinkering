@@ -26,7 +26,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <script>
-window.APP_VERSION = '202604020012';
+window.APP_VERSION = '202604020020';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -336,7 +336,12 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <button class="forge-zone-btn" id="forge-zone-maybeboard" onclick="App._setZone('maybeboard')">Maybeboard <span id="forge-zone-count-maybeboard">0</span></button>
         <button class="forge-zone-btn" id="forge-zone-sideboard" onclick="App._setZone('sideboard')">Sideboard <span id="forge-zone-count-sideboard">0</span></button>
       </div>
-      <div id="forge-insights">
+      <div id="forge-insights" class="collapsed">
+        <button class="forge-insights-toggle" id="forge-insights-toggle" type="button" onclick="App._toggleInsights()">
+          <span class="forge-insights-toggle-label">Builder Insights</span>
+          <span class="forge-insights-toggle-state">Show</span>
+        </button>
+        <div id="forge-insights-body">
         <div id="forge-section-summary" class="forge-section-summary"></div>
         <div class="forge-builder-panels">
           <div class="forge-mini-panel">
@@ -347,6 +352,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <div class="forge-mini-kicker">Recent Changes</div>
             <div id="forge-change-list" class="forge-change-list"></div>
           </div>
+        </div>
         </div>
       </div>
       <div id="card-area" ondragover="App._onScryfallDragOver(event)" ondragleave="App._onScryfallDragLeave(event)" ondrop="App._onScryfallDrop(event)">
