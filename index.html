@@ -26,7 +26,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <script>
-window.APP_VERSION = '202604011659';
+window.APP_VERSION = '202604020012';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -335,6 +335,19 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <button class="forge-zone-btn on" id="forge-zone-main" onclick="App._setZone('main')">Mainboard <span id="forge-zone-count-main">0</span></button>
         <button class="forge-zone-btn" id="forge-zone-maybeboard" onclick="App._setZone('maybeboard')">Maybeboard <span id="forge-zone-count-maybeboard">0</span></button>
         <button class="forge-zone-btn" id="forge-zone-sideboard" onclick="App._setZone('sideboard')">Sideboard <span id="forge-zone-count-sideboard">0</span></button>
+      </div>
+      <div id="forge-insights">
+        <div id="forge-section-summary" class="forge-section-summary"></div>
+        <div class="forge-builder-panels">
+          <div class="forge-mini-panel">
+            <div class="forge-mini-kicker">Live Advice</div>
+            <div id="forge-advice-list" class="forge-advice-list"></div>
+          </div>
+          <div class="forge-mini-panel">
+            <div class="forge-mini-kicker">Recent Changes</div>
+            <div id="forge-change-list" class="forge-change-list"></div>
+          </div>
+        </div>
       </div>
       <div id="card-area" ondragover="App._onScryfallDragOver(event)" ondragleave="App._onScryfallDragLeave(event)" ondrop="App._onScryfallDrop(event)">
         <div id="empty">

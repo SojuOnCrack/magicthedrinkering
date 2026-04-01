@@ -1111,11 +1111,13 @@ Object.assign(App, {
       existing.qty+=qty;
       Store.updDeck(deck);
       this.render();
+      this._recordChange?.('Added',`${qty}x ${name} to ${this._zone}`,this._zone);
       Notify.show(`Added ${qty} ${qty===1?'copy':'copies'} of ${name}`,'ok');
     }else{
       zoneCards.push({name,qty,foil:false,etched:false});
       Store.updDeck(deck);
       this._fetchCards(deck);
+      this._recordChange?.('Added',`${qty}x ${name} to ${this._zone}`,this._zone);
       Notify.show(`Added ${name} to ${this._zone}`,'ok');
     }
     const inp=document.getElementById('forge-add-inp');

@@ -1,7 +1,7 @@
 ﻿/* CommanderForge â€” forge: App (deck editor), BracketCalc */
 
 const App={
-  curId:null,_view:'grid',_filter:'all',_search:'',_sort:'name',_cmcFilter:null,_zone:'main',
+  curId:null,_view:'grid',_filter:'all',_search:'',_sort:'name',_cmcFilter:null,_zone:'main',_history:[],
 
   async init(){
     Store.load();
@@ -155,6 +155,12 @@ const App={
     this.render();
   },
 
+  _recordChange(action,detail,zone=this._zone){
+    this._history.unshift({action,detail,zone,ts:Date.now()});
+    this._history=this._history.slice(0,10);
+    this._renderChangeLog();
+  },
+
   _updateZoneCounts(deck){
     const counts={
       main:(deck.cards||[]).reduce((s,c)=>s+(c.qty||0),0),
@@ -180,7 +186,32 @@ const App={
     else to.push(card);
     Store.updDeck(deck);
     this.render();
+    this._recordChange('Moved',`${name} -> ${toZone}`,toZone);
     Notify.show(`Moved ${name} to ${toZone}`,'ok');
+  },
+
+  _bindZoneDropTargets(){
+    ['main','maybeboard','sideboard'].forEach(zone=>{
+      const el=document.getElementById(`forge-zone-${zone}`);
+      if(!el||el.dataset.dropBound)return;
+      el.addEventListener('dragover',e=>{
+        const payload=e.dataTransfer?.getData('text/forge-zone-card');
+        if(!payload)return;
+        e.preventDefault();
+        el.classList.add('drag-target');
+      });
+      el.addEventListener('dragleave',()=>el.classList.remove('drag-target'));
+      el.addEventListener('drop',e=>{
+        e.preventDefault();
+        el.classList.remove('drag-target');
+        try{
+          const payload=JSON.parse(e.dataTransfer?.getData('text/forge-zone-card')||'');
+          const deck=Store.getDeck(this.curId);
+          if(deck&&payload?.name&&payload?.fromZone)this._moveCardZone(deck,payload.name,payload.fromZone,zone);
+        }catch{}
+      });
+      el.dataset.dropBound='1';
+    });
   },
 
   _clearScryfallDragState(){
@@ -298,6 +329,7 @@ const App={
     Store.updDeck(deck);
     this._updHeader(deck);
     this.render();
+    this._recordChange('Added',`${cardRef.name} to ${this._zone}`,this._zone);
     if(DB._user)DB.schedulePush();
     const matchLabel=matchType==='exact'?'exact printing':'card match';
     if(updatedPrinting)Notify.show(`Added ${cardRef.name} and updated to the dropped ${matchLabel}`,'ok');
@@ -392,6 +424,9 @@ const App={
       else deck.cards=zoneCards.filter(x=>x.name!==name);
     }
     Store.updDeck(deck);this.render();
+    if(removed)this._recordChange('Removed',name,zone);
+    else if(delta>0)this._recordChange('Qty Up',`${name} +${delta}`,zone);
+    else this._recordChange('Qty Down',`${name} ${delta}`,zone);
     /* Show undo toast when a card is fully removed */
     if(removed)UndoMgr.record(deckId,name,snapBefore,zone);
   },
@@ -559,7 +594,39 @@ const App={
       'forge-kpi-value':'€'+metrics.value.toFixed(0)
     };
     Object.entries(vals).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.textContent=val;});
+    this._renderSectionSummary(deck);
     this._renderAdvice(deck,this._deckAdvice(deck,metrics));
+    this._renderChangeLog();
+    this._bindZoneDropTargets();
+  },
+
+  _renderSectionSummary(deck){
+    const el=document.getElementById('forge-section-summary');
+    if(!el||!deck)return;
+    const cards=this._zoneArray(deck,this._zone);
+    const summary=new Map();
+    if(this._zone==='main'){
+      summary.set('Commander',cards.filter(c=>c.name===deck.commander).reduce((s,c)=>s+(c.qty||0),0));
+      if(deck.partner)summary.set('Partner',cards.filter(c=>c.name===deck.partner).reduce((s,c)=>s+(c.qty||0),0));
+    }
+    cards.forEach(card=>{
+      if(this._zone==='main'&&(card.name===deck.commander||card.name===deck.partner))return;
+      const cd=Store.card(card.name);
+      const key=getDeckCardSection(cd?.type_line||'');
+      summary.set(key,(summary.get(key)||0)+(card.qty||0));
+    });
+    const chips=[...summary.entries()].filter(([,count])=>count>0);
+    el.innerHTML=chips.map(([label,count])=>`<button class="forge-summary-chip" type="button" data-forge-filter="${esc(label)}"><strong>${count}</strong> <span>${esc(label)}</span></button>`).join('');
+    el.querySelectorAll('[data-forge-filter]').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const label=btn.dataset.forgeFilter;
+        const map={Commander:'all',Partner:'all',Creatures:'creature',Instants:'instant',Sorceries:'sorcery',Enchantments:'enchantment',Battles:'battle',Lands:'land',Artifacts:'artifact'};
+        const filter=map[label]||'all';
+        this._filter=filter;
+        document.querySelectorAll('.fb').forEach(fb=>fb.classList.toggle('on',fb.dataset.f===filter));
+        this.render();
+      });
+    });
   },
 
   _renderAdvice(deck,items){
@@ -570,6 +637,21 @@ const App={
       return;
     }
     el.innerHTML=items.map(item=>`<div class="forge-advice-card ${item.tone||''}"><div class="forge-advice-title">${esc(item.title)}</div><div class="forge-advice-copy">${esc(item.copy)}</div></div>`).join('');
+  },
+
+  _renderChangeLog(){
+    const el=document.getElementById('forge-change-list');
+    if(!el)return;
+    if(!this._history.length){
+      el.innerHTML='<div class="forge-change-item"><div class="forge-change-main"><div class="forge-change-title">No recent edits</div><div class="forge-change-sub">Adds, moves, and removals in the builder will appear here.</div></div></div>';
+      return;
+    }
+    const now=Date.now();
+    el.innerHTML=this._history.map(item=>{
+      const age=Math.max(1,Math.round((now-item.ts)/1000));
+      const ageText=age<60?`${age}s ago`:`${Math.round(age/60)}m ago`;
+      return `<div class="forge-change-item"><div class="forge-change-main"><div class="forge-change-title">${esc(item.action)}</div><div class="forge-change-sub">${esc(item.detail)} · ${esc(item.zone)}</div></div><div class="forge-change-time">${ageText}</div></div>`;
+    }).join('');
   },
 
   _bulkPoolSummary:{value:0,updated:0},
@@ -629,6 +711,11 @@ const App={
     const tile=document.createElement('div');
     tile.className='ct'+(c.foil||c.etched?' foil':'')+(isCmdr?' is-cmdr':'')+(isPartner?' is-partner':'');
     tile.dataset.name=c.name;
+    tile.draggable=true;
+    tile.addEventListener('dragstart',e=>{
+      e.dataTransfer?.setData('text/forge-zone-card',JSON.stringify({name:c.name,fromZone:App._zone}));
+      e.dataTransfer.effectAllowed='move';
+    });
     const imgWrap=document.createElement('div');imgWrap.className='ct-img';
     const skel=document.createElement('div');skel.className='ct-skel';imgWrap.appendChild(skel);
     const tileImg=cd.img?.normal||cd.img?.crop;
@@ -752,7 +839,7 @@ const App={
       moveBtn.addEventListener('click',()=>App._moveCardZone(deck,c.name,this._zone,this._zone==='main'?'maybeboard':'main'));
       td7.appendChild(moveBtn);
       const xb=document.createElement('button');xb.style.cssText='background:none;border:none;color:var(--text3);font-size:15px;cursor:pointer;padding:0 3px;line-height:1';
-      xb.textContent='X';xb.addEventListener('click',()=>App.chQty(deck.id,c.name,-99));td7.appendChild(xb);
+      xb.textContent='X';xb.addEventListener('click',()=>App.chQty(deck.id,c.name,-99,this._zone));td7.appendChild(xb);
       tr.append(td0,td1,td2,td3,td4,td5,td6,td7);tbody.appendChild(tr);
       }
     }
