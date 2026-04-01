@@ -123,7 +123,6 @@ const App={
     // Show synergy button if commander is set
     const synBtn=document.getElementById('synergy-btn');
     if(synBtn)synBtn.style.display=deck.commander?'inline-flex':'none';
-    if(window.innerWidth>768)this.setView('list');
     this._showAddRow?.();
     // Auto-sync to Supabase if signed in
     if(DB._user)DB.schedulePush();
