@@ -1013,7 +1013,7 @@ Object.assign(App, {
 
   _showAddRow(){
     const row=document.getElementById('forge-add-row');
-    if(row){row.style.display='flex';document.getElementById('forge-add-inp')?.focus();}
+    if(row){row.style.display='flex';document.getElementById('forge-add-inp')?.focus();document.getElementById('forge-add-inp')?.select();}
   },
   _hideAddRow(){
     const row=document.getElementById('forge-add-row');
@@ -1022,7 +1022,13 @@ Object.assign(App, {
     if(ac)ac.style.display='none';
     const inp=document.getElementById('forge-add-inp');
     if(inp)inp.value='';
+    const qty=document.getElementById('forge-add-qty');
+    if(qty)qty.value='1';
     this._addAcResults=[];this._addAcIdx=-1;
+  },
+  _addQtyKeydown(e){
+    if(e.key==='Enter'){e.preventDefault();this._addCardCommit();}
+    else if(e.key==='Escape')this._hideAddRow();
   },
   _addSearch(val){
     clearTimeout(this._addAcTimer);
@@ -1040,23 +1046,49 @@ Object.assign(App, {
         ac.innerHTML='';
         this._addAcResults.slice(0,8).forEach((name,i)=>{
           const item=document.createElement('div');
-          item.style.cssText='padding:7px 12px;cursor:pointer;font-family:Cinzel,serif;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);transition:background .1s';
-          item.textContent=name;
+          const cached=Store.card(name)||{};
+          const img=cached.img?.normal||cached.img?.crop||'';
+          const metaParts=[cached.type_line?shortType(cached.type_line):'Card', cached.cmc!==undefined?`CMC ${cached.cmc}`:''].filter(Boolean);
+          item.className='forge-add-item';
           item.dataset.idx=i;
-          item.onmouseenter=()=>{ac.querySelectorAll('[data-idx]').forEach(el=>el.style.background='');item.style.background='var(--bg3)';this._addAcIdx=i;};
-          item.onmouseleave=()=>item.style.background='';
+          item.innerHTML=`
+            ${img?`<img src="${esc(img)}" loading="lazy" alt="${esc(name)}">`:'<div class="forge-add-thumb"></div>'}
+            <div class="forge-add-copy">
+              <div class="forge-add-name">${esc(name)}</div>
+              <div class="forge-add-meta">${metaParts.map(part=>`<span>${esc(String(part))}</span>`).join('')}</div>
+            </div>
+            <div class="forge-add-go">Add</div>`;
+          item.onmouseenter=()=>{this._addAcIdx=i;ac.querySelectorAll('[data-idx]').forEach((el,idx)=>el.classList.toggle('on',idx===this._addAcIdx));};
           item.onmousedown=(e)=>{e.preventDefault();this._addCardByName(name);};
           ac.appendChild(item);
+          if(!cached.name)SF.fetch(name,()=>this._refreshAddSuggestion(name));
         });
         ac.style.display='block';
       }catch{}
     },200);
   },
+  _refreshAddSuggestion(name){
+    const ac=document.getElementById('forge-add-ac');
+    if(!ac||ac.style.display==='none')return;
+    const idx=this._addAcResults.findIndex(n=>n===name);
+    const item=idx>=0?ac.querySelector(`[data-idx="${idx}"]`):null;
+    const cached=Store.card(name)||{};
+    if(!item||!cached?.name)return;
+    const img=cached.img?.normal||cached.img?.crop||'';
+    const metaParts=[cached.type_line?shortType(cached.type_line):'Card', cached.cmc!==undefined?`CMC ${cached.cmc}`:''].filter(Boolean);
+    item.innerHTML=`
+      ${img?`<img src="${esc(img)}" loading="lazy" alt="${esc(name)}">`:'<div class="forge-add-thumb"></div>'}
+      <div class="forge-add-copy">
+        <div class="forge-add-name">${esc(name)}</div>
+        <div class="forge-add-meta">${metaParts.map(part=>`<span>${esc(String(part))}</span>`).join('')}</div>
+      </div>
+      <div class="forge-add-go">Add</div>`;
+  },
   _addKeydown(e){
     const ac=document.getElementById('forge-add-ac');
     const items=ac?ac.querySelectorAll('[data-idx]'):[];
-    if(e.key==='ArrowDown'){e.preventDefault();this._addAcIdx=Math.min(this._addAcIdx+1,items.length-1);items.forEach((el,i)=>el.style.background=i===this._addAcIdx?'var(--bg3)':'');}
-    else if(e.key==='ArrowUp'){e.preventDefault();this._addAcIdx=Math.max(this._addAcIdx-1,0);items.forEach((el,i)=>el.style.background=i===this._addAcIdx?'var(--bg3)':'');}
+    if(e.key==='ArrowDown'){e.preventDefault();this._addAcIdx=Math.min(this._addAcIdx+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('on',i===this._addAcIdx));}
+    else if(e.key==='ArrowUp'){e.preventDefault();this._addAcIdx=Math.max(this._addAcIdx-1,0);items.forEach((el,i)=>el.classList.toggle('on',i===this._addAcIdx));}
     else if(e.key==='Enter'){e.preventDefault();const name=this._addAcIdx>=0?this._addAcResults[this._addAcIdx]:document.getElementById('forge-add-inp')?.value?.trim();if(name)this._addCardByName(name);}
     else if(e.key==='Escape')this._hideAddRow();
   },
@@ -1067,10 +1099,24 @@ Object.assign(App, {
   _addCardByName(name){
     const deck=Store.getDeck(this.curId);
     if(!deck){Notify.show('Select a deck first','err');return;}
+    const qty=Math.max(1,parseInt(document.getElementById('forge-add-qty')?.value||'1',10)||1);
     const existing=deck.cards.find(c=>c.name.toLowerCase()===name.toLowerCase());
-    if(existing){existing.qty++;Store.updDeck(deck);this.render();Notify.show(`Added 1 copy of ${name}`,'ok');}
-    else{deck.cards.push({name,qty:1,foil:false,etched:false});Store.updDeck(deck);this._fetchCards(deck);Notify.show(`Added ${name} to deck`,'ok');}
-    this._hideAddRow();
+    if(existing){
+      existing.qty+=qty;
+      Store.updDeck(deck);
+      this.render();
+      Notify.show(`Added ${qty} ${qty===1?'copy':'copies'} of ${name}`,'ok');
+    }else{
+      deck.cards.push({name,qty,foil:false,etched:false});
+      Store.updDeck(deck);
+      this._fetchCards(deck);
+      Notify.show(`Added ${name} to deck`,'ok');
+    }
+    const inp=document.getElementById('forge-add-inp');
+    if(inp){inp.value='';inp.focus();}
+    this._addAcResults=[];this._addAcIdx=-1;
+    const ac=document.getElementById('forge-add-ac');
+    if(ac)ac.style.display='none';
   }
 });
 

@@ -26,7 +26,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <script>
-window.APP_VERSION = '202604011608';
+window.APP_VERSION = '202604011618';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -309,14 +309,18 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         </select>
       </div>
       <!-- â•â• ADD CARD INLINE SEARCH â•â• -->
-      <div id="forge-add-row" style="display:none;gap:6px;padding:6px 10px 0;background:var(--bg2);border-bottom:1px solid var(--border);position:relative">
-        <input id="forge-add-inp" class="ni" placeholder="Card name..." autocomplete="off"
+      <div id="forge-add-row" class="forge-add-row" style="display:none;position:relative">
+        <div class="forge-add-main">
+        <input id="forge-add-inp" class="ni" placeholder="Add a card to this deck..." autocomplete="off"
           oninput="App._addSearch(this.value)"
           onkeydown="App._addKeydown(event)"
           style="flex:1;font-size:12px;padding:6px 10px">
-        <button class="tbtn sm" onclick="App._addCardCommit()" style="font-size:10px">+ Add</button>
-        <button class="tbtn sm" onclick="App._hideAddRow()" style="font-size:10px;color:var(--text3)">X</button>
-        <div id="forge-add-ac" style="display:none;position:absolute;top:100%;left:10px;right:10px;background:var(--bg2);border:1px solid var(--gold3);border-radius:0 0 8px 8px;z-index:200;max-height:200px;overflow-y:auto"></div>
+        <input id="forge-add-qty" class="ni forge-add-qty" type="number" min="1" max="20" value="1" onkeydown="App._addQtyKeydown(event)">
+        <button class="tbtn sm gold" onclick="App._addCardCommit()" style="font-size:10px">Add to Deck</button>
+        <button class="tbtn sm" onclick="App._hideAddRow()" style="font-size:10px;color:var(--text3)">Close</button>
+        </div>
+        <div class="forge-add-hint">Enter adds instantly. Arrow keys switch suggestions. The row stays open so you can add multiple cards fast.</div>
+        <div id="forge-add-ac" class="forge-add-ac" style="display:none"></div>
       </div>
       <div id="forge-builder-kpis" class="forge-kpis" style="display:none">
         <div class="forge-kpi"><div class="forge-kpi-label">Cards</div><div class="forge-kpi-value" id="forge-kpi-cards">0 / 100</div></div>

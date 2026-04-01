@@ -221,6 +221,34 @@ input,textarea,select{font-family:'JetBrains Mono',monospace;border:none;outline
 #srt{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);
      padding:8px 10px;color:var(--text2);font-size:13px;min-height:40px;}
 #srt option{background:var(--bg3);}
+.forge-add-row{
+  gap:8px;padding:10px 10px 12px;background:linear-gradient(180deg,rgba(255,255,255,.02),transparent),var(--bg2);
+  border-bottom:1px solid var(--border);
+}
+.forge-add-main{display:flex;align-items:center;gap:8px;}
+.forge-add-qty{max-width:74px;text-align:center;min-height:40px;}
+.forge-add-hint{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);padding:0 2px;}
+.forge-add-ac{
+  position:absolute;top:100%;left:10px;right:10px;background:var(--bg2);border:1px solid var(--gold3);
+  border-radius:0 0 12px 12px;z-index:200;max-height:320px;overflow-y:auto;box-shadow:0 14px 30px rgba(0,0,0,.38);
+}
+.forge-add-item{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);
+  transition:background .12s ease;
+}
+.forge-add-item:last-child{border-bottom:none;}
+.forge-add-item:hover,.forge-add-item.on{background:var(--bg3);}
+.forge-add-item img,.forge-add-thumb{
+  width:38px;height:52px;border-radius:6px;object-fit:cover;flex-shrink:0;border:1px solid var(--border);
+}
+.forge-add-thumb{background:var(--bg4);}
+.forge-add-copy{min-width:0;flex:1;}
+.forge-add-name{font-family:'Cinzel',serif;font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.forge-add-meta{margin-top:2px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);display:flex;gap:8px;flex-wrap:wrap;}
+.forge-add-go{
+  padding:6px 10px;border-radius:8px;border:1px solid var(--gold3);background:rgba(200,168,75,.12);color:var(--gold2);
+  font-family:'JetBrains Mono',monospace;font-size:10px;white-space:nowrap;
+}
 
 /* ── CARD AREA ── */
 #forge-builder-kpis{
