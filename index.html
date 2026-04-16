@@ -27,6 +27,7 @@
 
 <script>
 window.APP_VERSION = '202604161120';
+window.INITIAL_SECTION = location.pathname.replace(/\/+$/,'') === '/tracker' ? 'tracker' : '';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>

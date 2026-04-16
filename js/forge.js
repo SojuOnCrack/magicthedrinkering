@@ -37,7 +37,7 @@ const App={
       this.loadDeck(last);
     }else this.showEmpty();
     /* Restore last section + vault page */
-    const routeSection=location.pathname.replace(/\/+$/,'')==='/tracker'?'tracker':'';
+    const routeSection=window.INITIAL_SECTION||(location.pathname.replace(/\/+$/,'')==='/tracker'?'tracker':'');
     const lastSection=routeSection||(localStorage.getItem(Menu.NAV_KEY)||'forge');
     const lastVPage=localStorage.getItem(VaultNav.VPAGE_KEY)||'dashboard';
     VaultNav.cur=lastVPage; /* set before Menu.go so vault restores correctly */
