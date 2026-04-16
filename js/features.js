@@ -1,9 +1,9 @@
-/* CommanderForge — features: URLImport, DeckComments, SynergyScanner, Realtime,
+﻿/* CommanderForge â€” features: URLImport, DeckComments, SynergyScanner, Realtime,
    ReprintAlert, ForgeBulk, ThemeMgr, CardTooltip, UndoMgr, OfflineQueue + App.init */
 
 const URLImport={
-  /* Convert Moxfield JSON → text with set/collector_number.
-     Moxfield v2/v3 uses different field paths — we try all known ones. */
+  /* Convert Moxfield JSON â†’ text with set/collector_number.
+     Moxfield v2/v3 uses different field paths â€” we try all known ones. */
   moxfieldToText(data){
     const fmtCard=(c,qty=null)=>{
       const card=c.card||c;
@@ -56,11 +56,11 @@ const URLImport={
   }
 };
 
-/* ═══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    DECK COMMENTS & REACTIONS
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const DeckComments={
-  REACTIONS:['👍','🔥','💀','🎉','🤔','⚡'],
+  REACTIONS:['ðŸ‘','ðŸ”¥','ðŸ’€','ðŸŽ‰','ðŸ¤”','âš¡'],
 
   // Show comment section inside a user's deck view
   async renderForDeck(deckId, containerId){
@@ -71,7 +71,7 @@ const DeckComments={
       return;
     }
 
-    el.innerHTML='<div class="comments-loading">Loading comments…</div>';
+    el.innerHTML='<div class="comments-loading">Loading commentsâ€¦</div>';
 
     try{
       const[{data:comments},{data:reactions}]=await Promise.all([
@@ -125,7 +125,7 @@ const DeckComments={
         const inputWrap=document.createElement('div');inputWrap.className='comment-input-wrap';
         inputWrap.innerHTML=`
           <textarea class="comment-input" id="comment-inp-${deckId}"
-            placeholder="Leave a comment…" rows="1"
+            placeholder="Leave a commentâ€¦" rows="1"
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();DeckComments.post('${deckId}','${containerId}');}">
           </textarea>
           <button class="tbtn sm gold" onclick="DeckComments.post('${deckId}','${containerId}')">Post</button>
@@ -154,7 +154,7 @@ const DeckComments={
         <div>
           <span class="comment-author">${esc(authorName)}</span>
           <span class="comment-time">${timeStr}</span>
-          ${isOwn?`<button class="comment-del" onclick="DeckComments.del('${c.id}','${deckId}','${containerId}')">✕</button>`:''}
+          ${isOwn?`<button class="comment-del" onclick="DeckComments.del('${c.id}','${deckId}','${containerId}')">X</button>`:''}
         </div>
         <div class="comment-text">${esc(c.comment_text||'')}</div>
       </div>
@@ -176,7 +176,7 @@ const DeckComments={
       });
       if(error)throw error;
       if(inp)inp.value='';
-      // Realtime will refresh — or do it manually
+      // Realtime will refresh â€” or do it manually
       this.renderForDeck(deckId, containerId);
     }catch(e){Notify.show('Failed to post: '+e.message,'err');}
   },
@@ -220,9 +220,9 @@ const DeckComments={
   }
 };
 
-/* ═══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    SYNERGY SCANNER
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const SynergyScanner={
   _keywords:{
     'flying':['fly','flying','reach','can block creatures with flying'],
@@ -248,12 +248,12 @@ const SynergyScanner={
     const deck=Store.getDeck(App.curId);
     if(!deck?.commander){Notify.show('Set a commander first','err');return;}
     // Open panel immediately with loading state
-    P._open('⚡ Commander Synergy — '+deck.commander, true);
+    P._open('âš¡ Commander Synergy â€” '+deck.commander, true);
     document.getElementById('pbody').innerHTML=`
       <div style="display:flex;align-items:center;gap:10px;padding:16px">
         <div class="spin" style="width:20px;height:20px;border-width:2px"></div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text3)">
-          Loading card data for <span style="color:var(--gold2)">${esc(deck.commander)}</span>…
+          Loading card data for <span style="color:var(--gold2)">${esc(deck.commander)}</span>â€¦
         </div>
       </div>`;
     document.getElementById('pfoot').innerHTML='';
@@ -321,7 +321,7 @@ const SynergyScanner={
 
     if(combos.length){
       html+=`<div class="syn-panel">
-        <div class="syn-panel-title">⚡ Key Synergies &amp; Combos (${combos.length})</div>`;
+        <div class="syn-panel-title">âš¡ Key Synergies &amp; Combos (${combos.length})</div>`;
       combos.slice(0,15).forEach(({c,cd,match})=>{
         html+=this._cardRow(c,cd,match,'combo');
       });
@@ -330,7 +330,7 @@ const SynergyScanner={
 
     if(synergies.length){
       html+=`<div class="syn-panel">
-        <div class="syn-panel-title">💚 Supporting Cards (${synergies.length})</div>`;
+        <div class="syn-panel-title">ðŸ’š Supporting Cards (${synergies.length})</div>`;
       synergies.slice(0,12).forEach(({c,cd,match})=>{
         html+=this._cardRow(c,cd,match,'synergy');
       });
@@ -339,8 +339,8 @@ const SynergyScanner={
 
     // Fetch suggestions from Scryfall based on commander keywords
     html+=`<div class="syn-panel" id="syn-suggestions-panel">
-      <div class="syn-panel-title">✨ Suggested Additions</div>
-      <div id="syn-suggestions"><div style="color:var(--text3);font-size:12px">Fetching suggestions…</div></div>
+      <div class="syn-panel-title">âœ¨ Suggested Additions</div>
+      <div id="syn-suggestions"><div style="color:var(--text3);font-size:12px">Fetching suggestionsâ€¦</div></div>
     </div>`;
 
     document.getElementById('pbody').innerHTML=html;
@@ -402,10 +402,10 @@ const SynergyScanner={
       ${img}
       <div style="flex:1;min-width:0">
         <div class="syn-card-name">${esc(c.name)}</div>
-        <div class="syn-card-reason">${match.reasons.join(' · ')}</div>
+        <div class="syn-card-reason">${match.reasons.join(' Â· ')}</div>
       </div>
       ${price}
-      <span class="syn-badge ${badgeType}">${badgeType==='combo'?'⚡ Combo':'💚 Synergy'}</span>
+      <span class="syn-badge ${badgeType}">${badgeType==='combo'?'âš¡ Combo':'ðŸ’š Synergy'}</span>
     </div>`;
   },
 
@@ -433,7 +433,7 @@ const SynergyScanner={
       ? `identity<=${colors.join('')}`
       : 'identity:c';
 
-    /* Build keyword query — try multiple fallbacks if Scryfall returns no results */
+    /* Build keyword query â€” try multiple fallbacks if Scryfall returns no results */
     const kwTerms=cmdrKeywords
       .map(k=>KW_MAP[k.toLowerCase()])
       .filter(Boolean)
@@ -467,7 +467,7 @@ const SynergyScanner={
       const price=card.prices?.eur?'€'+card.prices.eur:'';
       const why=this._matchScore((cmdrData.oracle_text||'').toLowerCase(),cmdrKeywords,[],
         (card.oracle_text||'').toLowerCase(),{type_line:card.type_line,color_identity:card.color_identity},
-        cmdrData.color_identity||[]).reasons.join(' · ')||'EDHREC recommended';
+        cmdrData.color_identity||[]).reasons.join(' Â· ')||'EDHREC recommended';
 
       const row=document.createElement('div');row.className='syn-suggest-card';
       row.innerHTML=`
@@ -478,7 +478,7 @@ const SynergyScanner={
         </div>
         <div style="text-align:right;flex-shrink:0">
           ${price?`<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--green2)">${price}</div>`:''}
-          <span class="syn-badge suggest">✨ Add?</span>
+          <span class="syn-badge suggest">âœ¨ Add?</span>
         </div>
       `;
       row.onclick=()=>this._addSuggested(card, deck);
@@ -500,13 +500,13 @@ const SynergyScanner={
                     normal:card.image_uris?.normal||card.card_faces?.[0]?.image_uris?.normal||null}};
     Store.setCard(card.name,cd);Store.saveCache();
     App.render();
-    Notify.show(card.name+' added to deck','ok');
+    Notify.show(`Added ${card.name} to deck`,'ok');
   }
 };
 
-/* ═══════════════════════════════════════════════════════════
-   REALTIME — Supabase live updates for bulk pool + community
-   ═══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   REALTIME â€” Supabase live updates for bulk pool + community
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const Realtime={
   _channels:{},
 
@@ -557,14 +557,14 @@ const Realtime={
 };
 
 
-/* ═══ REPRINT ALERT ENGINE ════════════════════════════════════════
+/* â•â•â• REPRINT ALERT ENGINE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    How notifications work:
-   1. In-App Dashboard Banner  — red strip on Dashboard when reprints found
-   2. Vault → Reprint Alerts tab — full detail list, price impact, dismiss
-   3. Browser Notification API  — optional push if user grants permission
-   4. Nav badge                 — red dot on "Reprint Alerts" sidebar item
+   1. In-App Dashboard Banner  â€” red strip on Dashboard when reprints found
+   2. Vault â†’ Reprint Alerts tab â€” full detail list, price impact, dismiss
+   3. Browser Notification API  â€” optional push if user grants permission
+   4. Nav badge                 â€” red dot on "Reprint Alerts" sidebar item
    Auto-checks weekly, stores results in localStorage.
-   ═══════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const ReprintAlert={
   KEY:'cforge_reprints',SEEN:'cforge_reprints_seen',LAST:'cforge_reprints_last',
   _results:[],_seen:[],
@@ -582,7 +582,7 @@ const ReprintAlert={
     this.load();
     const listEl=document.getElementById('reprint-list');
     const lastEl=document.getElementById('reprint-last-check');
-    if(listEl)listEl.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">🔍 Fetching recent sets from Scryfall…</div>';
+    if(listEl)listEl.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">ðŸ” Fetching recent sets from Scryfallâ€¦</div>';
 
     /* Step 1: get sets released in last 90 days */
     let recentSets=[];
@@ -612,7 +612,7 @@ const ReprintAlert={
     this._results=[];
     let setsChecked=0;
     for(const set of recentSets){
-      if(listEl)listEl.innerHTML=`<div style="padding:20px;text-align:center;color:var(--text3)">Checking ${set.name} (${setsChecked+1}/${recentSets.length})…</div>`;
+      if(listEl)listEl.innerHTML=`<div style="padding:20px;text-align:center;color:var(--text3)">Checking ${set.name} (${setsChecked+1}/${recentSets.length})â€¦</div>`;
       try{
         let page=1,hasMore=true;
         while(hasMore){
@@ -676,9 +676,9 @@ const ReprintAlert={
     if(!unseen.length)return;
     /* Browser Push Notification (if permission granted) */
     if('Notification' in window && Notification.permission==='granted'){
-      new Notification('MagicTheDrinkering — Reprint Alert',{
+      new Notification('MagicTheDrinkering â€” Reprint Alert',{
         body:`${unseen.length} card${unseen.length>1?'s':''} in your collection got reprinted. Check the Vault for price impact.`,
-        icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⚔</text></svg>'
+        icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">âš”</text></svg>'
       });
     }
   },
@@ -686,8 +686,8 @@ const ReprintAlert={
   requestNotificationPermission(){
     if(!('Notification' in window)){Notify.show('Browser notifications not supported','err');return;}
     Notification.requestPermission().then(p=>{
-      if(p==='granted')Notify.show('Browser notifications enabled ✓','ok');
-      else if(p==='denied')Notify.show('Notifications blocked — check browser settings','err');
+      if(p==='granted')Notify.show('Browser notifications enabled âœ“','ok');
+      else if(p==='denied')Notify.show('Notifications blocked â€” check browser settings','err');
     });
   },
 
@@ -703,7 +703,7 @@ const ReprintAlert={
     this.load();
     this._updateNavBadge();
     const last=localStorage.getItem(this.LAST);
-    if(!last)return; /* never scanned — don't auto-scan, let user trigger first */
+    if(!last)return; /* never scanned â€” don't auto-scan, let user trigger first */
     const age=Date.now()-new Date(last).getTime();
     const WEEK=7*24*60*60*1000;
     if(age>WEEK){setTimeout(()=>this.scan(),5000);} /* delay 5s after boot */
@@ -746,8 +746,8 @@ const ReprintAlert={
     listEl.innerHTML=`
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11px;color:var(--text3);flex-wrap:wrap">
         <span>${unseen} unseen</span>
-        ${notifSupported&&!notifGranted?`<button class="tbtn sm" onclick="ReprintAlert.requestNotificationPermission()" style="font-size:10px">🔔 Enable Push Notifications</button>`:''}
-        ${notifGranted?'<span style="color:var(--green2)">🔔 Push notifications on</span>':''}
+        ${notifSupported&&!notifGranted?`<button class="tbtn sm" onclick="ReprintAlert.requestNotificationPermission()" style="font-size:10px">ðŸ”” Enable Push Notifications</button>`:''}
+        ${notifGranted?'<span style="color:var(--green2)">ðŸ”” Push notifications on</span>':''}
       </div>
       ${this._results.map(r=>{
         const isSeen=this._seen.includes(r.name+'_'+r.setCode);
@@ -771,31 +771,31 @@ const ReprintAlert={
             </div>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-            ${!isSeen?`<button class="tbtn sm" data-action="dismiss-reprint" data-card="${esc(r.name)}" data-extra="${r.setCode}" style="font-size:9px">✓ Dismiss</button>`:''}
+            ${!isSeen?`<button class="tbtn sm" data-action="dismiss-reprint" data-card="${esc(r.name)}" data-extra="${r.setCode}" style="font-size:9px">âœ“ Dismiss</button>`:''}
             <span style="font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace">${new Date(r.releasedAt).toLocaleDateString('de-DE')}</span>
           </div>
         </div>`;
       }).join('')}`;
   },
 
-  /* Dashboard banner — called by Dashboard.render() */
+  /* Dashboard banner â€” called by Dashboard.render() */
   dashboardBanner(){
     this.load();
     const unseen=this._results.filter(r=>!this._seen.includes(r.name+'_'+r.setCode));
     if(!unseen.length)return '';
     const drops=unseen.filter(r=>r.impact<-10).length;
     return `<div onclick="VaultNav.go('reprints')" style="cursor:pointer;padding:10px 14px;background:var(--crimson);border:1px solid var(--crimson2);border-radius:var(--r);margin-bottom:12px;display:flex;align-items:center;gap:10px">
-      <span style="font-size:18px">🔄</span>
+      <span style="font-size:18px">ðŸ”„</span>
       <div style="flex:1">
-        <div style="font-size:12px;font-weight:600;color:var(--text)">Reprint Alert — ${unseen.length} card${unseen.length>1?'s':''} reprinted</div>
-        <div style="font-size:11px;color:var(--text2)">${drops>0?`${drops} with &gt;10% price drop · `:''}Click to see full impact</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">Reprint Alert â€” ${unseen.length} card${unseen.length>1?'s':''} reprinted</div>
+        <div style="font-size:11px;color:var(--text2)">${drops>0?`${drops} with &gt;10% price drop Â· `:''}Click to see full impact</div>
       </div>
-      <span style="font-size:11px;color:var(--text3)">→</span>
+      <span style="font-size:11px;color:var(--text3)">â†’</span>
     </div>`;
   }
 };
 
-/* ═══ FORGE QUICK PASTE ════════════════════════════════════════ */
+/* â•â•â• FORGE QUICK PASTE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const ForgeBulk={
   toggle(){
     const wrap=document.getElementById('forge-bulk-wrap');
@@ -839,7 +839,7 @@ const ForgeBulk={
   }
 };
 
-/* ═══ THEME MANAGER — light/dark toggle ════════════════════════ */
+/* â•â•â• THEME MANAGER â€” light/dark toggle â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const ThemeMgr={
   KEY:'cforge_theme',
   init(){
@@ -853,12 +853,12 @@ const ThemeMgr={
   apply(theme,save=true){
     document.documentElement.dataset.theme=theme;
     const btn=document.getElementById('theme-toggle');
-    if(btn)btn.textContent=theme==='dark'?'☀':'🌙';
+    if(btn)btn.textContent=theme==='dark'?'â˜€':'ðŸŒ™';
     if(save)localStorage.setItem(this.KEY,theme);
   }
 };
 
-/* ═══ CARD HOVER TOOLTIP ══════════════════════════════════════ */
+/* â•â•â• CARD HOVER TOOLTIP â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const CardTooltip={
   _el:null,_img:null,
   init(){
@@ -883,22 +883,22 @@ const CardTooltip={
   hide(){if(this._el)this._el.classList.remove('show');}
 };
 
-/* ═══ ANIMATED NUMBER COUNTER ══════════════════════════════════
+/* â•â•â• ANIMATED NUMBER COUNTER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    animateVal(el, toVal, prefix='', suffix='', duration=350)
    Counts up/down from current displayed value to toVal.
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ═══ UNDO MANAGER ═════════════════════════════════════════════
+/* â•â•â• UNDO MANAGER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Gives 5-second undo window after card removal.
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const UndoMgr={
   _snapshot:null,_timer:null,_countdown:null,_remaining:5,
   DURATION:5000,
 
-  record(deckId,cardName,snapshot){
+  record(deckId,cardName,snapshot,zone='main'){
     /* snapshot = array copy of deck.cards before removal */
     clearTimeout(this._timer);clearInterval(this._countdown);
-    this._snapshot={deckId,cardName,cards:[...snapshot]};
+    this._snapshot={deckId,cardName,cards:[...snapshot],zone};
     this._remaining=5;
     const toast=document.getElementById('undo-toast');
     const msg=document.getElementById('undo-msg');
@@ -916,9 +916,14 @@ const UndoMgr={
 
   undo(){
     if(!this._snapshot)return;
-    const{deckId,cards}=this._snapshot;
+    const{deckId,cards,zone}=this._snapshot;
     const deck=Store.getDeck(deckId);
-    if(deck){deck.cards=cards;Store.updDeck(deck);App.render();Notify.show('↩ Card restored','ok');}
+    if(deck){
+      if(zone==='sideboard')deck.sideboard=cards;
+      else if(zone==='maybeboard')deck.maybeboard=cards;
+      else deck.cards=cards;
+      Store.updDeck(deck);App.render();Notify.show('â†© Card restored','ok');
+    }
     this.dismiss();
   },
 
@@ -930,10 +935,10 @@ const UndoMgr={
   }
 };
 
-/* ═══ OFFLINE QUEUE — queues Supabase writes when offline ══════
+/* â•â•â• OFFLINE QUEUE â€” queues Supabase writes when offline â•â•â•â•â•â•
    Writes are stored in IDB as pending ops.
    window online-event drains the queue automatically.
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const OfflineQueue={
   STORE:'cforge_pending',
   async push(op){
@@ -941,12 +946,12 @@ const OfflineQueue={
     try{
       const db=await IDB.open();
       const tx=db.transaction([IDB.STORE,'cforge_pending'],'readwrite');
-      /* re-use IDB connection but to our own store — easier: just localStorage queue */
+      /* re-use IDB connection but to our own store â€” easier: just localStorage queue */
     }catch{}
     const key='ofq_'+Date.now()+'_'+Math.random().toString(36).slice(2,4);
     try{localStorage.setItem(key,JSON.stringify(op));}catch{}
     const indicator=document.getElementById('sync-offline-dot');
-    if(indicator){indicator.style.display='flex';indicator.title='Offline — '+this.pendingCount()+' changes queued';}
+    if(indicator){indicator.style.display='flex';indicator.title='Offline â€” '+this.pendingCount()+' changes queued';}
   },
   pendingCount(){
     return Object.keys(localStorage).filter(k=>k.startsWith('ofq_')).length;
@@ -969,28 +974,28 @@ const OfflineQueue={
       }catch{break;} /* stop on first error, retry next time */
     }
     if(flushed>0){
-      Notify.show(`☁ Synced ${flushed} offline change${flushed>1?'s':''}`, 'ok');
+      Notify.show(`â˜ Synced ${flushed} offline change${flushed>1?'s':''}`, 'ok');
       const indicator=document.getElementById('sync-offline-dot');
       if(indicator&&!this.pendingCount())indicator.style.display='none';
     }
   },
   init(){
     window.addEventListener('online',()=>{
-      Notify.show('Back online — syncing…','inf',1500);
+      Notify.show('Back online â€” syncingâ€¦','inf',1500);
       setTimeout(()=>this.drain(),800);
     });
-    window.addEventListener('offline',()=>Notify.show('Offline — changes will sync when reconnected','inf',4000));
+    window.addEventListener('offline',()=>Notify.show('Offline â€” changes will sync when reconnected','inf',4000));
     /* Drain on boot if we have pending items */
     if(this.pendingCount()>0)setTimeout(()=>this.drain(),3000);
   }
 };
 
 
-/* ═══ DELEGATED CARD ACTION HANDLER ═══════════════════════════
+/* â•â•â• DELEGATED CARD ACTION HANDLER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    All buttons with data-action="trade|wish|dismiss-reprint"
    are handled here instead of inline onclick with raw card names.
    Prevents apostrophe-in-name breakage (Yawgmoth's Will etc.)
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 document.addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
@@ -1007,13 +1012,13 @@ document.addEventListener('click', e => {
 });
 
 
-/* ═══ FORGE ADD CARD — inline search + autocomplete ═══════════ */
+/* â•â•â• FORGE ADD CARD â€” inline search + autocomplete â•â•â•â•â•â•â•â•â•â•â• */
 Object.assign(App, {
   _addAcTimer:null, _addAcIdx:-1, _addAcResults:[],
 
   _showAddRow(){
     const row=document.getElementById('forge-add-row');
-    if(row){row.style.display='flex';document.getElementById('forge-add-inp')?.focus();}
+    if(row){row.style.display='flex';document.getElementById('forge-add-inp')?.focus();document.getElementById('forge-add-inp')?.select();}
   },
   _hideAddRow(){
     const row=document.getElementById('forge-add-row');
@@ -1022,7 +1027,13 @@ Object.assign(App, {
     if(ac)ac.style.display='none';
     const inp=document.getElementById('forge-add-inp');
     if(inp)inp.value='';
+    const qty=document.getElementById('forge-add-qty');
+    if(qty)qty.value='1';
     this._addAcResults=[];this._addAcIdx=-1;
+  },
+  _addQtyKeydown(e){
+    if(e.key==='Enter'){e.preventDefault();this._addCardCommit();}
+    else if(e.key==='Escape')this._hideAddRow();
   },
   _addSearch(val){
     clearTimeout(this._addAcTimer);
@@ -1040,23 +1051,49 @@ Object.assign(App, {
         ac.innerHTML='';
         this._addAcResults.slice(0,8).forEach((name,i)=>{
           const item=document.createElement('div');
-          item.style.cssText='padding:7px 12px;cursor:pointer;font-family:Cinzel,serif;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);transition:background .1s';
-          item.textContent=name;
+          const cached=Store.card(name)||{};
+          const img=cached.img?.normal||cached.img?.crop||'';
+          const metaParts=[cached.type_line?shortType(cached.type_line):'Card', cached.cmc!==undefined?`CMC ${cached.cmc}`:''].filter(Boolean);
+          item.className='forge-add-item';
           item.dataset.idx=i;
-          item.onmouseenter=()=>{ac.querySelectorAll('[data-idx]').forEach(el=>el.style.background='');item.style.background='var(--bg3)';this._addAcIdx=i;};
-          item.onmouseleave=()=>item.style.background='';
+          item.innerHTML=`
+            ${img?`<img src="${esc(img)}" loading="lazy" alt="${esc(name)}">`:'<div class="forge-add-thumb"></div>'}
+            <div class="forge-add-copy">
+              <div class="forge-add-name">${esc(name)}</div>
+              <div class="forge-add-meta">${metaParts.map(part=>`<span>${esc(String(part))}</span>`).join('')}</div>
+            </div>
+            <div class="forge-add-go">Add</div>`;
+          item.onmouseenter=()=>{this._addAcIdx=i;ac.querySelectorAll('[data-idx]').forEach((el,idx)=>el.classList.toggle('on',idx===this._addAcIdx));};
           item.onmousedown=(e)=>{e.preventDefault();this._addCardByName(name);};
           ac.appendChild(item);
+          if(!cached.name)SF.fetch(name,()=>this._refreshAddSuggestion(name));
         });
         ac.style.display='block';
       }catch{}
     },200);
   },
+  _refreshAddSuggestion(name){
+    const ac=document.getElementById('forge-add-ac');
+    if(!ac||ac.style.display==='none')return;
+    const idx=this._addAcResults.findIndex(n=>n===name);
+    const item=idx>=0?ac.querySelector(`[data-idx="${idx}"]`):null;
+    const cached=Store.card(name)||{};
+    if(!item||!cached?.name)return;
+    const img=cached.img?.normal||cached.img?.crop||'';
+    const metaParts=[cached.type_line?shortType(cached.type_line):'Card', cached.cmc!==undefined?`CMC ${cached.cmc}`:''].filter(Boolean);
+    item.innerHTML=`
+      ${img?`<img src="${esc(img)}" loading="lazy" alt="${esc(name)}">`:'<div class="forge-add-thumb"></div>'}
+      <div class="forge-add-copy">
+        <div class="forge-add-name">${esc(name)}</div>
+        <div class="forge-add-meta">${metaParts.map(part=>`<span>${esc(String(part))}</span>`).join('')}</div>
+      </div>
+      <div class="forge-add-go">Add</div>`;
+  },
   _addKeydown(e){
     const ac=document.getElementById('forge-add-ac');
     const items=ac?ac.querySelectorAll('[data-idx]'):[];
-    if(e.key==='ArrowDown'){e.preventDefault();this._addAcIdx=Math.min(this._addAcIdx+1,items.length-1);items.forEach((el,i)=>el.style.background=i===this._addAcIdx?'var(--bg3)':'');}
-    else if(e.key==='ArrowUp'){e.preventDefault();this._addAcIdx=Math.max(this._addAcIdx-1,0);items.forEach((el,i)=>el.style.background=i===this._addAcIdx?'var(--bg3)':'');}
+    if(e.key==='ArrowDown'){e.preventDefault();this._addAcIdx=Math.min(this._addAcIdx+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('on',i===this._addAcIdx));}
+    else if(e.key==='ArrowUp'){e.preventDefault();this._addAcIdx=Math.max(this._addAcIdx-1,0);items.forEach((el,i)=>el.classList.toggle('on',i===this._addAcIdx));}
     else if(e.key==='Enter'){e.preventDefault();const name=this._addAcIdx>=0?this._addAcResults[this._addAcIdx]:document.getElementById('forge-add-inp')?.value?.trim();if(name)this._addCardByName(name);}
     else if(e.key==='Escape')this._hideAddRow();
   },
@@ -1067,26 +1104,43 @@ Object.assign(App, {
   _addCardByName(name){
     const deck=Store.getDeck(this.curId);
     if(!deck){Notify.show('Select a deck first','err');return;}
-    const existing=deck.cards.find(c=>c.name.toLowerCase()===name.toLowerCase());
-    if(existing){existing.qty++;Store.updDeck(deck);this.render();Notify.show(name+' qty +1','ok');}
-    else{deck.cards.push({name,qty:1,foil:false,etched:false});Store.updDeck(deck);this._fetchCards(deck);Notify.show('Added '+name,'ok');}
-    this._hideAddRow();
+    const qty=Math.max(1,parseInt(document.getElementById('forge-add-qty')?.value||'1',10)||1);
+    const zoneCards=this._zoneArray(deck);
+    const existing=zoneCards.find(c=>c.name.toLowerCase()===name.toLowerCase());
+    if(existing){
+      existing.qty+=qty;
+      Store.updDeck(deck);
+      this.render();
+      this._recordChange?.('Added',`${qty}x ${name} to ${this._zone}`,this._zone);
+      Notify.show(`Added ${qty} ${qty===1?'copy':'copies'} of ${name}`,'ok');
+    }else{
+      zoneCards.push({name,qty,foil:false,etched:false});
+      Store.updDeck(deck);
+      this._fetchCards(deck);
+      this._recordChange?.('Added',`${qty}x ${name} to ${this._zone}`,this._zone);
+      Notify.show(`Added ${name} to ${this._zone}`,'ok');
+    }
+    const inp=document.getElementById('forge-add-inp');
+    if(inp){inp.value='';inp.focus();}
+    this._addAcResults=[];this._addAcIdx=-1;
+    const ac=document.getElementById('forge-add-ac');
+    if(ac)ac.style.display='none';
   }
 });
 
 
-/* ═══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    SCRYFALL BULK CACHE
    Downloads oracle_cards (~20MB) from Scryfall on first boot,
    stores all ~30k cards in IDB. Subsequent lookups: 0ms.
    Auto-refresh weekly in background (silent, incremental).
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ═══ CARD ENRICHMENT ══════════════════════════════════════════
+/* â•â•â• CARD ENRICHMENT â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    After any import: fill set + collector_number from local IDB
    cache for cards that don't already have them.
    Uses the cached scryfall_id + set + collector_number from _slim().
-   ═══════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 async function enrichDeckCards(deck){
   if(!deck?.cards?.length)return;
   const needsEnrich=deck.cards.filter(c=>
@@ -1110,16 +1164,16 @@ async function enrichDeckCards(deck){
 }
 
 
-/* ═══════════════════════════════════════════════════════════
-   CARD SEARCH — full Scryfall search with add-to-deck/wish
-   ═══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   CARD SEARCH â€” full Scryfall search with add-to-deck/wish
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 App.init();
 
 /* Service worker registration moved to js/auth.js */
 
-/* ═══════════════════════════════════════════════════════════
-   CARD SEARCH 2 — standalone section (mirrors CardSearch from vault)
-   ═══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   CARD SEARCH 2 â€” standalone section (mirrors CardSearch from vault)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const CardSearch2={
   _page:null,_query:'',_acTimer:null,
 
@@ -1131,19 +1185,37 @@ const CardSearch2={
     const sel=document.getElementById('cs2-target-deck');
     if(!sel)return;
     const prev=sel.value;
-    sel.innerHTML='<option value="">— Add to deck —</option>';
+    sel.innerHTML='<option value="">â€” Add to deck â€”</option>';
     Store.decks.forEach(d=>{
       const o=document.createElement('option');
-      o.value=d.id;o.textContent=d.name+(d.commander?' · '+d.commander.split(',')[0]:'');
+      o.value=d.id;o.textContent=d.name+(d.commander?' Â· '+d.commander.split(',')[0]:'');
       sel.appendChild(o);
     });
     if(prev)sel.value=prev;
   },
 
   onType(val){
+    SearchSuggest.onType({
+      key:'cs2-suggest',
+      inputId:'cs2-query',
+      deckId:'cs2-target-deck',
+      val,
+      onOpen:(name)=>this._openFromSuggest(name),
+      onAdd:(name)=>this._addToDeck(name),
+      search:()=>this.search()
+    });
     clearTimeout(this._acTimer);
     if(val.length<3)return;
-    this._acTimer=setTimeout(()=>this.search(),500);
+    this._acTimer=setTimeout(()=>this.search(),350);
+  },
+  onKey(e){
+    return SearchSuggest.onKey({
+      key:'cs2-suggest',
+      inputId:'cs2-query',
+      e,
+      onOpen:(name)=>this._openFromSuggest(name),
+      search:()=>this.search()
+    });
   },
 
   _buildQuery(){
@@ -1162,6 +1234,7 @@ const CardSearch2={
   },
 
   async search(){
+    SearchSuggest.hide('cs2-suggest');
     const query=this._buildQuery();
     if(!query)return;
     this._query=query;this._page=null;
@@ -1169,7 +1242,7 @@ const CardSearch2={
     const grid=document.getElementById('cs2-results');
     const more=document.getElementById('cs2-load-more');
     const sb=document.getElementById('search-sb-count');
-    if(status)status.textContent='Searching…';
+    if(status)status.textContent='Searchingâ€¦';
     if(grid)grid.innerHTML='';
     if(more)more.style.display='none';
     try{
@@ -1189,14 +1262,14 @@ const CardSearch2={
     if(!this._page)return;
     const grid=document.getElementById('cs2-results');
     const more=document.getElementById('cs2-load-more');
-    if(more)more.textContent='Loading…';
+    if(more)more.textContent='Loadingâ€¦';
     try{
       const r=await fetch(this._page);
       if(!r.ok)return;
       const d=await r.json();
       this._page=d.has_more?d.next_page:null;
       this._renderCards(d.data||[],grid,true);
-      if(more){more.textContent='Load more results';more.style.display=this._page?'block':'none';}
+      if(more){more.textContent='Show More Cards';more.style.display=this._page?'block':'none';}
     }catch{}
   },
 
@@ -1214,7 +1287,7 @@ const CardSearch2={
       const el=document.createElement('div');
       el.className='cs-card';
       el.innerHTML=`
-        ${imgUrl?`<img class="cs-card-img" src="${esc(imgUrl)}" loading="lazy">`:'<div class="cs-card-img" style="background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text3)">🃏</div>'}
+        ${imgUrl?`<img class="cs-card-img" src="${esc(imgUrl)}" loading="lazy">`:'<div class="cs-card-img" style="background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text3);font-family:Cinzel,serif;font-size:14px">Card</div>'}
         <div class="cs-card-body">
           <div class="cs-card-name">${esc(card.name)}</div>
           <div class="cs-card-meta">
@@ -1223,11 +1296,15 @@ const CardSearch2={
           </div>
         </div>
         <div class="cs-actions">
-          <button class="cs-action-btn gold" onclick="CardSearch2._addToDeck('${esc(card.name)}','${deckId}')">＋ Deck</button>
-          <button class="cs-action-btn purple" onclick="WishSection.addByName('${esc(card.name)}')">⭐ Wish</button>
-          <button class="cs-action-btn" onclick="TradeSection.addByName('${esc(card.name)}')">🤝 Trade</button>
-          <button class="cs-action-btn" onclick="M.open({name:'${esc(card.name)}',qty:1},null)">👁 View</button>
+          <button class="cs-action-btn gold" onclick="CardSearch2._addToDeck('${esc(card.name)}','${deckId}')">Add to Deck</button>
+          <button class="cs-action-btn" onclick="M.open({name:'${esc(card.name)}',qty:1},null)">Open Details</button>
+          <button class="cs-action-btn purple" onclick="WishSection.addByName('${esc(card.name)}')">Save</button>
+          <button class="cs-action-btn" onclick="TradeSection.addByName('${esc(card.name)}')">List Trade</button>
         </div>`;
+      attachTapPop(el);
+      attachCardTilt(el);
+      el.querySelectorAll('.cs-action-btn').forEach(btn=>btn.addEventListener('click',e=>e.stopPropagation()));
+      el.addEventListener('click',()=>M.open({name:card.name,qty:1},null));
       grid.appendChild(el);
     });
   },
@@ -1240,14 +1317,26 @@ const CardSearch2={
     const existing=deck.cards.find(c=>c.name.toLowerCase()===name.toLowerCase());
     if(existing){existing.qty++;Store.updDeck(deck);Notify.show(name+' qty +1','ok');}
     else{deck.cards.push({name,qty:1,foil:false,etched:false});Store.updDeck(deck);Notify.show('Added '+name,'ok');}
+  },
+  _openFromSuggest(name){
+    const cached=Store.card(name);
+    if(cached?.name){M.open({name,qty:1},null);return;}
+    fetch(`/api/scryfall/cards/named?exact=${encodeURIComponent(name)}`,{headers:{Accept:'application/json'}})
+      .then(r=>r.ok?r.json():null)
+      .then(card=>{
+        const slim=card&&SF._slim(card);
+        if(slim)Store.setCard(slim.name,slim);
+        M.open({name,qty:1},null);
+      })
+      .catch(()=>M.open({name,qty:1},null));
   }
 };
 
 
-/* ═══════════════════════════════════════════════════════════
-   COLL SECTION — standalone collection section
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   COLL SECTION â€” standalone collection section
    Wraps MyCollection logic with new IDs (coll2-*)
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const CollSection={
   _view:'grid',
   _scope:'all',
@@ -1282,17 +1371,18 @@ const CollSection={
     const grid=document.getElementById('coll2-folders');
     const sb=document.getElementById('coll-folder-sidebar');
     if(!grid)return;
-    if(!folders.length){grid.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">No folders yet — create one to organise your cards.</div>';return;}
+    if(!folders.length){grid.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">No folders yet - create one to organize your cards.</div>';return;}
     grid.innerHTML='';
     folders.forEach(f=>{
       const count=(this._data()||[]).filter(r=>r.folder===f.id).reduce((sum,r)=>sum+(r.qty||1),0);
       const el=document.createElement('div');
       el.className='folder-card';el.style.cursor='pointer';
-      el.innerHTML=`<div class="folder-icon">📁</div><div class="folder-name">${esc(f.name)}</div><div class="folder-count">${count} cards</div>`;
+      el.innerHTML=`<div class="folder-ico">FD</div><div class="folder-name">${esc(f.name)}</div><div class="folder-count">${count} cards</div>`;
       el.onclick=()=>{
         document.getElementById('coll2-folder-filter').value=f.id;
         this.filter();
       };
+      attachTapPop(el);
       grid.appendChild(el);
     });
     // Update sidebar folder list
@@ -1300,14 +1390,14 @@ const CollSection={
       sb.innerHTML='<div style="font-size:10px;color:var(--text3);padding:4px 8px 8px;text-transform:uppercase;letter-spacing:.08em;font-family:Cinzel,serif">Folders</div>';
       const allBtn=document.createElement('div');
       allBtn.className='vn-item on';allBtn.style.cursor='pointer';
-      allBtn.innerHTML='<div class="vn-ico">📋</div><div><div class="vn-label">All Cards</div></div>';
+      allBtn.innerHTML='<div class="vn-ico">ALL</div><div><div class="vn-label">All Cards</div></div>';
       allBtn.onclick=()=>{document.getElementById('coll2-folder-filter').value='';this.filter();};
       sb.appendChild(allBtn);
       folders.forEach(f=>{
         const count=(this._data()||[]).filter(r=>r.folder===f.id).reduce((sum,r)=>sum+(r.qty||1),0);
         const btn=document.createElement('div');
         btn.className='vn-item';btn.style.cursor='pointer';
-        btn.innerHTML=`<div class="vn-ico">📁</div><div><div class="vn-label">${esc(f.name)}</div><div class="vn-sub">${count} cards</div></div>`;
+        btn.innerHTML=`<div class="vn-ico">FD</div><div><div class="vn-label">${esc(f.name)}</div><div class="vn-sub">${count} cards</div></div>`;
         btn.onclick=()=>{document.getElementById('coll2-folder-filter').value=f.id;this.filter();};
         sb.appendChild(btn);
       });
@@ -1372,7 +1462,7 @@ const CollSection={
     const area=document.getElementById('coll2-card-area');
     if(!area)return;
     const data=this._filtered;
-    if(!data.length){area.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)">No cards match.</div>';return;}
+    if(!data.length){area.innerHTML='<div class="empty-panel"><div class="empty-kicker">Collection</div><div class="empty-ico">CL</div><div class="empty-ttl">No Cards Match This View</div><div class="empty-sub">Try a different search, folder, or filter to surface more cards.</div></div>';return;}
 
     // Fetch missing card data
     const missing=data.filter(r=>!MyCollection._cardData(r)?.name);
@@ -1391,15 +1481,17 @@ const CollSection={
         el.className='ct';el.style.cursor='pointer';
         el.title=r.name;
         el.innerHTML=`
-          <div class="ct-img">${img?`<img src="${esc(img)}" loading="lazy" alt="${esc(r.name)}">`:'<div style="width:100%;aspect-ratio:2.5/3.5;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:24px">🃏</div>'}</div>
-          ${(r.qty||1)>1?`<div class="ct-qty">${r.qty}×</div>`:''}
-          ${r.foil?'<div class="ct-foil">✦ Foil</div>':''}
+          <div class="ct-img">${img?`<img src="${esc(img)}" loading="lazy" alt="${esc(r.name)}">`:'<div style="width:100%;aspect-ratio:2.5/3.5;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:14px;font-family:Cinzel,serif">Card</div>'}</div>
+          ${(r.qty||1)>1?`<div class="ct-qty">${r.qty}x</div>`:''}
+          ${r.foil?'<div class="ct-foil">Foil</div>':''}
           <div class="ct-info"><div class="ct-name">${esc(r.name)}</div>
-            <div class="ct-foot"><span class="ct-type" style="font-size:9px">${esc(cd.type_line?.split('—')[0]?.trim()||'')}</span>
+            <div class="ct-foot"><span class="ct-type" style="font-size:9px">${esc(cd.type_line?.split('—')[0]?.trim()||cd.type_line?.split('-')[0]?.trim()||'')}</span>
             ${cd.prices?.eur?`<span class="ct-price">&euro;${cd.prices.eur}</span>`:''}</div>
           </div>`;
         el.onclick=()=>M.open({name:r.name,qty:r.qty||1},null);
-        grid.appendChild(el);
+        attachTapPop(el);
+        attachCardTilt(el);
+      grid.appendChild(el);
       });
       area.appendChild(grid);
     } else {
@@ -1418,10 +1510,10 @@ const CollSection={
         tr.onmouseleave=()=>tr.style.background='';
         tr.innerHTML=`
           <td style="padding:6px 8px">${img?`<img src="${esc(img)}" style="width:30px;height:42px;object-fit:cover;border-radius:3px;display:block" loading="lazy">`:'<div style="width:30px;height:42px;background:var(--bg3);border-radius:3px"></div>'}</td>
-          <td style="padding:6px 8px;font-family:Cinzel,serif;font-size:11px;color:var(--text)">${esc(r.name)}${r.foil?' <span style="color:var(--purple2);font-size:9px">✦</span>':''}</td>
-          <td style="padding:6px 8px;font-size:10px;color:var(--text3)">${esc((cd.type_line||'').split('—')[0].trim())}</td>
+          <td style="padding:6px 8px;font-family:Cinzel,serif;font-size:11px;color:var(--text)">${esc(r.name)}${r.foil?' <span style="color:var(--purple2);font-size:9px">Foil</span>':''}</td>
+          <td style="padding:6px 8px;font-size:10px;color:var(--text3)">${esc((cd.type_line||'').split('—')[0]?.trim()||(cd.type_line||'').split('-')[0]?.trim()||'')}</td>
           <td style="padding:6px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold2);text-align:center">${r.qty||1}</td>
-          <td style="padding:6px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green2)">${cd.prices?.eur?'&euro;'+cd.prices.eur:'�'}</td>
+          <td style="padding:6px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green2)">${cd.prices?.eur?'&euro;'+cd.prices.eur:'—'}</td>
           <td style="padding:6px 8px;font-size:10px;color:var(--text3)">${esc(r.folder||'')}</td>`;
         tr.onclick=()=>M.open({name:r.name,qty:r.qty||1},null);
         tbody.appendChild(tr);
@@ -1437,7 +1529,7 @@ const CollSection={
     if(!name?.trim())return;
     // Add to first deck as a collection entry or use MyCollection flow
     if(typeof MyCollection!=='undefined'&&MyCollection.addCard){MyCollection.addCard();}
-    else{Notify.show('Use your decks — cards there appear here automatically','inf',4000);}
+    else{Notify.show('Use your decks â€” cards there appear here automatically','inf',4000);}
   },
 
   newFolder(){
@@ -1447,9 +1539,9 @@ const CollSection={
 };
 
 
-/* ═══════════════════════════════════════════════════════════
-   WISH SECTION — standalone wishlist section
-   ═══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   WISH SECTION â€” standalone wishlist section
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const WishSection={
   _acTimer:null,_acResults:[],_acIdx:-1,
 
@@ -1457,7 +1549,7 @@ const WishSection={
     if(!DB._sb||!DB._user){
       const list=document.getElementById('wish2-list');
       const empty=document.getElementById('wish2-empty');
-      if(list)list.innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);font-size:12px;font-family:JetBrains Mono,monospace">Checking session…</div>';
+      if(list)list.innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);font-size:12px;font-family:JetBrains Mono,monospace">Checking sessionâ€¦</div>';
       if(empty)empty.style.display='none';
       clearTimeout(this._authWait);
       this._authWait=setTimeout(()=>{
@@ -1469,7 +1561,7 @@ const WishSection={
     }
     clearTimeout(this._authWait);
     const list=document.getElementById('wish2-list');
-    if(list)list.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;font-family:JetBrains Mono,monospace">Loading…</div>';
+    if(list)list.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;font-family:JetBrains Mono,monospace">Loadingâ€¦</div>';
     WishlistMgr.render().then(()=>this._renderList());
     this._updateBadge();
   },
@@ -1512,28 +1604,40 @@ const WishSection={
     list.innerHTML="";
     data.forEach(r=>{
       const cd=Store.card(r.card_name)||{};
-      const img=cd.img&&(cd.img.crop||cd.img.normal)||"";
+      const img=cd.img&&(cd.img.normal||cd.img.crop)||"";
       const price=parseFloat(cd.prices&&cd.prices.eur||0);
+      const priceStr=price?"€"+price.toFixed(2):"No price data";
+      const setInfo=cd.set?(cd.set.toUpperCase()+(cd.collector_number?" #"+cd.collector_number:"")):"Wishlist";
+      const rarity=cd.rarity||"common";
+      const rarityClass={common:'cs-rarity-c',uncommon:'cs-rarity-u',rare:'cs-rarity-r',mythic:'cs-rarity-m'}[rarity]||'';
+      const note=r.note?esc(r.note):"Wanted card";
       const row=document.createElement("div");
-      row.className="trade-card";
+      row.className="cs-card";
       row.style.cursor="pointer";
-      const thumb=img
-        ? '<img class="bulk-pool-thumb" src="'+esc(img)+'" loading="lazy" style="width:48px;height:67px;object-fit:cover;border-radius:4px;flex-shrink:0">'
-        : '<div style="width:48px;height:67px;background:var(--bg3);border-radius:4px;flex-shrink:0;border:1px solid var(--border)"></div>';
-      const note=r.note?esc(r.note)+" · ":"";
-      const priceStr=price?"€"+price.toFixed(2):"no price data";
-      row.innerHTML=thumb
-        +'<div style="flex:1;min-width:0">'
-        +'<div class="bulk-pool-name" style="font-size:13px">'+esc(r.card_name)+"</div>"
-        +'<div class="bulk-pool-meta">'+note+priceStr+"</div>"
-        +"</div>"
-        +'<span class="trade-badge want">Wanted</span>';
+      row.innerHTML=`
+        ${img
+          ? `<img class="cs-card-img" src="${esc(img)}" loading="lazy" alt="${esc(r.card_name)}">`
+          : `<div class="cs-card-img" style="display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px">No image</div>`}
+        <div class="cs-card-body">
+          <div class="cs-card-name" title="${esc(r.card_name)}">${esc(r.card_name)}</div>
+          <div class="cs-card-meta">
+            <span class="${rarityClass}">${setInfo}</span>
+            <span class="cs-card-price">${esc(priceStr)}</span>
+          </div>
+          <div style="margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);min-height:28px">
+            ${note}
+          </div>
+        </div>
+        <div class="cs-actions">
+          <button class="cs-action-btn purple on" type="button">Wanted</button>
+        </div>`;
       const delBtn=document.createElement('button');
       delBtn.className='alert-del';
       delBtn.title='Remove';
-      delBtn.textContent='✕';
+      delBtn.textContent='X';
       delBtn.addEventListener('click',e=>{e.stopPropagation();WishSection.remove(r.id);});
       row.appendChild(delBtn);
+      row.querySelectorAll('.cs-action-btn').forEach(btn=>btn.addEventListener('click',e=>e.stopPropagation()));
       row.addEventListener("click",e=>{
         if(e.target.closest(".alert-del"))return;
         M.open({name:r.card_name,qty:1},null);
@@ -1585,8 +1689,8 @@ const WishSection={
     if(!name){Notify.show('Enter a card name','err');return;}
     if(!DB._sb||!DB._user){Notify.show('Sign in to use Wishlist','err');return;}
     const {error}=await DB._sb.from('wishlist').insert({card_name:name,note,user_id:DB._user.id,user_email:DB._user.email||''});
-    if(error){Notify.show('Could not add to wishlist','err');return;}
-    Notify.show(name+' added to wishlist','ok');
+    if(error){Notify.show('Could not save card','err');return;}
+    Notify.show(`${name} saved to wishlist`,'ok');
     if(nameEl)nameEl.value='';
     if(noteEl)noteEl.value='';
     const ac=document.getElementById('wish2-autocomplete');if(ac)ac.style.display='none';
@@ -1607,15 +1711,15 @@ const WishSection={
 };
 
 
-/* ═══════════════════════════════════════════════════════════
-   TRADE SECTION — standalone trade section
-   ═══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   TRADE SECTION â€” standalone trade section
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const TradeSection={
   render(){
     if(!DB._sb||!DB._user){
       const list=document.getElementById('trade2-list');
       const empty=document.getElementById('trade2-empty');
-      if(list)list.innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);font-size:12px;font-family:JetBrains Mono,monospace">Checking session…</div>';
+      if(list)list.innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);font-size:12px;font-family:JetBrains Mono,monospace">Checking session...</div>';
       if(empty)empty.style.display='none';
       clearTimeout(this._authWait);
       this._authWait=setTimeout(()=>{
@@ -1627,7 +1731,7 @@ const TradeSection={
     }
     clearTimeout(this._authWait);
     const list=document.getElementById('trade2-list');
-    if(list)list.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;font-family:JetBrains Mono,monospace">Loading…</div>';
+    if(list)list.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;font-family:JetBrains Mono,monospace">Loading...</div>';
     TradeMgr.render().then(()=>this._renderList());
     this._updateBadge();
   },
@@ -1687,7 +1791,7 @@ const TradeSection={
       const delBtn=document.createElement('button');
       delBtn.className='alert-del';
       delBtn.title='Remove';
-      delBtn.textContent='✕';
+      delBtn.textContent='X';
       delBtn.addEventListener('click',e=>{e.stopPropagation();TradeSection.remove(r.id);});
       row.appendChild(delBtn);
       row.addEventListener("click",e=>{
@@ -1746,8 +1850,8 @@ const TradeSection={
     const payload={card_name:name,qty,condition:cond,user_id:DB._user.id,user_email:DB._user.email||''};
     if(Number.isFinite(priceNum))payload.price_usd=priceNum;
     const {error}=await DB._sb.from('trade_list').insert(payload);
-    if(error){Notify.show('Could not add to trade list','err');return;}
-    Notify.show(name+' listed for trade','ok');
+    if(error){Notify.show('Could not list card','err');return;}
+    Notify.show(`${name} listed for trade`,'ok');
     if(nameEl)nameEl.value='';
     if(priceEl)priceEl.value='';
     TradeAC?.hide?.('trade2-add-name');
@@ -1802,7 +1906,7 @@ const TradeAC={
           const item=document.createElement('div');
           item.dataset.idx=i;
           item.style.cssText='padding:8px 10px;cursor:pointer;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:10px';
-          item.innerHTML=`<span>${esc(name)}</span><span style="color:var(--text3);font-size:10px">↵ add</span>`;
+          item.innerHTML=`<span>${esc(name)}</span><span style="color:var(--text3);font-size:10px">â†µ add</span>`;
           item.onmouseenter=()=>{ st.idx=i; this._paint(inputId); this._showPreview(inputId,name); };
           item.onmouseleave=()=>{};
           item.onmousedown=(e)=>{ e.preventDefault(); this.select(inputId,i,true); };
@@ -1834,7 +1938,7 @@ const TradeAC={
     clearTimeout(st.previewTimer);
     st.previewTimer=setTimeout(async()=>{
       pv.style.display='block';
-      pv.innerHTML='<div style="font-size:11px;color:var(--text3)">Loading preview…</div>';
+      pv.innerHTML='<div style="font-size:11px;color:var(--text3)">Loading previewâ€¦</div>';
       const cd=await this._fetchPreviewCard(name);
       const img=cd?.img?.normal||cd?.img?.crop||'';
       const setInfo=cd?.set?`${String(cd.set).toUpperCase()}${cd.collector_number?' #'+cd.collector_number:''}`:'Unknown print';

@@ -1,6 +1,162 @@
 /* CommanderForge - ui: Menu, CardSearch, VaultNav, M (modal), P (panels),
    fmtMana, Notify, PrintPicker, Charts, Dashboard, CollView, PriceView, AlertMgr */
 
+function attachTapPop(el,cls='tap-pop'){
+  if(!el||el.dataset.tapPopBound)return;
+  const pop=()=>{
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+  };
+  el.addEventListener('pointerdown',pop);
+  el.dataset.tapPopBound='1';
+}
+
+function attachCardTilt(el,intensity=10){
+  if(!el||el.dataset.cardTiltBound)return;
+  const canTilt=window.matchMedia?.('(hover: hover) and (pointer: fine)')?.matches;
+  if(!canTilt)return;
+  const reset=()=>{
+    el.style.setProperty('--tilt-x','0deg');
+    el.style.setProperty('--tilt-y','0deg');
+    el.style.setProperty('--glow-x','50%');
+    el.style.setProperty('--glow-y','35%');
+  };
+  const onMove=(event)=>{
+    const rect=el.getBoundingClientRect();
+    const px=(event.clientX-rect.left)/rect.width;
+    const py=(event.clientY-rect.top)/rect.height;
+    const tiltY=((px-.5)*intensity).toFixed(2)+'deg';
+    const tiltX=((.5-py)*intensity).toFixed(2)+'deg';
+    el.style.setProperty('--tilt-x',tiltX);
+    el.style.setProperty('--tilt-y',tiltY);
+    el.style.setProperty('--glow-x',(px*100).toFixed(1)+'%');
+    el.style.setProperty('--glow-y',(py*100).toFixed(1)+'%');
+  };
+  reset();
+  el.addEventListener('pointermove',onMove);
+  el.addEventListener('pointerleave',reset);
+  el.addEventListener('pointercancel',reset);
+  el.dataset.cardTiltBound='1';
+}
+
+const SearchSuggest={
+  _states:{},
+  _state(key){
+    return this._states[key]||(this._states[key]={items:[],idx:-1,timer:null});
+  },
+  hide(key){
+    const panel=document.getElementById(key);
+    if(panel)panel.style.display='none';
+    const st=this._state(key);
+    st.idx=-1;
+  },
+  async onType({key,inputId,deckId,val,onOpen,onAdd,search}){
+    const st=this._state(key);
+    clearTimeout(st.timer);
+    if(!val||val.trim().length<2){this.hide(key);return;}
+    st.timer=setTimeout(async()=>{
+      try{
+        const r=await fetch(`/api/scryfall/cards/autocomplete?q=${encodeURIComponent(val.trim())}&include_extras=false`,{headers:{Accept:'application/json'}});
+        if(!r.ok)return;
+        const d=await r.json();
+        st.items=(d.data||[]).slice(0,8);
+        st.idx=-1;
+        this._render({key,inputId,deckId,onOpen,onAdd,search});
+      }catch{}
+    },140);
+  },
+  _render({key,inputId,deckId,onOpen,onAdd,search}){
+    const panel=document.getElementById(key);
+    const st=this._state(key);
+    if(!panel)return;
+    if(!st.items.length){panel.style.display='none';return;}
+    const selectedDeck=deckId?Store.getDeck(document.getElementById(deckId)?.value||''):null;
+    const addLabel=selectedDeck?`Add to ${selectedDeck.name}`:'Add to deck';
+    panel.innerHTML='';
+    st.items.forEach((name,i)=>{
+      const row=document.createElement('div');
+      row.className='cs-suggest-item'+(i===st.idx?' on':'');
+      row.dataset.idx=i;
+      row.innerHTML=`
+        <div class="cs-suggest-main">
+          <div class="cs-suggest-name">${esc(name)}</div>
+          <div class="cs-suggest-hint">Open card details instantly</div>
+        </div>
+        <button class="cs-suggest-cta" type="button">${esc(addLabel)}</button>`;
+      row.addEventListener('mouseenter',()=>{st.idx=i;this._paint(key);});
+      row.addEventListener('mousedown',e=>{
+        if(e.target.closest('.cs-suggest-cta'))return;
+        e.preventDefault();
+        this.pick({key,inputId,index:i,onOpen});
+      });
+      row.querySelector('.cs-suggest-cta')?.addEventListener('mousedown',e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        const input=document.getElementById(inputId);
+        if(input)input.value=name;
+        onAdd(name);
+        this.hide(key);
+      });
+      panel.appendChild(row);
+    });
+    panel.style.display='block';
+  },
+  _paint(key){
+    const panel=document.getElementById(key);
+    const st=this._state(key);
+    panel?.querySelectorAll('[data-idx]').forEach((el,i)=>el.classList.toggle('on',i===st.idx));
+  },
+  onKey({key,inputId,e,onOpen,search}){
+    const st=this._state(key);
+    const hasItems=st.items.length>0;
+    if(e.key==='ArrowDown'&&hasItems){
+      e.preventDefault();
+      st.idx=Math.min(st.idx+1,st.items.length-1);
+      this._paint(key);
+      return true;
+    }
+    if(e.key==='ArrowUp'&&hasItems){
+      e.preventDefault();
+      st.idx=Math.max(st.idx-1,0);
+      this._paint(key);
+      return true;
+    }
+    if(e.key==='Enter'){
+      if(hasItems&&st.idx>=0){
+        e.preventDefault();
+        this.pick({key,inputId,index:st.idx,onOpen});
+        return true;
+      }
+      this.hide(key);
+      search?.();
+      return true;
+    }
+    if(e.key==='Escape'){this.hide(key);return true;}
+    return false;
+  },
+  pick({key,inputId,index,onOpen}){
+    const st=this._state(key);
+    const name=st.items[index];
+    if(!name)return;
+    const input=document.getElementById(inputId);
+    if(input)input.value=name;
+    this.hide(key);
+    onOpen(name);
+  }
+};
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.cs-search-wrap')){
+    SearchSuggest.hide('cs-suggest');
+    SearchSuggest.hide('cs2-suggest');
+  }
+  if(!e.target.closest('.cmdr-input-wrap')){
+    P?._hideCommanderAC?.(1);
+    P?._hideCommanderAC?.(2);
+  }
+});
+
 const Menu={
   cur:'forge',
   NAV_KEY:'cforge_nav',
@@ -10,7 +166,11 @@ const Menu={
     localStorage.setItem(this.NAV_KEY,section);
     document.body.dataset.section=section;
     document.querySelectorAll('.im-btn').forEach(b=>b.classList.toggle('on',b.dataset.section===section));
+<<<<<<< HEAD
     document.querySelectorAll('.mn-btn').forEach(b=>b.classList.toggle('on',b.id==='mn-'+section));
+=======
+    if(typeof MobileNav!=='undefined')MobileNav.setActive(section);
+>>>>>>> d1cf5506a01880fc56942f11aa4827e87f25410d
     this.SECTIONS.forEach(s=>{
       const el=document.getElementById('section-'+s);
       if(el)el.style.display=s===section?'flex':'none';
@@ -64,9 +224,27 @@ const CardSearch={
   },
 
   onType(val){
+    SearchSuggest.onType({
+      key:'cs-suggest',
+      inputId:'cs-query',
+      deckId:'cs-target-deck',
+      val,
+      onOpen:(name)=>this._openFromSuggest(name),
+      onAdd:(name)=>this._addToDeck(name),
+      search:()=>this.search()
+    });
     clearTimeout(this._acTimer);
     if(val.length<3)return;
-    this._acTimer=setTimeout(()=>this.search(),500);
+    this._acTimer=setTimeout(()=>this.search(),350);
+  },
+  onKey(e){
+    return SearchSuggest.onKey({
+      key:'cs-suggest',
+      inputId:'cs-query',
+      e,
+      onOpen:(name)=>this._openFromSuggest(name),
+      search:()=>this.search()
+    });
   },
 
   _buildQuery(){
@@ -91,6 +269,7 @@ const CardSearch={
   },
 
   async search(){
+    SearchSuggest.hide('cs-suggest');
     this._query=this._buildQuery();
     this._page=null;
     const el=document.getElementById('cs-results');
@@ -119,7 +298,7 @@ const CardSearch={
       const res=await fetch(url,{headers:{Accept:'application/json'}});
 
       if(res.status===404){
-        if(status)status.textContent='No cards found.';
+        if(status)status.textContent='No matches yet. Try a card name, keyword, or commander.';
         return;
       }
       if(!res.ok)throw new Error('Scryfall error '+res.status);
@@ -129,7 +308,7 @@ const CardSearch={
       const cards=data.data||[];
 
       if(!append&&!cards.length){
-        if(status)status.textContent='No results.';
+        if(status)status.textContent='No matches yet. Try broader text or fewer filters.';
         return;
       }
 
@@ -173,28 +352,46 @@ const CardSearch={
         </div>
       </div>
       <div class="cs-actions">
-        <button class="cs-action-btn purple${inWish?' on':''}" data-cs-name="${esc(card.name)}" onclick='CardSearch._addWish(this,${safeNameJs})'>
-          ${inWish?'Wished':'Wish'}
-        </button>
         <button class="cs-action-btn gold" data-cs-deck onclick='CardSearch._addToDeck(${safeNameJs},this)'>
-          + Deck
+          Add to Deck
+        </button>
+        <button class="cs-action-btn" onclick='CardSearch._openFromSuggest(${safeNameJs})'>
+          Open Details
+        </button>
+        <button class="cs-action-btn purple${inWish?' on':''}" data-cs-name="${esc(card.name)}" onclick='CardSearch._addWish(this,${safeNameJs})'>
+          ${inWish?'Saved':'Save'}
         </button>
         <button class="cs-action-btn" onclick='CardSearch._addTrade(${safeNameJs},this)'>
-          Trade
+          List Trade
         </button>
       </div>`;
 
-    tile.querySelector('.cs-card-img').onclick=()=>{
+    attachTapPop(tile);
+    attachCardTilt(tile);
+    tile.querySelectorAll('.cs-action-btn').forEach(btn=>btn.addEventListener('click',e=>e.stopPropagation()));
+    tile.addEventListener('click',()=>{
       const slim=SF._slim(card);
-      Store.cache[slim.name]=slim;
+      if(slim)Store.cache[slim.name]=slim;
       M.open({name:card.name,qty:1},null);
-    };
+    });
     return tile;
+  },
+  _openFromSuggest(name){
+    const cached=Store.card(name);
+    if(cached?.name){M.open({name,qty:1},null);return;}
+    fetch(`/api/scryfall/cards/named?exact=${encodeURIComponent(name)}`,{headers:{Accept:'application/json'}})
+      .then(r=>r.ok?r.json():null)
+      .then(card=>{
+        const slim=card&&SF._slim(card);
+        if(slim)Store.setCard(slim.name,slim);
+        M.open({name,qty:1},null);
+      })
+      .catch(()=>M.open({name,qty:1},null));
   },
 
   _addWish(btn,name){
     WishlistMgr.addByName(name);
-    btn.textContent='Wished';
+    btn.textContent='Saved';
     btn.classList.add('on');
     btn.disabled=true;
   },
@@ -208,17 +405,19 @@ const CardSearch={
     const existing=deck.cards.find(c=>c.name.toLowerCase()===name.toLowerCase());
     if(existing){
       existing.qty++;
-      Notify.show(name+' qty +1 in "'+deck.name+'"','ok');
+      Notify.show(`Added 1 copy of ${name} to "${deck.name}"`,'ok');
     }else{
       deck.cards.push({name,qty:1,foil:false,etched:false});
-      Notify.show(name+' added to "'+deck.name+'"','ok');
+      Notify.show(`Added ${name} to "${deck.name}"`,'ok');
     }
     Store.updDeck(deck);
     if(App.curId===deckId)App.render();
-    btn.textContent='Added';
-    btn.style.color='var(--green2)';
-    btn.style.borderColor='var(--green2)';
-    setTimeout(()=>{btn.textContent='+ Deck';btn.style.color='';btn.style.borderColor='';},2000);
+    if(btn){
+      btn.textContent='Added';
+      btn.style.color='var(--green2)';
+      btn.style.borderColor='var(--green2)';
+      setTimeout(()=>{btn.textContent='Add to Deck';btn.style.color='';btn.style.borderColor='';},2000);
+    }
   },
 
   _addTrade(name,btn){
@@ -277,7 +476,7 @@ const M={
     G('mc-img').onclick=()=>{if(!cd.img?.normal)return;const zo=document.getElementById('art-zoom-overlay');const zi=document.getElementById('art-zoom-img');zi.src=cd.img.normal;zo.classList.add('open');};
     G('mc-name').textContent=cd.name||cardEntry.name;
     G('mc-mana').innerHTML=fmtMana(cd.mana_cost||'');
-    G('mc-type').textContent=[cd.type_line,cd.rarity,cd.set_name].filter(Boolean).join('  �  ');
+    G('mc-type').textContent=[cd.type_line,cd.rarity,cd.set_name].filter(Boolean).join(' - ');
     G('mc-oracle').textContent=cd.oracle_text||'';
     G('mc-flavor').textContent=cd.flavor_text?`"${cd.flavor_text}"`:'' ;
     G('mc-flavor').style.display=cd.flavor_text?'':'none';
@@ -288,7 +487,7 @@ const M={
     if(pType){
       pBanner.style.display='flex';
       pBanner.className='partner-banner';
-      pBanner.innerHTML=`<span>?</span> This card has <strong>${Partner.label(pType)}</strong> � can be used as a second commander.`;
+      pBanner.innerHTML=`<span>Info</span> This card has <strong>${Partner.label(pType)}</strong> and can be used as a second commander.`;
     } else {pBanner.style.display='none';}
 
     const eur=cd.prices?.eur??null;
@@ -315,24 +514,24 @@ const M={
     }
     G('mc-acts').innerHTML='';
     const deck=Store.getDeck(deckId);
-    const addBtn=document.createElement('button');addBtn.className='ma gold';addBtn.textContent='+ Copy';
+    const addBtn=document.createElement('button');addBtn.className='ma gold';addBtn.textContent='Add Copy';
     addBtn.onclick=()=>App.chQty(deckId,cardEntry.name,1);
-    const rmBtn=document.createElement('button');rmBtn.className='ma red';rmBtn.textContent='- Remove';
+    const rmBtn=document.createElement('button');rmBtn.className='ma red';rmBtn.textContent='Remove Card';
     rmBtn.onclick=()=>{App.chQty(deckId,cardEntry.name,-1);this.close();};
-    const scrBtn=document.createElement('button');scrBtn.className='ma ghost';scrBtn.textContent='?? Scryfall';
+    const scrBtn=document.createElement('button');scrBtn.className='ma ghost';scrBtn.textContent='Open in Scryfall';
     scrBtn.onclick=()=>window.open('https://scryfall.com/search?q='+encodeURIComponent(cardEntry.name),'_blank');
     G('mc-acts').append(addBtn,rmBtn,scrBtn);
 
     // Commander / partner set buttons
     if(deck){
       const setCmdrBtn=document.createElement('button');
-      setCmdrBtn.className='ma gold';setCmdrBtn.textContent='? Set Commander';
-      setCmdrBtn.onclick=()=>{deck.commander=cardEntry.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(cardEntry.name+' set as Commander','ok');this.close();};
+      setCmdrBtn.className='ma gold';setCmdrBtn.textContent='Set as Commander';
+      setCmdrBtn.onclick=()=>{deck.commander=cardEntry.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(`${cardEntry.name} is now your commander`,'ok');this.close();};
       G('mc-acts').appendChild(setCmdrBtn);
       if(pType){
         const setPartnerBtn=document.createElement('button');
-        setPartnerBtn.className='ma purple';setPartnerBtn.textContent='? Set as Partner';
-        setPartnerBtn.onclick=()=>{deck.partner=cardEntry.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(cardEntry.name+' set as Partner','ok');this.close();};
+        setPartnerBtn.className='ma purple';setPartnerBtn.textContent='Set as Partner';
+        setPartnerBtn.onclick=()=>{deck.partner=cardEntry.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(`${cardEntry.name} is now your partner`,'ok');this.close();};
         G('mc-acts').appendChild(setPartnerBtn);
       }
     }
@@ -355,27 +554,27 @@ const P={
 
   editDeck(){
     const deck=Store.getDeck(App.curId);if(!deck){Notify.show('No deck loaded','err');return;}
-    this._open('? Edit Deck',true);
+    this._open('Edit Deck',true);
     document.getElementById('pbody').innerHTML=`
       <div style="margin-bottom:16px">
         <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px">Deck Name</label>
-        <input class="ni" id="edit-deck-name" value="${esc(deck.name)}" placeholder="Deck name�" style="font-size:14px;width:100%"
+        <input class="ni" id="edit-deck-name" value="${esc(deck.name)}" placeholder="Deck name..." style="font-size:14px;width:100%"
           onkeydown="if(event.key==='Enter')P._applyDeckEdit()">
       </div>
       <div style="margin-bottom:16px">
         <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px">Visibility</label>
         <div style="display:flex;gap:8px">
-          <button id="vis-public-btn" class="tbtn${deck.public!==false?' gold':''}" onclick="P._setVisibility(true)" style="font-size:11px">?? Public</button>
-          <button id="vis-private-btn" class="tbtn${deck.public===false?' gold':''}" onclick="P._setVisibility(false)" style="font-size:11px">?? Private</button>
+          <button id="vis-public-btn" class="tbtn${deck.public!==false?' gold':''}" onclick="P._setVisibility(true)" style="font-size:11px">Public</button>
+          <button id="vis-private-btn" class="tbtn${deck.public===false?' gold':''}" onclick="P._setVisibility(false)" style="font-size:11px">Private</button>
         </div>
         <div style="font-size:10px;color:var(--text3);margin-top:4px;font-family:'JetBrains Mono',monospace">Public decks are visible to friends on your profile.</div>
       </div>
       <div style="margin-bottom:16px;padding-top:14px;border-top:1px solid var(--border)">
-        <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:8px">?? Style Tags</label>
+        <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:8px">Style Tags</label>
         <div id="edit-tags-picker"></div>
       </div>
       <div style="padding-top:14px;border-top:1px solid var(--border)">
-        <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px">? Mechanics / Archetypes</label>
+        <label style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px">Mechanics / Archetypes</label>
         <div style="font-size:10px;color:var(--text3);margin-bottom:8px;font-family:'JetBrains Mono',monospace">Select the strategies this deck uses:</div>
         <div id="edit-mechanics-picker"></div>
       </div>
@@ -383,7 +582,7 @@ const P={
     document.getElementById('pfoot').innerHTML='';
     const pf=document.getElementById('pfoot');
     const ca=document.createElement('button');ca.className='tbtn';ca.textContent='Cancel';ca.onclick=()=>P.close();
-    const sv=document.createElement('button');sv.className='tbtn gold';sv.textContent='? Save';sv.onclick=()=>P._applyDeckEdit();
+    const sv=document.createElement('button');sv.className='tbtn gold';sv.textContent='Save';sv.onclick=()=>P._applyDeckEdit();
     pf.append(ca,sv);
     // Render pickers after DOM is ready
     renderTagPicker(deck,'edit-tags-picker');
@@ -409,25 +608,25 @@ const P={
     App.renderSidebar();
     App._updHeader(deck);
     P.close();
-    Notify.show('Deck updated','ok');
+    Notify.show('Deck saved','ok');
   },
 
   import(){
-    this._open('?? Import Deck');
+    this._open('Import Deck');
     document.getElementById('pbody').innerHTML=`
       <div class="url-import-tabs">
-        <button class="url-import-tab on" id="itab-paste" onclick="P._setImportTab('paste')">?? Paste / File</button>
-        <button class="url-import-tab" id="itab-url" onclick="P._setImportTab('url')">?? Import from URL</button>
+        <button class="url-import-tab on" id="itab-paste" onclick="P._setImportTab('paste')">Paste / File</button>
+        <button class="url-import-tab" id="itab-url" onclick="P._setImportTab('url')">Import from URL</button>
       </div>
 
       <div id="import-paste-panel">
         <div class="dz" id="dz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondrop="P._drop(event)">
           <input type="file" id="fi" accept=".txt,.dec" style="display:none" onchange="P._file(event)">
-          ?? Drag .txt file here or click to browse
+          Drag .txt file here or click to browse
         </div>
         <div style="font-size:11px;color:var(--text3);margin:6px 0 8px">Supports: Moxfield, TappedOut, MTGGoldfish, MTGO, Archidekt, Deckstats &amp; more</div>
-        <input class="ni" id="dname" placeholder="Deck name (auto-detected if empty)">
-        <textarea class="ia" id="ia" placeholder="Paste decklist here�&#10;&#10;// COMMANDER&#10;1 Zur the Enchanter&#10;&#10;// PARTNER (optional)&#10;1 Thrasios, Triton Hero&#10;&#10;1 Sol Ring&#10;2 Island"></textarea>
+        <input class="ni" id="dname" placeholder="Deck name...">
+        <textarea class="ia" id="ia" placeholder="Paste decklist here...&#10;&#10;// COMMANDER&#10;1 Zur the Enchanter&#10;&#10;// PARTNER (optional)&#10;1 Thrasios, Triton Hero&#10;&#10;1 Sol Ring&#10;2 Island"></textarea>
       </div>
 
       <div id="import-url-panel" style="display:none">
@@ -438,7 +637,7 @@ const P={
           oninput="P._urlChanged()" onkeydown="if(event.key==='Enter')P._fetchUrl()">
         <div id="import-url-status" class="url-status"></div>
         <div style="font-size:10px;color:var(--text3);line-height:1.8;font-family:'JetBrains Mono',monospace">
-          ? moxfield.com/decks/... &nbsp; ? archidekt.com/decks/... &nbsp; ? tappedout.net/mtg-decks/...<br>
+          Supported: moxfield.com/decks/... &nbsp; archidekt.com/decks/... &nbsp; tappedout.net/mtg-decks/...<br>
           For Moxfield private decks, export as text and paste instead.
         </div>
       </div>
@@ -446,7 +645,7 @@ const P={
     document.getElementById('pfoot').innerHTML='';
     const pf=document.getElementById('pfoot');
     const cancel=document.createElement('button');cancel.className='tbtn';cancel.textContent='Cancel';cancel.onclick=()=>P.close();
-    const imp=document.createElement('button');imp.className='tbtn gold';imp.id='import-main-btn';imp.textContent='? Import';imp.onclick=()=>P._doImport();
+    const imp=document.createElement('button');imp.className='tbtn gold';imp.id='import-main-btn';imp.textContent='Import';imp.onclick=()=>P._doImport();
     pf.append(cancel,imp);
   },
 
@@ -456,7 +655,7 @@ const P={
     document.getElementById('import-paste-panel').style.display=tab==='paste'?'block':'none';
     document.getElementById('import-url-panel').style.display=tab==='url'?'block':'none';
     const btn=document.getElementById('import-main-btn');
-    if(btn)btn.textContent=tab==='url'?'?? Fetch & Import':'? Import';
+    if(btn)btn.textContent=tab==='url'?'Fetch & Import':'Import';
     if(btn)btn.onclick=tab==='url'?()=>P._fetchUrl():()=>P._doImport();
   },
 
@@ -470,8 +669,8 @@ const P={
     const statusEl=document.getElementById('import-url-status');
     const btn=document.getElementById('import-main-btn');
     const setStatus=(msg,type)=>{if(statusEl){statusEl.textContent=msg;statusEl.className='url-status '+type;statusEl.style.display='block';}};
-    setStatus('Fetching deck�','loading');
-    if(btn)btn.textContent='Fetching�';
+    setStatus('Fetching deck...','loading');
+    if(btn)btn.textContent='Fetching...';
 
     try{
       let text=null,deckName='Imported Deck';
@@ -533,27 +732,27 @@ const P={
       if(!parsed.cards.length)throw new Error('No cards found in deck');
 
       const deck={id:Store.uid(),name:deckName,commander:parsed.commander||'',
-                  partner:parsed.partner||'',cards:parsed.cards,created:Date.now(),public:true};
+                  partner:parsed.partner||'',cards:parsed.cards,sideboard:parsed.sideboard||[],maybeboard:parsed.maybeboard||[],created:Date.now(),public:true};
       Store.addDeck(deck);
       enrichDeckCards(deck).then(()=>{Store.updDeck(deck);DB.schedulePush();});
-      setStatus(`? Imported "${deckName}" � ${parsed.cards.length} cards`,'ok');
-      if(btn)btn.textContent='? Imported!';
+      setStatus(`Imported "${deckName}" - ${parsed.cards.length} cards`,'ok');
+      if(btn)btn.textContent='Imported!';
       setTimeout(()=>{P.close();App.loadDeck(deck.id);},800);
-      Notify.show(`"${deckName}" imported � ${parsed.cards.length} cards`,'ok');
+      Notify.show(`Imported "${deckName}" with ${parsed.cards.length} cards`,'ok');
     }catch(e){
       setStatus('Error: '+e.message,'err');
-      if(btn)btn.textContent='?? Fetch & Import';
+      if(btn)btn.textContent='Fetch & Import';
     }
   },
   _drop(e){e.preventDefault();document.getElementById('dz').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)this._readFile(f);},
   _file(e){const f=e.target.files[0];if(f)this._readFile(f);},
 
-  /* Deck Update � diff current deck vs new import, show preview, apply */
+  /* Deck Update - diff current deck vs new import, show preview, apply */
   _doUpdate(){
     const text=document.getElementById('ia').value.trim();
     if(!text){Notify.show('Paste a decklist first','err');return;}
     const deck=Store.getDeck(App.curId);
-    if(!deck){Notify.show('No deck loaded � load a deck to update it','err');return;}
+    if(!deck){Notify.show('No deck loaded - load a deck to update it','err');return;}
 
     const parsed=Parser.parse(text);
     if(!parsed.cards.length){Notify.show('No cards recognized','err');return;}
@@ -582,21 +781,21 @@ const P={
     // Build preview HTML
     let html=`<div style="max-height:300px;overflow-y:auto;margin:10px 0">`;
     if(toAdd.length){
-      html+=`<div class="du-section">? Adding (${toAdd.length})</div>`;
-      html+=toAdd.map(c=>`<div class="du-row du-add"><span class="du-qty">${c.qty}�</span>${esc(c.name)}${c.set?`<span style="font-size:9px;color:var(--ice2);margin-left:4px">(${c.set.toUpperCase()})</span>`:''}</div>`).join('');
+      html+=`<div class="du-section">Adding (${toAdd.length})</div>`;
+      html+=toAdd.map(c=>`<div class="du-row du-add"><span class="du-qty">${c.qty}x</span>${esc(c.name)}${c.set?`<span style="font-size:9px;color:var(--ice2);margin-left:4px">(${c.set.toUpperCase()})</span>`:''}</div>`).join('');
     }
     if(toRemove.length){
-      html+=`<div class="du-section">? Removing (${toRemove.length})</div>`;
-      html+=toRemove.map(c=>`<div class="du-row du-rem"><span class="du-qty">${c.qty}�</span>${esc(c.name)}</div>`).join('');
+      html+=`<div class="du-section">Removing (${toRemove.length})</div>`;
+      html+=toRemove.map(c=>`<div class="du-row du-rem"><span class="du-qty">${c.qty}x</span>${esc(c.name)}</div>`).join('');
     }
     const changed=toKeep.filter(k=>k.qty!==k.newQty);
     if(changed.length){
-      html+=`<div class="du-section">? Qty Changed (${changed.length})</div>`;
-      html+=changed.map(c=>`<div class="du-row du-keep"><span class="du-qty">${c.qty}?${c.newQty}�</span>${esc(c.name)}</div>`).join('');
+      html+=`<div class="du-section">Qty Changed (${changed.length})</div>`;
+      html+=changed.map(c=>`<div class="du-row du-keep"><span class="du-qty">${c.qty} -> ${c.newQty}x</span>${esc(c.name)}</div>`).join('');
     }
     html+=`</div>
       <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="tbtn gold" onclick="P._applyUpdate()" style="flex:1">? Apply Update</button>
+        <button class="tbtn gold" onclick="P._applyUpdate()" style="flex:1">Apply Update</button>
         <button class="tbtn" onclick="P._cancelUpdate()">Cancel</button>
       </div>`;
 
@@ -613,7 +812,7 @@ const P={
     }
     previewEl.style.display='block';
     previewEl.innerHTML=`<div style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold2);margin-bottom:8px">
-      Update Preview � "${esc(deck.name)}"
+      Update Preview - "${esc(deck.name)}"
       <span style="color:var(--text3);font-size:10px;margin-left:8px">+${toAdd.length} / -${toRemove.length}</span>
     </div>${html}`;
   },
@@ -641,7 +840,7 @@ const P={
     App.loadDeck(deck.id);
     P._pendingUpdate=null;
     P.close();
-    Notify.show(`Deck updated � +${toAdd.length} added, -${toRemove.length} removed`,'ok');
+    Notify.show(`Deck updated: ${toAdd.length} added, ${toRemove.length} removed`,'ok');
   },
 
   _cancelUpdate(){
@@ -661,15 +860,15 @@ const P={
     const parsed=Parser.parse(text);
     if(!parsed.cards.length){Notify.show('No cards recognized','err');return;}
     const customName=document.getElementById('dname').value.trim();
-    const deck={id:Store.uid(),name:customName||parsed.name,commander:parsed.commander||'',partner:parsed.partner||'',cards:parsed.cards,created:Date.now(),public:true};
+    const deck={id:Store.uid(),name:customName||parsed.name,commander:parsed.commander||'',partner:parsed.partner||'',cards:parsed.cards,sideboard:parsed.sideboard||[],maybeboard:parsed.maybeboard||[],created:Date.now(),public:true};
     Store.addDeck(deck);P.close();App.loadDeck(deck.id);
     enrichDeckCards(deck).then(()=>{Store.updDeck(deck);DB.schedulePush();});
-    Notify.show(`"${deck.name}" � ${parsed.cards.length} cards imported`+(deck.partner?` (Partner: ${deck.partner})`:'')||'','ok');
+    Notify.show(`Imported "${deck.name}" with ${parsed.cards.length} cards`+(deck.partner?` (Partner: ${deck.partner})`:'')||'','ok');
   },
 
   export(){
     const deck=Store.getDeck(App.curId);if(!deck){Notify.show('No deck loaded','err');return;}
-    this._open('?? Export � '+deck.name,true);
+    this._open('Export - '+deck.name,true);
     document.getElementById('pbody').innerHTML=`
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         ${['moxfield','mtgo','arena','tappedout','mtggoldfish','archidekt','deckstats','csv'].map(f=>
@@ -682,9 +881,9 @@ const P={
     document.getElementById('pfoot').innerHTML='';
     const pf=document.getElementById('pfoot');
     const cl=document.createElement('button');cl.className='tbtn';cl.textContent='Close';cl.onclick=()=>P.close();
-    const cp=document.createElement('button');cp.className='tbtn';cp.textContent='?? Copy';
-    cp.onclick=()=>{navigator.clipboard.writeText(document.getElementById('export-ta').value);Notify.show('Copied!','ok');};
-    const dl=document.createElement('button');dl.className='tbtn gold';dl.textContent='?? Download';
+    const cp=document.createElement('button');cp.className='tbtn';cp.textContent='Copy';
+    cp.onclick=()=>{navigator.clipboard.writeText(document.getElementById('export-ta').value);Notify.show('Copied to clipboard','ok');};
+    const dl=document.createElement('button');dl.className='tbtn gold';dl.textContent='Download';
     dl.onclick=()=>{
       const ext=P._curFmt==='csv'?'csv':'txt';
       const a=document.createElement('a');
@@ -694,6 +893,8 @@ const P={
     pf.append(cl,cp,dl);
   },
   _curFmt:'moxfield',
+  _cmdrAC:{1:[],2:[]},
+  _cmdrACTimer:null,
   _setFmt(f){
     this._curFmt=f;
     document.querySelectorAll('[id^="efmt-"]').forEach(b=>{b.classList.toggle('gold',b.id==='efmt-'+f);});
@@ -705,7 +906,8 @@ const P={
 
   editCmdr(){
     const deck=Store.getDeck(App.curId);if(!deck)return;
-    this._open('? Commanders',true);
+    this._cmdrAC={1:[],2:[]};
+    this._open('Commanders',true);
     const hasPartner=!!deck.partner;
     document.getElementById('pbody').innerHTML=`
       <div class="partner-toggle" id="partner-toggle-wrap">
@@ -716,16 +918,22 @@ const P={
       </div>
       <div class="cmdr-slots">
         <div class="cmdr-slot active" id="slot-1">
-          <div class="cmdr-slot-label">? Commander</div>
-          <div class="cmdr-slot-name" id="slot-1-name">${esc(deck.commander||'�')}</div>
+          <div class="cmdr-slot-label">Commander</div>
+          <div class="cmdr-slot-name" id="slot-1-name">${esc(deck.commander||'No commander selected')}</div>
           <div class="cmdr-slot-ability" id="slot-1-ability"></div>
-          <input class="ni" id="ci-1" value="${esc(deck.commander||'')}" placeholder="Commander name�" oninput="P._updateSlotPreview(1)" style="margin-top:8px;margin-bottom:0">
+          <div class="cmdr-input-wrap">
+            <input class="ni" id="ci-1" value="${esc(deck.commander||'')}" placeholder="Commander name..." autocomplete="off" oninput="P._onCommanderType(1,this.value)" onkeydown="P._onCommanderKey(1,event)" style="margin-top:8px;margin-bottom:0">
+            <div class="cmdr-ac" id="cmdr-ac-1" style="display:none"></div>
+          </div>
         </div>
         <div class="cmdr-slot${hasPartner?' active partner':''}" id="slot-2" style="opacity:${hasPartner?1:.4};transition:opacity .2s">
-          <div class="cmdr-slot-label">? Partner / Background</div>
-          <div class="cmdr-slot-name" id="slot-2-name">${esc(deck.partner||'�')}</div>
+          <div class="cmdr-slot-label">Partner / Background</div>
+          <div class="cmdr-slot-name" id="slot-2-name">${esc(deck.partner||'No partner selected')}</div>
           <div class="cmdr-slot-ability" id="slot-2-ability"></div>
-          <input class="ni" id="ci-2" value="${esc(deck.partner||'')}" placeholder="Partner / Background name�" ${hasPartner?'':'disabled'} oninput="P._updateSlotPreview(2)" style="margin-top:8px;margin-bottom:0">
+          <div class="cmdr-input-wrap">
+            <input class="ni" id="ci-2" value="${esc(deck.partner||'')}" placeholder="Partner / Background name..." autocomplete="off" ${hasPartner?'':'disabled'} oninput="P._onCommanderType(2,this.value)" onkeydown="P._onCommanderKey(2,event)" style="margin-top:8px;margin-bottom:0">
+            <div class="cmdr-ac" id="cmdr-ac-2" style="display:none"></div>
+          </div>
         </div>
       </div>
       <p style="font-size:11px;color:var(--text3);margin-top:4px">Partner commanders share the command zone. Both count toward your deck's color identity.</p>
@@ -742,11 +950,12 @@ const P={
       const partnerEnabled=document.getElementById('partner-toggle').classList.contains('on');
       deck.partner=partnerEnabled?(document.getElementById('ci-2').value||'').trim():'';
       Store.updDeck(deck);P.close();App.loadDeck(deck.id);
-      Notify.show('Commanders updated','ok');
+      Notify.show('Command zone updated','ok');
       const synBtn=document.getElementById('synergy-btn');
       if(synBtn)synBtn.style.display=deck.commander?'inline-flex':'none';
     };
     pf.append(ca,sv);
+    document.getElementById('ci-1')?.focus();
   },
 
   _togglePartner(){
@@ -760,6 +969,7 @@ const P={
     slot2.classList.toggle('active',on);slot2.classList.toggle('partner',on);
     slot2.style.opacity=on?1:.4;
     inp2.disabled=!on;
+    if(!on)this._hideCommanderAC(2);
   },
 
   _updateSlotPreview(n){
@@ -767,11 +977,78 @@ const P={
     const cd=Store.card(inp.value.trim());
     const nameEl=document.getElementById('slot-'+n+'-name');
     const abilEl=document.getElementById('slot-'+n+'-ability');
-    if(nameEl) nameEl.textContent=inp.value.trim()||'�';
+    if(nameEl) nameEl.textContent=inp.value.trim()||(n===1?'No commander selected':'No partner selected');
     if(abilEl){
       const pType=Partner.partnerType(cd);
-      abilEl.textContent=pType?'? '+Partner.label(pType):(cd?'No partner ability':'');
+      abilEl.textContent=pType?'Partner: '+Partner.label(pType):(cd?'No partner ability':'');
     }
+  },
+
+  _hideCommanderAC(slot){
+    const box=document.getElementById('cmdr-ac-'+slot);
+    if(box)box.style.display='none';
+    this._cmdrAC[slot]=[];
+  },
+
+  async _fetchCommanderAC(slot,val){
+    try{
+      const r=await fetch(`/api/scryfall/cards/autocomplete?q=${encodeURIComponent(val.trim())}&include_extras=false`,{headers:{Accept:'application/json'}});
+      if(!r.ok)return this._hideCommanderAC(slot);
+      const d=await r.json();
+      this._cmdrAC[slot]=(d.data||[]).slice(0,8);
+      this._renderCommanderAC(slot);
+    }catch{
+      this._hideCommanderAC(slot);
+    }
+  },
+
+  _renderCommanderAC(slot){
+    const box=document.getElementById('cmdr-ac-'+slot);
+    if(!box)return;
+    const items=this._cmdrAC[slot]||[];
+    if(!items.length){box.style.display='none';return;}
+    box.innerHTML='';
+    items.forEach(name=>{
+      const row=document.createElement('button');
+      row.type='button';
+      row.className='cmdr-ac-item';
+      row.innerHTML=`<span class="cmdr-ac-name">${esc(name)}</span><span class="cmdr-ac-hint">Use as ${slot===1?'commander':'partner'}</span>`;
+      row.addEventListener('mousedown',e=>{
+        e.preventDefault();
+        this._pickCommanderAC(slot,name);
+      });
+      box.appendChild(row);
+    });
+    box.style.display='block';
+  },
+
+  _pickCommanderAC(slot,name){
+    const inp=document.getElementById('ci-'+slot);
+    if(!inp)return;
+    inp.value=name;
+    this._hideCommanderAC(slot);
+    this._updateSlotPreview(slot);
+  },
+
+  _onCommanderType(slot,val){
+    this._updateSlotPreview(slot);
+    clearTimeout(this._cmdrACTimer);
+    if(!val||val.trim().length<2){this._hideCommanderAC(slot);return;}
+    this._cmdrACTimer=setTimeout(()=>this._fetchCommanderAC(slot,val),140);
+  },
+
+  _onCommanderKey(slot,e){
+    const items=this._cmdrAC[slot]||[];
+    if(e.key==='Enter'&&items.length){
+      e.preventDefault();
+      this._pickCommanderAC(slot,items[0]);
+      return true;
+    }
+    if(e.key==='Escape'){
+      this._hideCommanderAC(slot);
+      return true;
+    }
+    return false;
   }
 };
 
@@ -790,7 +1067,7 @@ function fmtMana(mc){
   const NUM={bg:'#18202e',border:'#2a3548',text:'#8a9baa'};
   return String(mc).replace(/\{([^}]+)\}/g,(_,s)=>{
     const key=s.toUpperCase();
-    const isNum=s.match(/^\d+$/) || s==='�';
+    const isNum=s.match(/^\d+$/) || s==='X';
     const cfg=isNum?NUM:(CFG[key]||{bg:'#252d3e',border:'#3a4560',text:'#8a9baa',shadow:'none'});
     const shadow=cfg.shadow&&cfg.shadow!=='none'?`,0 0 4px ${cfg.shadow}`:'';
     return `<span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:${cfg.bg};color:${cfg.text};font-size:8px;font-weight:800;margin:0 1px;border:1.5px solid ${cfg.border};flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)${shadow};font-family:'JetBrains Mono',monospace;line-height:1;letter-spacing:0">${s}</span>`;
@@ -833,7 +1110,7 @@ const PrintPicker={
     const cd=Store.card(cardEntry.name)||{};
     if(curSet){
       if(cd.set){
-        curSet.textContent='Current: '+(cd.set||'').toUpperCase()+' #'+(cd.collector_number||'?')+' � '+(cd.set_name||'');
+        curSet.textContent='Current: '+(cd.set||'').toUpperCase()+' #'+(cd.collector_number||'?')+' - '+(cd.set_name||'');
         curSet.style.display='block';
       } else {
         curSet.style.display='none';
@@ -856,14 +1133,14 @@ const PrintPicker={
   async load(){
     const G=id=>document.getElementById(id);
     const load=G('ep-loading');const lst=G('ep-list');const cnt=G('ep-count');
-    if(load){load.style.display='flex';load.textContent='? Loading all printings�';}
+    if(load){load.style.display='flex';load.textContent='Loading all printings...';}
     if(lst)lst.innerHTML='';
 
-    // file:// protocol can't fetch � show helpful message
+    // file:// protocol can't fetch - show helpful message
     if(location.protocol==='file:'){
       if(load){load.style.display='none';}
       if(lst)lst.innerHTML=`<div style="grid-column:1/-1;padding:16px;background:rgba(200,168,75,.08);border:1px solid var(--gold3);border-radius:var(--r);font-size:11px;color:var(--gold);font-family:'JetBrains Mono',monospace;line-height:1.7">
-        ? Edition browsing requires a server connection.<br>
+        Edition browsing requires a server connection.<br>
         <span style="color:var(--text3)">Open in Firefox or a local server to fetch all printings.<br>You can still manually set the set code below.</span><br><br>
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           <input id="ep-manual-set" placeholder="Set code (e.g. CMR)" style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:5px 8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;width:100px">
@@ -885,7 +1162,7 @@ const PrintPicker={
     const setCode=(document.getElementById('ep-manual-set')?.value||'').trim().toLowerCase();
     const cn=(document.getElementById('ep-manual-cn')?.value||'').trim();
     if(!setCode){Notify.show('Enter a set code','err');return;}
-    Notify.show('Fetching '+setCode.toUpperCase()+'�','inf',2000);
+    Notify.show('Fetching '+setCode.toUpperCase()+'...','inf',2000);
     try{
       const url=`/api/scryfall/cards/${encodeURIComponent(setCode)}/${encodeURIComponent(cn||'1')}`;
       const r=await fetch(url,{method:'GET',headers:{'Accept':'application/json'}});
@@ -895,7 +1172,7 @@ const PrintPicker={
       Store.setCard(this._name,slim);Store.saveCache();
       this._saveSetToDeck(slim,d);
       this._refreshModal(slim,d);
-      Notify.show('Edition set: '+d.set_name+' #'+d.collector_number,'ok');
+      Notify.show('Printing selected: '+d.set_name+' #'+d.collector_number,'ok');
     }catch(e){Notify.show('Fetch failed','err');}
   },
 
@@ -935,7 +1212,7 @@ const PrintPicker={
         ${imgCrop
           ?`<img class="ep-print-img" src="${esc(imgCrop)}" alt="${esc(p.set_name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
           :''}
-        <div class="ep-print-img-ph" style="display:${imgCrop?'none':'flex'}">??</div>
+        <div class="ep-print-img-ph" style="display:${imgCrop?'none':'flex'}">No Art</div>
         <div class="ep-set-code">
           <span class="ep-rarity-dot" style="background:${rarColor}"></span>
           ${esc((p.set||'').toUpperCase())} #${esc(p.collector_number||'?')}
@@ -946,7 +1223,7 @@ const PrintPicker={
           ${priceUsd?((p.prices?.eur?'&euro;':'$')+priceUsd):'-'}
           ${priceFoil?'<span style="color:var(--purple2);margin-left:4px">'+(p.prices?.eur_foil?'* &euro;':'* $')+priceFoil+'</span>':''}
         </div>
-        <div class="ep-check">?</div>
+        <div class="ep-check">OK</div>
       `;
       card.addEventListener('click',()=>this.selectPrint(p));
       lst.appendChild(card);
@@ -954,7 +1231,7 @@ const PrintPicker={
   },
 
   async selectPrint(p){
-    Notify.show('Switching to '+p.set_name+'�','inf',1500);
+    Notify.show('Switching to '+p.set_name+'...','inf',1500);
     const slim=await SF.fetchById(p.id,this._name);
     if(!slim){Notify.show('Failed to fetch this printing','err');return;}
 
@@ -972,11 +1249,11 @@ const PrintPicker={
     // Update the "current set" label
     const curSet=document.getElementById('ep-current-set');
     if(curSet){
-      curSet.textContent='Current: '+(p.set||'').toUpperCase()+' #'+(p.collector_number||'?')+' � '+(p.set_name||'');
+      curSet.textContent='Current: '+(p.set||'').toUpperCase()+' #'+(p.collector_number||'?')+' - '+(p.set_name||'');
       curSet.style.display='block';
     }
 
-    Notify.show('Edition updated ? '+p.set_name+' #'+p.collector_number,'ok');
+    Notify.show('Printing updated: '+p.set_name+' #'+p.collector_number,'ok');
   },
 
   _saveSetToDeck(slim,p){
@@ -999,7 +1276,7 @@ const PrintPicker={
     if(slim.img?.normal){const imgEl=G('mc-img-el');if(imgEl)imgEl.src=slim.img.normal;}
     // Type line
     const typeEl=G('mc-type');
-    if(typeEl)typeEl.textContent=[slim.type_line,slim.rarity,slim.set_name].filter(Boolean).join('  �  ');
+    if(typeEl)typeEl.textContent=[slim.type_line,slim.rarity,slim.set_name].filter(Boolean).join(' - ');
     // Stats
     const eur=slim.prices?.eur??null;
     const usd=slim.prices?.usd??null;
@@ -1288,7 +1565,7 @@ const AlertMgr={
     const prov=document.getElementById('alert-prov')?.value||'scryfall';
     if(!card||!val){Notify.show('Fill in card and value','err');return;}
     Store.alerts.push({id:Store.uid(),card,cond,val,prov,active:true,triggered:false,created:Date.now()});
-    Store.saveAlerts();this.render();Notify.show(`Alert added for ${card}`,'ok');
+    Store.saveAlerts();this.render();Notify.show(`Alert created for ${card}`,'ok');
     if(document.getElementById('alert-card'))document.getElementById('alert-card').value='';
     if(document.getElementById('alert-val'))document.getElementById('alert-val').value='';
   },
@@ -1343,4 +1620,5 @@ const TileImgObserver=(()=>{
   },{rootMargin:'100px'});
   return{observe:(img)=>obs.observe(img),disconnect:()=>obs.disconnect()};
 })();
+
 

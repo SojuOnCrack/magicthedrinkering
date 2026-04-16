@@ -1,11 +1,11 @@
-/* CommanderForge — forge: App (deck editor), BracketCalc */
+﻿/* CommanderForge â€” forge: App (deck editor), BracketCalc */
 
 const App={
-  curId:null,_view:'grid',_filter:'all',_search:'',_sort:'name',_cmcFilter:null,
+  curId:null,_view:'grid',_filter:'all',_search:'',_sort:'name',_cmcFilter:null,_zone:'main',_history:[],
 
   async init(){
     Store.load();
-    /* One-time migration: move old localStorage card cache → IndexedDB */
+    /* One-time migration: move old localStorage card cache â†’ IndexedDB */
     const OLD_CACHE_KEY='cforge_cache4';
     const migFlag='cforge_idb_migrated';
     if(!localStorage.getItem(migFlag)){
@@ -31,7 +31,7 @@ const App={
       /* Phase-2 warm: pre-load card data for the active deck before rendering */
       const activeDeck=Store.getDeck(last);
       if(activeDeck){
-        const names=[activeDeck.commander,activeDeck.partner,...activeDeck.cards.map(c=>c.name)].filter(Boolean);
+        const names=[activeDeck.commander,activeDeck.partner,...activeDeck.cards.map(c=>c.name),...(activeDeck.sideboard||[]).map(c=>c.name),...(activeDeck.maybeboard||[]).map(c=>c.name)].filter(Boolean);
         await Store.warmCards(names);
       }
       this.loadDeck(last);
@@ -43,13 +43,13 @@ const App={
     VaultNav.cur=lastVPage; /* set before Menu.go so vault restores correctly */
     registerSW();
 
-    /* UI FIRST — render immediately so the screen isn't black */
+    /* UI FIRST â€” render immediately so the screen isn't black */
     Menu.go(lastSection);
     PriceProxy.keysUpdated();
     MyCollection._initBus();
     OfflineQueue.init();
 
-    /* Auth in background — _onSignedIn will refresh sections once ready */
+    /* Auth in background â€” _onSignedIn will refresh sections once ready */
     Auth.init().then(()=>{
       ScryfallBulk.autoCheck();
       ReprintAlert.autoCheck();
@@ -73,18 +73,23 @@ const App={
     document.getElementById('empty').style.display='flex';
     document.getElementById('card-grid').classList.remove('show');
     document.getElementById('list-wrap').classList.remove('show');
+    this._clearScryfallDragState();
+    this._hideAddRow?.();
     MobileNav?.syncDeckButton?.();
   },
 
   newDeck(){
-    const deck={id:Store.uid(),name:'New Deck',commander:'',partner:'',cards:[],created:Date.now(),public:true};
+    const deck={id:Store.uid(),name:'New Deck',commander:'',partner:'',cards:[],sideboard:[],maybeboard:[],created:Date.now(),public:true};
     Store.addDeck(deck);this.renderSidebar();this.loadDeck(deck.id);setTimeout(()=>P.editCmdr(),100);
   },
 
   dupDeck(id){
     const src=Store.getDeck(id);if(!src)return;
     const copy={...src,id:Store.uid(),name:src.name+' (copy)',
-                cards:src.cards.map(c=>({...c})),created:Date.now(),public:true};
+                cards:(src.cards||[]).map(c=>({...c})),
+                sideboard:(src.sideboard||[]).map(c=>({...c})),
+                maybeboard:(src.maybeboard||[]).map(c=>({...c})),
+                created:Date.now(),public:true};
     Store.addDeck(copy);this.renderSidebar();
     Notify.show('Deck duplicated','ok');
     if(DB._user)DB.schedulePush();
@@ -105,15 +110,18 @@ const App={
     Store.delDeck(id);
     if(this.curId===id){this.curId=null;this.showEmpty();this._updHeader(null);}
     this.renderSidebar();
-    Notify.show('Deck deleted','inf');
+    Notify.show('Deck removed','inf');
   },
 
   loadDeck(id){
     const deck=Store.getDeck(id);if(!deck)return;
+    deck.sideboard=deck.sideboard||[];
+    deck.maybeboard=deck.maybeboard||[];
+    this._zone='main';
     SF.cancelBatch(); /* abort in-flight fetches from previous deck */
     this.curId=id;Store.saveCur(id);this.renderSidebar();this._updHeader(deck);this._showShareBtn&&this._showShareBtn();
     /* Warm IDB cache for this deck before rendering (async, non-blocking) */
-    const deckNames=[deck.commander,deck.partner,...deck.cards.map(c=>c.name)].filter(Boolean);
+    const deckNames=[deck.commander,deck.partner,...deck.cards.map(c=>c.name),...(deck.sideboard||[]).map(c=>c.name),...(deck.maybeboard||[]).map(c=>c.name)].filter(Boolean);
     Store.warmCards(deckNames).then(()=>this.render());
     this._fetchCards(deck);
     // Show share button
@@ -122,19 +130,231 @@ const App={
     // Show synergy button if commander is set
     const synBtn=document.getElementById('synergy-btn');
     if(synBtn)synBtn.style.display=deck.commander?'inline-flex':'none';
+    this._showAddRow?.();
     // Auto-sync to Supabase if signed in
     if(DB._user)DB.schedulePush();
+    this._clearScryfallDragState();
     MobileNav?.syncDeckButton?.();
+  },
+
+  _getScryfallDropTarget(){
+    return document.getElementById('card-area');
+  },
+
+  _zoneArray(deck,zone=this._zone){
+    if(zone==='sideboard')return deck.sideboard||(deck.sideboard=[]);
+    if(zone==='maybeboard')return deck.maybeboard||(deck.maybeboard=[]);
+    return deck.cards||(deck.cards=[]);
+  },
+
+  _setZone(zone){
+    if(!this.curId)return;
+    this._zone=zone;
+    ['main','maybeboard','sideboard'].forEach(key=>{
+      document.getElementById(`forge-zone-${key}`)?.classList.toggle('on',key===zone);
+    });
+    this.render();
+  },
+
+  _toggleInsights(force){
+    const wrap=document.getElementById('forge-insights');
+    if(!wrap)return;
+    const collapsed=typeof force==='boolean'?force:!wrap.classList.contains('collapsed');
+    wrap.classList.toggle('collapsed',collapsed);
+    const state=document.querySelector('#forge-insights-toggle .forge-insights-toggle-state');
+    if(state)state.textContent=collapsed?'Show':'Hide';
+  },
+
+  _recordChange(action,detail,zone=this._zone){
+    this._history.unshift({action,detail,zone,ts:Date.now()});
+    this._history=this._history.slice(0,10);
+    this._renderChangeLog();
+  },
+
+  _updateZoneCounts(deck){
+    const counts={
+      main:(deck.cards||[]).reduce((s,c)=>s+(c.qty||0),0),
+      maybeboard:(deck.maybeboard||[]).reduce((s,c)=>s+(c.qty||0),0),
+      sideboard:(deck.sideboard||[]).reduce((s,c)=>s+(c.qty||0),0)
+    };
+    Object.entries(counts).forEach(([key,val])=>{
+      const el=document.getElementById(`forge-zone-count-${key}`);
+      if(el)el.textContent=val;
+    });
+  },
+
+  _moveCardZone(deck,name,fromZone,toZone){
+    if(fromZone===toZone)return;
+    const from=this._zoneArray(deck,fromZone);
+    const to=this._zoneArray(deck,toZone);
+    const idx=from.findIndex(c=>c.name===name);
+    if(idx<0)return;
+    const card={...from[idx]};
+    from.splice(idx,1);
+    const existing=to.find(c=>c.name.toLowerCase()===name.toLowerCase());
+    if(existing)existing.qty=(existing.qty||0)+(card.qty||1);
+    else to.push(card);
+    Store.updDeck(deck);
+    this.render();
+    this._recordChange('Moved',`${name} -> ${toZone}`,toZone);
+    Notify.show(`Moved ${name} to ${toZone}`,'ok');
+  },
+
+  _bindZoneDropTargets(){
+    ['main','maybeboard','sideboard'].forEach(zone=>{
+      const el=document.getElementById(`forge-zone-${zone}`);
+      if(!el||el.dataset.dropBound)return;
+      el.addEventListener('dragover',e=>{
+        const payload=e.dataTransfer?.getData('text/forge-zone-card');
+        if(!payload)return;
+        e.preventDefault();
+        el.classList.add('drag-target');
+      });
+      el.addEventListener('dragleave',()=>el.classList.remove('drag-target'));
+      el.addEventListener('drop',e=>{
+        e.preventDefault();
+        el.classList.remove('drag-target');
+        try{
+          const payload=JSON.parse(e.dataTransfer?.getData('text/forge-zone-card')||'');
+          const deck=Store.getDeck(this.curId);
+          if(deck&&payload?.name&&payload?.fromZone)this._moveCardZone(deck,payload.name,payload.fromZone,zone);
+        }catch{}
+      });
+      el.dataset.dropBound='1';
+    });
+  },
+
+  _clearScryfallDragState(){
+    this._getScryfallDropTarget()?.classList.remove('scryfall-drag');
+  },
+
+  _onScryfallDragOver(e){
+    if(!this.curId)return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect='copy';
+    this._getScryfallDropTarget()?.classList.add('scryfall-drag');
+  },
+
+  _onScryfallDragLeave(e){
+    const target=this._getScryfallDropTarget();
+    if(!target)return;
+    if(!e.currentTarget?.contains?.(e.relatedTarget))target.classList.remove('scryfall-drag');
+  },
+
+  async _onScryfallDrop(e){
+    e.preventDefault();
+    this._clearScryfallDragState();
+    if(!this.curId){Notify.show('Open a deck first','err');return;}
+    const file=e.dataTransfer?.files?.[0];
+    if(!file){Notify.show('Drop a Scryfall card image file','err');return;}
+    await this._addDroppedScryfallFile(file);
+  },
+
+  _parseScryfallFilename(filename){
+    const base=String(filename||'').replace(/\.[^.]+$/,'').toLowerCase().trim();
+    const m=base.match(/^([a-z0-9]+)-([a-z0-9]+)-(.+)$/i);
+    if(!m)return null;
+    const set=m[1].toLowerCase();
+    const collector_number=m[2];
+    const slug=m[3].replace(/--+/g,'-');
+    const nameGuess=slug
+      .split('-')
+      .filter(Boolean)
+      .map(part=>part==='s' ? "'s" : part)
+      .join(' ')
+      .replace(/\s+'s\b/g,"'s")
+      .replace(/\b\w/g,ch=>ch.toUpperCase());
+    return {set,collector_number,slug,nameGuess,filename:base};
+  },
+
+  async _fetchDroppedScryfallCard(parsed){
+    const exactUrl=`/api/scryfall/cards/${encodeURIComponent(parsed.set)}/${encodeURIComponent(parsed.collector_number)}`;
+    try{
+      const res=await fetch(exactUrl,{headers:{Accept:'application/json'}});
+      if(res.ok){
+        const data=await res.json();
+        return {card:data,match:'exact'};
+      }
+    }catch{}
+    try{
+      const byName=await fetch(`/api/scryfall/cards/named?exact=${encodeURIComponent(parsed.nameGuess)}`,{headers:{Accept:'application/json'}});
+      if(byName.ok){
+        const data=await byName.json();
+        return {card:data,match:'name'};
+      }
+    }catch{}
+    return null;
+  },
+
+  async _addDroppedScryfallFile(file){
+    const parsed=this._parseScryfallFilename(file.name);
+    if(!parsed){
+      Notify.show('Could not read the Scryfall filename','err');
+      return;
+    }
+    Notify.show(`Matching ${parsed.nameGuess}...`,'inf',1800);
+    const result=await this._fetchDroppedScryfallCard(parsed);
+    if(!result?.card){
+      Notify.show('Could not match dropped Scryfall card','err');
+      return;
+    }
+    const slim=SF._slim?SF._slim(result.card):result.card;
+    if(slim?.name){
+      Store.setCard(slim.name,slim);
+      Store.saveCache?.();
+    }
+    this._addDroppedCardToDeck({
+      name:result.card.name||parsed.nameGuess,
+      set:(result.card.set||parsed.set||'').toLowerCase(),
+      collector_number:String(result.card.collector_number||parsed.collector_number||'')
+    },result.match);
+  },
+
+  _addDroppedCardToDeck(cardRef,matchType='exact'){
+    const deck=Store.getDeck(this.curId);
+    if(!deck)return;
+    const zoneCards=this._zoneArray(deck);
+    const existing=zoneCards.find(c=>c.name.toLowerCase()===String(cardRef.name).toLowerCase());
+    let updatedPrinting=false;
+    if(existing){
+      existing.qty=(existing.qty||0)+1;
+      if(cardRef.set&&cardRef.collector_number&&(existing.set!==cardRef.set||String(existing.collector_number||'')!==String(cardRef.collector_number))){
+        existing.set=cardRef.set;
+        existing.collector_number=cardRef.collector_number;
+        updatedPrinting=true;
+      }else{
+        if(!existing.set&&cardRef.set)existing.set=cardRef.set;
+        if(!existing.collector_number&&cardRef.collector_number)existing.collector_number=cardRef.collector_number;
+      }
+    }else{
+      zoneCards.push({
+        name:cardRef.name,
+        qty:1,
+        foil:false,
+        etched:false,
+        set:cardRef.set||'',
+        collector_number:cardRef.collector_number||''
+      });
+    }
+    Store.updDeck(deck);
+    this._updHeader(deck);
+    this.render();
+    this._recordChange('Added',`${cardRef.name} to ${this._zone}`,this._zone);
+    if(DB._user)DB.schedulePush();
+    const matchLabel=matchType==='exact'?'exact printing':'card match';
+    if(updatedPrinting)Notify.show(`Added ${cardRef.name} and updated to the dropped ${matchLabel}`,'ok');
+    else Notify.show(`Added ${cardRef.name} from Scryfall drop`,'ok');
   },
 
   _fetchCards(deck){
     const cmdrs=[deck.commander,deck.partner].filter(Boolean);
+    const allZoneCards=[...(deck.cards||[]),...(deck.sideboard||[]),...(deck.maybeboard||[])];
     const seenNames=new Set();
     const allItems=[];
     for(const name of cmdrs){
       if(!seenNames.has(name)&&!Store.card(name)){seenNames.add(name);allItems.push({name});}
     }
-    for(const c of deck.cards){
+    for(const c of allZoneCards){
       if(seenNames.has(c.name))continue;
       seenNames.add(c.name);
       const cached=Store.card(c.name);
@@ -150,10 +370,10 @@ const App={
     if(!allItems.length)return;
     const total=allItems.length;
     const prog=document.getElementById('prog');const ptxt=document.getElementById('prog-txt');
-    prog.style.display='block';ptxt.textContent=`Loading… 0/${total}`;
+    prog.style.display='block';ptxt.textContent=`Loadingâ€¦ 0/${total}`;
     const deckId=deck.id;
     SF.fetchBatch(allItems,(done,tot)=>{
-      ptxt.textContent=`Loading… ${done}/${tot}`;
+      ptxt.textContent=`Loadingâ€¦ ${done}/${tot}`;
       if(done>=tot){
         prog.style.display='none';
         P._updateSlotPreview(1);P._updateSlotPreview(2);
@@ -169,8 +389,9 @@ const App={
     const tile=document.getElementById('card-grid').querySelector(`[data-name="${CSS.escape(name)}"]`);
     if(!tile)return;
     const skel=tile.querySelector('.ct-skel');const imgWrap=tile.querySelector('.ct-img');
-    if(cd.img?.crop&&!imgWrap.querySelector('img')){
-      const img=document.createElement('img');img.className='loading';img.src=cd.img.crop;img.alt=name;
+    const tileImg=cd.img?.normal||cd.img?.crop;
+    if(tileImg&&!imgWrap.querySelector('img')){
+      const img=document.createElement('img');img.className='loading';img.src=tileImg;img.alt=name;
       img.onload=()=>{img.classList.remove('loading');if(skel)skel.style.display='none';};
       img.onerror=()=>{img.style.display='none';};
       imgWrap.insertBefore(img,imgWrap.firstChild);
@@ -200,20 +421,28 @@ const App={
   resort(){this._sort=document.getElementById('srt').value;this.render();},
   sortBy(k){this._sort=k;document.getElementById('srt').value=k;this.render();},
 
-  chQty(deckId,name,delta){
+  chQty(deckId,name,delta,zone=this._zone){
     const deck=Store.getDeck(deckId);if(!deck)return;
-    const c=deck.cards.find(x=>x.name===name);if(!c)return;
-    const snapBefore=[...deck.cards.map(x=>({...x}))]; /* snapshot before mutating */
+    const zoneCards=this._zoneArray(deck,zone);
+    const c=zoneCards.find(x=>x.name===name);if(!c)return;
+    const snapBefore=[...zoneCards.map(x=>({...x}))]; /* snapshot before mutating */
     c.qty=Math.max(0,c.qty+delta);
     const removed=c.qty===0;
-    if(removed)deck.cards=deck.cards.filter(x=>x.name!==name);
+    if(removed){
+      if(zone==='sideboard')deck.sideboard=zoneCards.filter(x=>x.name!==name);
+      else if(zone==='maybeboard')deck.maybeboard=zoneCards.filter(x=>x.name!==name);
+      else deck.cards=zoneCards.filter(x=>x.name!==name);
+    }
     Store.updDeck(deck);this.render();
+    if(removed)this._recordChange('Removed',name,zone);
+    else if(delta>0)this._recordChange('Qty Up',`${name} +${delta}`,zone);
+    else this._recordChange('Qty Down',`${name} ${delta}`,zone);
     /* Show undo toast when a card is fully removed */
-    if(removed)UndoMgr.record(deckId,name,snapBefore);
+    if(removed)UndoMgr.record(deckId,name,snapBefore,zone);
   },
 
   _getCards(deck){
-    let cards=[...deck.cards];
+    let cards=[...this._zoneArray(deck)];
     if(this._search)cards=cards.filter(c=>c.name.toLowerCase().includes(this._search));
     /* CMC filter from mana curve click */
     if(this._cmcFilter!==null&&this._cmcFilter!==undefined){
@@ -249,7 +478,12 @@ const App={
   render(){
     const deck=Store.getDeck(this.curId);
     document.getElementById('empty').style.display=deck?'none':'flex';
+    const zoneSwitch=document.getElementById('forge-zone-switch');
+    if(zoneSwitch)zoneSwitch.style.display=deck?'flex':'none';
+    this._clearScryfallDragState();
+    this._renderBuilderChrome(deck);
     if(!deck)return;
+    this._updateZoneCounts(deck);
     this._updHeader(deck);
     if(this._view==='grid')this._renderGrid(deck);else this._renderList(deck);
   },
@@ -260,15 +494,19 @@ const App={
     grid.classList.add('show');
     const cards=this._getCards(deck);grid.innerHTML='';
 
-    // Groups: commander, partner (if any), lands, spells
-    const groups=[
-      ['Commander','is-cmdr',cards.filter(c=>c.name===deck.commander)],
-    ];
-    if(deck.partner) groups.push(['Partner','is-partner',cards.filter(c=>c.name===deck.partner)]);
-    groups.push(
-      ['Lands','',cards.filter(c=>{if(c.name===deck.commander||c.name===deck.partner)return false;const cd=Store.card(c.name);return(cd?.type_line||'').toLowerCase().includes('land');})],
-      ['Spells','',cards.filter(c=>{if(c.name===deck.commander||c.name===deck.partner)return false;const cd=Store.card(c.name);return!(cd?.type_line||'').toLowerCase().includes('land');})]
-    );
+    // Groups: commander/partner only on mainboard, then detailed card type sections
+    const groups=[];
+    if(this._zone==='main'){
+      groups.push(['Commander','is-cmdr',cards.filter(c=>c.name===deck.commander)]);
+      if(deck.partner) groups.push(['Partner','is-partner',cards.filter(c=>c.name===deck.partner)]);
+    }
+    const sections=Object.fromEntries(DECK_CARD_SECTION_ORDER.map(label=>[label,[]]));
+    for(const c of cards){
+      if(this._zone==='main'&&(c.name===deck.commander||c.name===deck.partner))continue;
+      const cd=Store.card(c.name);
+      sections[getDeckCardSection(cd?.type_line||'')].push(c);
+    }
+    for(const label of DECK_CARD_SECTION_ORDER)groups.push([label,'',sections[label]]);
 
     for(const [label,cls,arr] of groups){
       if(!arr.length)continue;
@@ -277,9 +515,11 @@ const App={
       grid.appendChild(hdr);
       for(const c of arr)grid.appendChild(this._makeTile(c,deck));
     }
-    if(!cards.length&&deck.cards.length){
-      const msg=document.createElement('div');msg.style.cssText='grid-column:1/-1;padding:40px;text-align:center;color:var(--text3);font-size:14px';
-      msg.textContent='No cards match the filter.';grid.appendChild(msg);
+    if(!cards.length){
+      const msg=document.createElement('div');msg.className='empty-panel';msg.style.gridColumn='1 / -1';
+      const zoneLabel=this._zone==='main'?'Mainboard':(this._zone==='maybeboard'?'Maybeboard':'Sideboard');
+      const body=this._zoneArray(deck).length?'Clear a filter or search term to bring this zone back into view.':`Add cards into ${zoneLabel} with the Add flow above.`;
+      msg.innerHTML=`<div class="empty-kicker">${esc(zoneLabel)}</div><div class="empty-ico">DB</div><div class="empty-ttl">Nothing Here Right Now</div><div class="empty-sub">${esc(body)}</div>`;grid.appendChild(msg);
     }
   },
 
@@ -295,6 +535,137 @@ const App={
       });
     });
     return {unique:unique.size,copies:totalCopies,value:totalValue,decks:Store.decks.length};
+  },
+
+  _cardRoleFlags(cd){
+    const type=String(cd?.type_line||'').toLowerCase();
+    const text=String(cd?.oracle_text||'').toLowerCase();
+    const land=type.includes('land');
+    const rock=type.includes('artifact')&&(/\{t\}:\s*add/.test(text)||text.includes('add one mana'));
+    const treasure=text.includes('treasure token')||text.includes('create a treasure');
+    const landRamp=(text.includes('search your library')&&text.includes('land'))||text.includes('additional land');
+    const draw=text.includes('draw ')||text.includes('investigate')||text.includes('connive');
+    const removal=(text.includes('destroy target')||text.includes('exile target')||text.includes('counter target')||text.includes('return target')||text.includes('fight target'));
+    const wipe=removal&&(text.includes('all creatures')||text.includes('each creature')||text.includes('each permanent')||text.includes('all artifacts')||text.includes('all enchantments'));
+    return {land,ramp:!land&&(rock||treasure||landRamp),draw:!land&&draw,removal:!land&&removal,wipe:!land&&wipe,creature:type.includes('creature')};
+  },
+
+  _deckMetrics(deck){
+    let total=0,lands=0,ramp=0,draw=0,removal=0,wipes=0,creatures=0,value=0,cmcTotal=0,cmcCards=0;
+    (deck.cards||[]).forEach(card=>{
+      const qty=card.qty||1;
+      const cd=Store.card(card.name)||{};
+      const flags=this._cardRoleFlags(cd);
+      total+=qty;
+      if(flags.land)lands+=qty;
+      if(flags.ramp)ramp+=qty;
+      if(flags.draw)draw+=qty;
+      if(flags.removal)removal+=qty;
+      if(flags.wipe)wipes+=qty;
+      if(flags.creature)creatures+=qty;
+      if(!flags.land){
+        cmcTotal+=(Number(cd.cmc||0)*qty);
+        cmcCards+=qty;
+      }
+      value+=(parseFloat(cd.prices?.eur||0)||0)*qty;
+    });
+    return {total,lands,ramp,draw,removal,wipes,creatures,value,avgCmc:cmcCards?cmcTotal/cmcCards:0};
+  },
+
+  _deckAdvice(deck,metrics){
+    const advice=[];
+    if(!deck.commander)advice.push({tone:'warn',title:'Set a commander first',copy:'The command zone drives your color identity and makes every recommendation more accurate.'});
+    if(metrics.total<100)advice.push({tone:'warn',title:`${100-metrics.total} cards still missing`,copy:'Keep filling the list so curve and support suggestions reflect the final shell.'});
+    if(metrics.lands<36)advice.push({tone:'warn',title:'Land count looks light',copy:`You are at ${metrics.lands} lands. Most commander decks feel steadier around 36 to 38.`});
+    if(metrics.ramp<10)advice.push({tone:'warn',title:'Ramp is below target',copy:`Only ${metrics.ramp} ramp pieces found. Try to reach 10 to 12 so the deck gets online faster.`});
+    if(metrics.draw<8)advice.push({tone:'warn',title:'Card draw is thin',copy:`Only ${metrics.draw} draw effects found. More draw keeps the deck from stalling after early trades.`});
+    if(metrics.removal<8)advice.push({tone:'warn',title:'Interaction is light',copy:`You currently have ${metrics.removal} removal pieces. Add a few more answers so the deck can recover from behind.`});
+    if(metrics.avgCmc>3.7)advice.push({tone:'warn',title:'Curve is getting heavy',copy:`Average CMC is ${metrics.avgCmc.toFixed(1)}. Trim a few expensive spells or add cheaper setup cards.`});
+    if(!advice.length)advice.push({tone:'good',title:'Deck shell looks healthy',copy:`Curve, mana, and support ratios are in a solid spot. This is a great moment to tune for synergy and finishers.`});
+    return advice.slice(0,4);
+  },
+
+  _renderBuilderChrome(deck){
+    const wrap=document.getElementById('forge-builder-kpis');
+    const insightsState=document.querySelector('#forge-insights-toggle .forge-insights-toggle-state');
+    if(!deck){
+      if(wrap)wrap.style.display='none';
+      this._toggleInsights(true);
+      this._renderAdvice(null,[]);
+      return;
+    }
+    if(wrap)wrap.style.display='grid';
+    const insights=document.getElementById('forge-insights');
+    if(insightsState&&insights)insightsState.textContent=insights.classList.contains('collapsed')?'Show':'Hide';
+    const metrics=this._deckMetrics(deck);
+    const vals={
+      'forge-kpi-cards':`${metrics.total} / 100`,
+      'forge-kpi-lands':String(metrics.lands),
+      'forge-kpi-ramp':String(metrics.ramp),
+      'forge-kpi-removal':String(metrics.removal),
+      'forge-kpi-draw':String(metrics.draw),
+      'forge-kpi-cmc':metrics.avgCmc.toFixed(1),
+      'forge-kpi-value':'€'+metrics.value.toFixed(0)
+    };
+    Object.entries(vals).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.textContent=val;});
+    this._renderSectionSummary(deck);
+    this._renderAdvice(deck,this._deckAdvice(deck,metrics));
+    this._renderChangeLog();
+    this._bindZoneDropTargets();
+  },
+
+  _renderSectionSummary(deck){
+    const el=document.getElementById('forge-section-summary');
+    if(!el||!deck)return;
+    const cards=this._zoneArray(deck,this._zone);
+    const summary=new Map();
+    if(this._zone==='main'){
+      summary.set('Commander',cards.filter(c=>c.name===deck.commander).reduce((s,c)=>s+(c.qty||0),0));
+      if(deck.partner)summary.set('Partner',cards.filter(c=>c.name===deck.partner).reduce((s,c)=>s+(c.qty||0),0));
+    }
+    cards.forEach(card=>{
+      if(this._zone==='main'&&(card.name===deck.commander||card.name===deck.partner))return;
+      const cd=Store.card(card.name);
+      const key=getDeckCardSection(cd?.type_line||'');
+      summary.set(key,(summary.get(key)||0)+(card.qty||0));
+    });
+    const chips=[...summary.entries()].filter(([,count])=>count>0);
+    el.innerHTML=chips.map(([label,count])=>`<button class="forge-summary-chip" type="button" data-forge-filter="${esc(label)}"><strong>${count}</strong> <span>${esc(label)}</span></button>`).join('');
+    el.querySelectorAll('[data-forge-filter]').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const label=btn.dataset.forgeFilter;
+        const map={Commander:'all',Partner:'all',Creatures:'creature',Instants:'instant',Sorceries:'sorcery',Enchantments:'enchantment',Battles:'battle',Lands:'land',Artifacts:'artifact'};
+        const filter=map[label]||'all';
+        this._filter=filter;
+        document.querySelectorAll('.fb').forEach(fb=>fb.classList.toggle('on',fb.dataset.f===filter));
+        this.render();
+      });
+    });
+  },
+
+  _renderAdvice(deck,items){
+    const el=document.getElementById('forge-advice-list');
+    if(!el)return;
+    if(!deck||!items?.length){
+      el.innerHTML='<div class="forge-advice-card"><div class="forge-advice-title">Open a deck to begin</div><div class="forge-advice-copy">We will surface balance, curve, and support suggestions here while you build.</div></div>';
+      return;
+    }
+    el.innerHTML=items.map(item=>`<div class="forge-advice-card ${item.tone||''}"><div class="forge-advice-title">${esc(item.title)}</div><div class="forge-advice-copy">${esc(item.copy)}</div></div>`).join('');
+  },
+
+  _renderChangeLog(){
+    const el=document.getElementById('forge-change-list');
+    if(!el)return;
+    if(!this._history.length){
+      el.innerHTML='<div class="forge-change-item"><div class="forge-change-main"><div class="forge-change-title">No recent edits</div><div class="forge-change-sub">Adds, moves, and removals in the builder will appear here.</div></div></div>';
+      return;
+    }
+    const now=Date.now();
+    el.innerHTML=this._history.map(item=>{
+      const age=Math.max(1,Math.round((now-item.ts)/1000));
+      const ageText=age<60?`${age}s ago`:`${Math.round(age/60)}m ago`;
+      return `<div class="forge-change-item"><div class="forge-change-main"><div class="forge-change-title">${esc(item.action)}</div><div class="forge-change-sub">${esc(item.detail)} · ${esc(item.zone)}</div></div><div class="forge-change-time">${ageText}</div></div>`;
+    }).join('');
   },
 
   _bulkPoolSummary:{value:0,updated:0},
@@ -338,8 +709,8 @@ const App={
     totalEl.textContent=sum.copies;
     collectionEl.textContent='\u20AC'+sum.value.toFixed(0);
     bulkEl.textContent=bulkValueText||('\u20AC'+(bulk.value||0).toFixed(2));
-    if(totalLabel)totalLabel.textContent='Cards';
-    if(collectionLabel)collectionLabel.textContent='Collection';
+    if(totalLabel)totalLabel.textContent='Library';
+    if(collectionLabel)collectionLabel.textContent='Value';
     if(bulkLabel)bulkLabel.textContent='Bulk Pool';
     if(cmdrName)cmdrName.textContent='Collection Overview';
     if(ciPips)ciPips.innerHTML='';
@@ -354,34 +725,44 @@ const App={
     const tile=document.createElement('div');
     tile.className='ct'+(c.foil||c.etched?' foil':'')+(isCmdr?' is-cmdr':'')+(isPartner?' is-partner':'');
     tile.dataset.name=c.name;
+    tile.draggable=true;
+    tile.addEventListener('dragstart',e=>{
+      e.dataTransfer?.setData('text/forge-zone-card',JSON.stringify({name:c.name,fromZone:App._zone}));
+      e.dataTransfer.effectAllowed='move';
+    });
     const imgWrap=document.createElement('div');imgWrap.className='ct-img';
     const skel=document.createElement('div');skel.className='ct-skel';imgWrap.appendChild(skel);
-    if(cd.img?.crop){
+    const tileImg=cd.img?.normal||cd.img?.crop;
+    if(tileImg){
       const img=document.createElement('img');img.className='loading';img.alt=c.name;
-      img.dataset.src=cd.img.crop; /* defer src — set by observer */
+      img.dataset.src=tileImg; /* defer src - set by observer */
       img.onload=()=>{img.classList.remove('loading');skel.style.display='none';};
       img.onerror=()=>{img.style.display='none';};
       imgWrap.appendChild(img);
       /* Lazy-load via IntersectionObserver */
       TileImgObserver.observe(img);
     }
-    if(c.qty>1){const qty=document.createElement('div');qty.className='ct-qty';qty.textContent=c.qty+'×';imgWrap.appendChild(qty);}
-    if(c.foil||c.etched){const fb=document.createElement('div');fb.className='ct-foil';fb.textContent=(c.foil?'✦F':'')+(c.etched?'✧E':'');imgWrap.appendChild(fb);}
-    if(isCmdr){const crown=document.createElement('div');crown.className='ct-cmdr-crown';crown.textContent='♛';imgWrap.appendChild(crown);}
-    if(isPartner){const crown=document.createElement('div');crown.className='ct-cmdr-crown';crown.style.color='var(--purple2)';crown.textContent='⊕';imgWrap.appendChild(crown);}
+    if(c.qty>1){const qty=document.createElement('div');qty.className='ct-qty';qty.textContent=c.qty+'x';imgWrap.appendChild(qty);}
+    if(c.foil||c.etched){const fb=document.createElement('div');fb.className='ct-foil';fb.textContent=(c.foil?'Foil':'')+(c.etched?' Etched':'');imgWrap.appendChild(fb);}
+    if(isCmdr){const crown=document.createElement('div');crown.className='ct-cmdr-crown';crown.textContent='CMD';imgWrap.appendChild(crown);}
+    if(isPartner){const crown=document.createElement('div');crown.className='ct-cmdr-crown';crown.style.color='var(--purple2)';crown.textContent='PRT';imgWrap.appendChild(crown);}
 
     const ov=document.createElement('div');ov.className='ct-ov';
     const ovName=document.createElement('div');ovName.className='ov-name';ovName.textContent=c.name;
     const ovType=document.createElement('div');ovType.className='ov-type';ovType.textContent=cd.type_line||'';
     const ovText=document.createElement('div');ovText.className='ov-text';ovText.textContent=cd.oracle_text||'';
     const ovBtns=document.createElement('div');ovBtns.className='ov-btns';
-    const rmB=document.createElement('button');rmB.className='ovb rm';rmB.textContent='−';
-    rmB.addEventListener('click',e=>{e.stopPropagation();App.chQty(deck.id,c.name,-1);});
-    const addB=document.createElement('button');addB.className='ovb add';addB.textContent='＋';
-    addB.addEventListener('click',e=>{e.stopPropagation();App.chQty(deck.id,c.name,1);});
-    ovBtns.append(rmB,addB);
-    if(!isCmdr){const setCB=document.createElement('button');setCB.className='ovb set-cmdr';setCB.textContent='♛ Cmdr';setCB.addEventListener('click',e=>{e.stopPropagation();deck.commander=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(c.name+' → Commander','ok');});ovBtns.appendChild(setCB);}
-    if(hasP&&!isPartner&&!isCmdr){const setPB=document.createElement('button');setPB.className='ovb set-partner';setPB.textContent='⊕ Partner';setPB.addEventListener('click',e=>{e.stopPropagation();deck.partner=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(c.name+' → Partner','ok');});ovBtns.appendChild(setPB);}
+    const addB=document.createElement('button');addB.className='ovb add';addB.textContent='Add Copy';
+    addB.addEventListener('click',e=>{e.stopPropagation();App.chQty(deck.id,c.name,1,App._zone);});
+    ovBtns.append(addB);
+    if(App._zone==='main'&&!isCmdr){const setCB=document.createElement('button');setCB.className='ovb set-cmdr';setCB.textContent='Make Commander';setCB.addEventListener('click',e=>{e.stopPropagation();deck.commander=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(`${c.name} is now your commander`,'ok');});ovBtns.appendChild(setCB);}
+    if(App._zone==='main'&&hasP&&!isPartner&&!isCmdr){const setPB=document.createElement('button');setPB.className='ovb set-partner';setPB.textContent='Make Partner';setPB.addEventListener('click',e=>{e.stopPropagation();deck.partner=c.name;Store.updDeck(deck);App._updHeader(deck);App.render();Notify.show(`${c.name} is now your partner`,'ok');});ovBtns.appendChild(setPB);}
+    const moveB=document.createElement('button');moveB.className='ovb set-cmdr';moveB.textContent=App._zone==='main'?'Move to Maybe':'Move to Main';
+    moveB.addEventListener('click',e=>{e.stopPropagation();App._moveCardZone(deck,c.name,App._zone,App._zone==='main'?'maybeboard':'main');});
+    ovBtns.appendChild(moveB);
+    const rmB=document.createElement('button');rmB.className='ovb rm';rmB.textContent='Remove';
+    rmB.addEventListener('click',e=>{e.stopPropagation();App.chQty(deck.id,c.name,-1,App._zone);});
+    ovBtns.append(rmB);
     ov.append(ovName,ovType,ovText,ovBtns);imgWrap.appendChild(ov);
 
     const info=document.createElement('div');info.className='ct-info';
@@ -408,6 +789,8 @@ const App={
     ctPriceWrap.appendChild(ctPrice);
     ctFoot.append(ctMana,ctPriceWrap);info.appendChild(ctFoot);
     tile.append(imgWrap,info);
+    attachTapPop(tile);
+    attachCardTilt(tile);
     tile.addEventListener('click',()=>M.open(c,deck.id));
     return tile;
   },
@@ -417,9 +800,30 @@ const App={
     document.getElementById('list-wrap').classList.add('show');
     const tbody=document.getElementById('ltbody');
     const cards=this._getCards(deck);tbody.innerHTML='';
+    const groups=[];
+    if(this._zone==='main'){
+      groups.push(['Commander',cards.filter(c=>c.name===deck.commander)]);
+      groups.push(['Partner',deck.partner?cards.filter(c=>c.name===deck.partner):[]]);
+    }
+    const sections=Object.fromEntries(DECK_CARD_SECTION_ORDER.map(label=>[label,[]]));
     for(const c of cards){
+      if(this._zone==='main'&&(c.name===deck.commander||c.name===deck.partner))continue;
+      const cd=Store.card(c.name);
+      sections[getDeckCardSection(cd?.type_line||'')].push(c);
+    }
+    for(const label of DECK_CARD_SECTION_ORDER)groups.push([label,sections[label]]);
+    for(const [groupLabel,groupCards] of groups){
+      if(!groupCards?.length)continue;
+      const htr=document.createElement('tr');
+      htr.className='list-sec-row';
+      const htd=document.createElement('td');
+      htd.colSpan=8;
+      htd.innerHTML=`<div class="list-sec-hdr">${esc(groupLabel)} <span class="sc">${groupCards.reduce((s,c)=>s+(c.qty||0),0)}</span></div>`;
+      htr.appendChild(htd);
+      tbody.appendChild(htr);
+      for(const c of groupCards){
       const cd=Store.card(c.name)||{};
-      const isCmdr=c.name===deck.commander,isPartner=c.name===deck.partner;
+      const isCmdr=this._zone==='main'&&c.name===deck.commander,isPartner=this._zone==='main'&&c.name===deck.partner;
       const tr=document.createElement('tr');
       if(isCmdr)tr.className='cmdr-row';else if(isPartner)tr.className='partner-row';
       const tag=getTypeTag(cd.type_line||'');
@@ -436,19 +840,28 @@ const App={
       const td4=document.createElement('td');td4.style.cssText='font-family:JetBrains Mono,monospace;text-align:center;color:var(--text2)';td4.textContent=cd.cmc||0;
       const td5=document.createElement('td');
       const qc=document.createElement('div');qc.className='qc';
-      const qm=document.createElement('button');qm.className='qb';qm.textContent='−';qm.addEventListener('click',()=>App.chQty(deck.id,c.name,-1));
+      const qm=document.createElement('button');qm.className='qb';qm.textContent='-';qm.addEventListener('click',()=>App.chQty(deck.id,c.name,-1,this._zone));
       const qv=document.createElement('span');qv.className='qv';qv.textContent=c.qty;
-      const qp=document.createElement('button');qp.className='qb';qp.textContent='＋';qp.addEventListener('click',()=>App.chQty(deck.id,c.name,1));
+      const qp=document.createElement('button');qp.className='qb';qp.textContent='+';qp.addEventListener('click',()=>App.chQty(deck.id,c.name,1,this._zone));
       qc.append(qm,qv,qp);td5.appendChild(qc);
       const td6=document.createElement('td');td6.style.cssText='font-family:JetBrains Mono,monospace;font-size:11px;color:var(--green2)';td6.textContent=cd.prices?.eur?'€'+cd.prices.eur:'';
       const td7=document.createElement('td');
+      const moveBtn=document.createElement('button');
+      moveBtn.style.cssText='background:none;border:none;color:var(--gold2);font-size:11px;cursor:pointer;padding:0 5px;line-height:1';
+      moveBtn.textContent=this._zone==='main'?'MB':(this._zone==='maybeboard'?'MD':'MD');
+      moveBtn.title=this._zone==='main'?'Move to Maybeboard':'Move to Mainboard';
+      moveBtn.addEventListener('click',()=>App._moveCardZone(deck,c.name,this._zone,this._zone==='main'?'maybeboard':'main'));
+      td7.appendChild(moveBtn);
       const xb=document.createElement('button');xb.style.cssText='background:none;border:none;color:var(--text3);font-size:15px;cursor:pointer;padding:0 3px;line-height:1';
-      xb.textContent='✕';xb.addEventListener('click',()=>App.chQty(deck.id,c.name,-99));td7.appendChild(xb);
+      xb.textContent='X';xb.addEventListener('click',()=>App.chQty(deck.id,c.name,-99,this._zone));td7.appendChild(xb);
       tr.append(td0,td1,td2,td3,td4,td5,td6,td7);tbody.appendChild(tr);
+      }
     }
-    if(!cards.length&&deck.cards.length){
+    if(!cards.length){
       const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=8;
-      td.style.cssText='text-align:center;padding:30px;color:var(--text3);font-size:14px';td.textContent='No cards match the filter.';tr.appendChild(td);tbody.appendChild(tr);
+      const zoneLabel=this._zone==='main'?'Mainboard':(this._zone==='maybeboard'?'Maybeboard':'Sideboard');
+      const body=this._zoneArray(deck).length?'Clear a filter or search term to bring this zone back into view.':`Add cards into ${zoneLabel} with the Add flow above.`;
+      td.style.padding='22px';td.innerHTML=`<div class="empty-panel"><div class="empty-kicker">${esc(zoneLabel)}</div><div class="empty-ico">DB</div><div class="empty-ttl">Nothing Here Right Now</div><div class="empty-sub">${esc(body)}</div></div>`;tr.appendChild(td);tbody.appendChild(tr);
     }
   },
 
@@ -461,7 +874,7 @@ const App={
   renderSidebar(){
     const list=document.getElementById('deck-list');
     const decks=Store.decks;
-    if(!decks.length){list.innerHTML='<div style="padding:14px;font-size:11px;color:var(--text3);text-align:center">No decks yet</div>';MobileNav?.syncDeckButton?.();return;}
+    if(!decks.length){list.innerHTML='<div class="empty-panel" style="margin:8px"><div class="empty-kicker">Decks</div><div class="empty-ico">DB</div><div class="empty-ttl">No Decks Yet</div><div class="empty-sub">Import your first list or start a new brew to fill this shelf.</div></div>';MobileNav?.syncDeckButton?.();return;}
     list.innerHTML='';
     let dragSrc=null;
     for(const d of decks){
@@ -482,7 +895,7 @@ const App={
         nameRow.appendChild(badge);
       }
       const sub=document.createElement('div');sub.className='di-sub';
-      sub.textContent=count+' cards'+(d.commander?' · '+d.commander:'')+(d.partner?' + '+d.partner:'');
+      sub.textContent=count+' cards'+(d.commander?' Â· '+d.commander:'')+(d.partner?' + '+d.partner:'');
       // Show mechanics tags if any
       const mechs=(d.mechanics||[]);
       const tags=(d.tags||[]);
@@ -497,12 +910,12 @@ const App={
         meta.appendChild(tagRow);
       }
       meta.append(nameRow,sub);
-      const del=document.createElement('button');del.className='di-del';del.textContent='✕';del.addEventListener('click',e=>App.delDeck(d.id,e));
+      const del=document.createElement('button');del.className='di-del';del.textContent='X';del.addEventListener('click',e=>App.delDeck(d.id,e));
       /* context menu: duplicate */
-      const dup=document.createElement('button');dup.className='di-del';dup.textContent='⎘';
+      const dup=document.createElement('button');dup.className='di-del';dup.textContent='âŽ˜';
       dup.title='Duplicate deck';dup.style.marginRight='2px';
       dup.addEventListener('click',e=>{e.stopPropagation();App.dupDeck(d.id);});
-      item.append(document.createTextNode('⚔ '),meta,dup,del);
+      item.append(document.createTextNode('âš” '),meta,dup,del);
       item.addEventListener('click',e=>{if(e.target===del||e.target===dup)return;App.loadDeck(d.id);});
       /* drag-drop handlers */
       item.addEventListener('dragstart',e=>{dragSrc=item;item.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
@@ -524,8 +937,8 @@ const App={
   }
 };
 
-/* ═══ HELPERS ══════════════════════════════════════════════ */
-function shortType(t){return String(t).replace('Legendary ','').replace('Basic ','').split('—')[0].trim();}
+/* â•â•â• HELPERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+function shortType(t){return String(t).replace('Legendary ','').replace('Basic ','').split('â€”')[0].trim();}
 function getTypeTag(tl){
   const t=(tl||'').toLowerCase();
   if(t.includes('land'))return 'land';if(t.includes('instant'))return 'instant';
@@ -534,7 +947,7 @@ function getTypeTag(tl){
   if(t.includes('creature'))return 'creature';return '';
 }
 
-/* ═══ KEYBOARD ═════════════════════════════════════════════ */
+/* â•â•â• KEYBOARD â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){M.close();P.close();}
   if(e.key==='g'&&!e.ctrlKey&&!e.metaKey&&document.activeElement.tagName!=='INPUT')App.setView('grid');
@@ -544,15 +957,15 @@ document.addEventListener('keydown',e=>{
 });
 
 
-/* ═══ BRACKET CALCULATOR ════════════════════════════════════ */
+/* â•â•â• BRACKET CALCULATOR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const BracketCalc={
   _curDeckId:null,
 
-  /* ══════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      OFFICIAL GAME CHANGERS LIST (Wizards of the Coast)
      These cards, when present, push a deck toward Bracket 3+.
      1-3 copies = B3 eligible. Unrestricted use = B4.
-     ══════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   GAME_CHANGERS:[
     /* Fast Mana */
     "Mana Crypt","Mana Vault","Chrome Mox","Mox Diamond","Lotus Petal",
@@ -576,7 +989,7 @@ const BracketCalc={
     "Thassa's Oracle","Hermit Druid","Doomsday"
   ],
 
-  /* Two-card infinite combos — BOTH must be present */
+  /* Two-card infinite combos â€” BOTH must be present */
   COMBO_PAIRS:[
     ["Splinter Twin","Pestermite"],["Splinter Twin","Deceiver Exarch"],
     ["Kiki-Jiki, Mirror Breaker","Pestermite"],
@@ -598,14 +1011,14 @@ const BracketCalc={
     ["Blind Obedience","Exquisite Blood"],["Breath of Fury","Combat Celebrant"]
   ],
 
-  /* Mass land denial — instant B4 */
+  /* Mass land denial â€” instant B4 */
   LAND_DENIAL:[
     "Armageddon","Ravages of War","Catastrophe","Jokulhaups","Obliterate",
     "Devastation","Ruination","Price of Glory","Boom // Bust","Cataclysm",
     "Decree of Annihilation","Wildfire","Balancing Act","Impending Disaster"
   ],
 
-  /* Extra turns — sparse ok in B2/B3, chaining/looping = B4 */
+  /* Extra turns â€” sparse ok in B2/B3, chaining/looping = B4 */
   EXTRA_TURNS:[
     "Time Warp","Temporal Manipulation","Capture of Jingzhou","Nexus of Fate",
     "Walk the Aeons","Temporal Mastery","Time Stretch","Beacon of Tomorrows",
@@ -613,7 +1026,7 @@ const BracketCalc={
     "Sage of Hours","Teferi, Master of Time"
   ],
 
-  /* Tutors — sparse ok in B2/B3, many = B3/B4 */
+  /* Tutors â€” sparse ok in B2/B3, many = B3/B4 */
   TUTORS:[
     "Mystical Tutor","Enlightened Tutor","Worldly Tutor","Personal Tutor",
     "Diabolic Tutor","Beseech the Mirror","Solve the Equation","Spellseeker",
@@ -624,9 +1037,9 @@ const BracketCalc={
     "Tooth and Nail","Natural Order","Pattern of Rebirth"
   ],
 
-  /* ════════════════════════════════════════════════════════
-     ANALYSE — returns bracket 1-5 using official rules
-     ════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     ANALYSE â€” returns bracket 1-5 using official rules
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   analyse(deck){
     if(!deck)return null;
     const names=new Set(deck.cards.map(c=>c.name.toLowerCase()));
@@ -653,45 +1066,45 @@ const BracketCalc={
     const tutorHits=this.TUTORS.filter(c=>names.has(c.toLowerCase()));
     const tutorCount=tutorHits.length;
 
-    /* ── Official Bracket Rules ─────────────────────────────
+    /* â”€â”€ Official Bracket Rules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
        B5 = cEDH mindset (auto-flagged when optimised for meta)
        B4 = Game Changers unrestricted + combos + land denial
        B3 = Up to 3 Game Changers, no early combos, sparse extra turns
        B2 = No Game Changers, no combos, sparse tutors/extra turns
        B1 = No Game Changers, no combos, no extra turns, sparse tutors
-       ─────────────────────────────────────────────────────── */
+       â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     let bracket=1;
     const flags=[];
 
     /* B4/B5 triggers: any of these = at minimum B4 */
     if(hasMassLandDenial){
       bracket=Math.max(bracket,4);
-      flags.push({sev:4,icon:'💥',label:'Mass Land Denial',
-        desc:'Destroys all lands — forbidden below Bracket 4.',
+      flags.push({sev:4,icon:'ðŸ’¥',label:'Mass Land Denial',
+        desc:'Destroys all lands â€” forbidden below Bracket 4.',
         cards:landDenialHits});
     }
     if(comboHits.length>0){
       /* B3 allows combos only in "late game" context.
-         If the combo can fire before turn 6 (cheap pieces) → B4 */
+         If the combo can fire before turn 6 (cheap pieces) â†’ B4 */
       const earlyCombo=comboHits.some(pair=>{
         const [a]=pair.split(' + ');
         const cdA=Store.card(a)||{};
         return (cdA.cmc||99)<=3;
       });
       bracket=Math.max(bracket,earlyCombo?4:3);
-      flags.push({sev:earlyCombo?4:3,icon:'♾',
+      flags.push({sev:earlyCombo?4:3,icon:'â™¾',
         label:earlyCombo?'Early Infinite Combo (B4)':'Infinite Combo (B3+)',
-        desc:earlyCombo?'Two-card infinite combo with cheap pieces — Bracket 4.':'Two-card infinite combo present. Keep to late-game for Bracket 3.',
+        desc:earlyCombo?'Two-card infinite combo with cheap pieces â€” Bracket 4.':'Two-card infinite combo present. Keep to late-game for Bracket 3.',
         cards:comboHits});
     }
     if(gcHits.length>3){
       bracket=Math.max(bracket,4);
-      flags.push({sev:4,icon:'⚡',label:`${gcHits.length} Game Changers (B4)`,
+      flags.push({sev:4,icon:'âš¡',label:`${gcHits.length} Game Changers (B4)`,
         desc:`More than 3 Game Changers pushes the deck to Bracket 4.`,
         cards:gcHits});
     } else if(gcHits.length>0){
       bracket=Math.max(bracket,3);
-      flags.push({sev:3,icon:'⚡',label:`${gcHits.length}/3 Game Changers (B3)`,
+      flags.push({sev:3,icon:'âš¡',label:`${gcHits.length}/3 Game Changers (B3)`,
         desc:`Up to 3 Game Changers allowed in Bracket 3. You have ${gcHits.length}.`,
         cards:gcHits});
     }
@@ -699,25 +1112,25 @@ const BracketCalc={
     /* Extra turns: sparse in B2/B3, chaining/looping = B4 */
     if(extraTurnCount>=3){
       bracket=Math.max(bracket,4);
-      flags.push({sev:4,icon:'⏰',label:`${extraTurnCount} Extra-Turn Cards (B4)`,
-        desc:'Multiple extra-turn cards imply chaining — Bracket 4 territory.',
+      flags.push({sev:4,icon:'â°',label:`${extraTurnCount} Extra-Turn Cards (B4)`,
+        desc:'Multiple extra-turn cards imply chaining â€” Bracket 4 territory.',
         cards:extraTurnHits});
     } else if(extraTurnCount>0){
       bracket=Math.max(bracket,2);
-      flags.push({sev:2,icon:'⏰',label:`${extraTurnCount} Extra-Turn Card${extraTurnCount>1?'s':''}`,
-        desc:'Sparse extra turns are acceptable in B2/B3 — not intended to be chained.',
+      flags.push({sev:2,icon:'â°',label:`${extraTurnCount} Extra-Turn Card${extraTurnCount>1?'s':''}`,
+        desc:'Sparse extra turns are acceptable in B2/B3 â€” not intended to be chained.',
         cards:extraTurnHits});
     }
 
     /* Tutors: sparse in B2/B3, many = push toward B3 */
     if(tutorCount>=5){
       bracket=Math.max(bracket,3);
-      flags.push({sev:3,icon:'📖',label:`${tutorCount} Tutors (B3+)`,
-        desc:`${tutorCount} tutors make the deck very consistent — Bracket 3.`,
+      flags.push({sev:3,icon:'ðŸ“–',label:`${tutorCount} Tutors (B3+)`,
+        desc:`${tutorCount} tutors make the deck very consistent â€” Bracket 3.`,
         cards:tutorHits.slice(0,8)});
     } else if(tutorCount>0){
       bracket=Math.max(bracket,2);
-      flags.push({sev:2,icon:'📖',label:`${tutorCount} Tutor${tutorCount>1?'s':''}`,
+      flags.push({sev:2,icon:'ðŸ“–',label:`${tutorCount} Tutor${tutorCount>1?'s':''}`,
         desc:'Sparse tutors are fine in B2/B3.',
         cards:tutorHits});
     }
@@ -747,11 +1160,11 @@ const BracketCalc={
   BRACKET_COLORS:{1:"b1",2:"b2",3:"b3",4:"b4",5:"b4"},
   BRACKET_NAMES:{1:"Exhibition",2:"Core",3:"Upgraded",4:"Optimized",5:"cEDH"},
   BRACKET_SUMMARIES:{
-    1:"No Game Changers, no combos, no mass land denial, no extra turns. Bracket 1 (Exhibition) — precon-level casual, play for fun and story.",
-    2:"No Game Changers, no infinite combos. Sparse tutors and/or extra turns are fine. Bracket 2 (Core) — average preconstructed deck level.",
-    3:"Up to 3 Game Changers present, or 5+ tutors, or late-game infinite combos. Bracket 3 (Upgraded) — souped-up, faster than precon. Discuss with your pod.",
-    4:"4+ Game Changers, early infinite combos, mass land denial, or chained extra turns. Bracket 4 (Optimized) — bring your strongest, fully optimized deck.",
-    5:"Full cEDH: optimized for the competitive metagame, combo-driven, maximally consistent. Bracket 5 (cEDH) — tournament mindset only."
+    1:"No Game Changers, no combos, no mass land denial, no extra turns. Bracket 1 (Exhibition) â€” precon-level casual, play for fun and story.",
+    2:"No Game Changers, no infinite combos. Sparse tutors and/or extra turns are fine. Bracket 2 (Core) â€” average preconstructed deck level.",
+    3:"Up to 3 Game Changers present, or 5+ tutors, or late-game infinite combos. Bracket 3 (Upgraded) â€” souped-up, faster than precon. Discuss with your pod.",
+    4:"4+ Game Changers, early infinite combos, mass land denial, or chained extra turns. Bracket 4 (Optimized) â€” bring your strongest, fully optimized deck.",
+    5:"Full cEDH: optimized for the competitive metagame, combo-driven, maximally consistent. Bracket 5 (cEDH) â€” tournament mindset only."
   },
 
   render(){
@@ -797,14 +1210,14 @@ const BracketCalc={
     document.getElementById("bracket-analysis").style.display="block";
     document.getElementById("br-deck-name").textContent=deck.name;
 
-    /* Score line — show the key numbers */
+    /* Score line â€” show the key numbers */
     const parts=[];
     if(gcCount)parts.push(`${gcCount} Game Changer${gcCount>1?'s':''}`);
     if(comboCount)parts.push(`${comboCount} combo${comboCount>1?'s':''}`);
     if(tutorCount)parts.push(`${tutorCount} tutor${tutorCount>1?'s':''}`);
     if(extraTurnCount)parts.push(`${extraTurnCount} extra turn${extraTurnCount>1?'s':''}`);
     if(hasMassLandDenial)parts.push('mass land denial');
-    document.getElementById("br-score").textContent=parts.length?parts.join(' · '):'No flags';
+    document.getElementById("br-score").textContent=parts.length?parts.join(' Â· '):'No flags';
 
     document.getElementById("br-summary").textContent=this.BRACKET_SUMMARIES[bracket];
     const pill=document.getElementById("br-bracket-pill");
@@ -815,7 +1228,7 @@ const BracketCalc={
     /* Flags */
     const flagsEl=document.getElementById("br-flags");flagsEl.innerHTML="";
     if(!flags.length){
-      flagsEl.innerHTML='<div style="font-size:12px;color:var(--green2);padding:10px 0">✓ Clean deck — no flags found. Bracket 1 (Exhibition).</div>';
+      flagsEl.innerHTML='<div style="font-size:12px;color:var(--green2);padding:10px 0">âœ“ Clean deck â€” no flags found. Bracket 1 (Exhibition).</div>';
       return;
     }
     flags.sort((a,b)=>b.sev-a.sev);
@@ -840,11 +1253,11 @@ const BracketCalc={
     rulesEl.style.cssText='margin-top:14px;padding:12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);font-size:11px;color:var(--text3);line-height:1.8';
     rulesEl.innerHTML=`
       <div style="font-family:'Cinzel',serif;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin-bottom:6px">Official Bracket Rules</div>
-      <div><span style="color:var(--green2)">B1</span> — No Game Changers · No combos · No extra turns · No land denial · Sparse tutors</div>
-      <div><span style="color:var(--ice)">B2</span> — No Game Changers · No combos · Sparse tutors/extra turns OK</div>
-      <div><span style="color:var(--gold)">B3</span> — Up to 3 Game Changers · No early combos · No mass land denial · Extra turns not chained</div>
-      <div><span style="color:var(--crimson2)">B4</span> — 4+ Game Changers · Combos · Mass land denial · Chained extra turns</div>
-      <div><span style="color:var(--crimson2)">B5</span> — cEDH: competitive metagame mindset, no deck-building restrictions</div>
+      <div><span style="color:var(--green2)">B1</span> â€” No Game Changers Â· No combos Â· No extra turns Â· No land denial Â· Sparse tutors</div>
+      <div><span style="color:var(--ice)">B2</span> â€” No Game Changers Â· No combos Â· Sparse tutors/extra turns OK</div>
+      <div><span style="color:var(--gold)">B3</span> â€” Up to 3 Game Changers Â· No early combos Â· No mass land denial Â· Extra turns not chained</div>
+      <div><span style="color:var(--crimson2)">B4</span> â€” 4+ Game Changers Â· Combos Â· Mass land denial Â· Chained extra turns</div>
+      <div><span style="color:var(--crimson2)">B5</span> â€” cEDH: competitive metagame mindset, no deck-building restrictions</div>
     `;
     flagsEl.appendChild(rulesEl);
   },
@@ -855,6 +1268,6 @@ const BracketCalc={
 };
 
 
-/* ═══════════════════════════════════════════════════════════
-   CONFIG — loaded from localStorage, set via Settings panel
-   ═══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   CONFIG â€” loaded from localStorage, set via Settings panel
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */

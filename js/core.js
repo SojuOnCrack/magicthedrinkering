@@ -216,6 +216,31 @@ const Partner={
   }
 };
 
+const DECK_CARD_SECTION_ORDER=[
+  'Creatures',
+  'Instants',
+  'Sorceries',
+  'Enchantments',
+  'Artifacts',
+  'Planeswalkers',
+  'Battles',
+  'Other Spells',
+  'Lands'
+];
+
+function getDeckCardSection(typeLine=''){
+  const t=String(typeLine||'').toLowerCase();
+  if(t.includes('land')) return 'Lands';
+  if(t.includes('creature')) return 'Creatures';
+  if(t.includes('instant')) return 'Instants';
+  if(t.includes('sorcery')) return 'Sorceries';
+  if(t.includes('enchantment')) return 'Enchantments';
+  if(t.includes('artifact')) return 'Artifacts';
+  if(t.includes('planeswalker')) return 'Planeswalkers';
+  if(t.includes('battle')) return 'Battles';
+  return 'Other Spells';
+}
+
 /* ═══ PARSER ═══════════════════════════════════════════════ */
 const Parser={
   /* Parse a single card line — returns {name, qty, foil, etched, set, collector_number} */
@@ -250,7 +275,7 @@ const Parser={
 
   parse(text){
     const lines=text.split('\n');
-    let commander=null,partner=null,cards=[],name='Imported Deck',isCmd=false,isPartner=false;
+    let commander=null,partner=null,cards=[],sideboard=[],maybeboard=[],name='Imported Deck',isCmd=false,isPartner=false,zone='main';
     for(const raw of lines){
       const line=raw.trim();
       if(!line) continue;
@@ -258,17 +283,22 @@ const Parser={
         const h=line.slice(2).trim().toLowerCase();
         if(h==='commander'||h==='commanders') isCmd=true;
         else if(h==='partner'||h==='background'||h==='co-commander'){isPartner=true;isCmd=false;}
-        else{isCmd=false;isPartner=false;if(h) name=line.slice(2).trim()||name;}
+        else if(h==='maybeboard'||h==='maybe board'){zone='maybeboard';isCmd=false;isPartner=false;}
+        else if(h==='sideboard'||h==='side board'){zone='sideboard';isCmd=false;isPartner=false;}
+        else if(DECK_CARD_SECTION_ORDER.includes(line.slice(2).trim())){zone='main';isCmd=false;isPartner=false;}
+        else{isCmd=false;isPartner=false;if(h){name=line.slice(2).trim()||name;zone='main';}}
         continue;
       }
-      if(/^SB:/i.test(line)) continue;
-      const entry=this.parseLine(line);
+      const sbLine=/^SB:/i.test(line);
+      const entry=this.parseLine(sbLine?line.replace(/^SB:\s*/i,''):line);
       if(!entry) continue;
       if(isCmd&&!commander){commander=entry.name;isCmd=false;}
       else if(isPartner&&!partner){partner=entry.name;isPartner=false;}
-      cards.push(entry);
+      else if(sbLine||zone==='sideboard')sideboard.push(entry);
+      else if(zone==='maybeboard')maybeboard.push(entry);
+      else cards.push(entry);
     }
-    return{commander,partner,cards,name};
+    return{commander,partner,cards,sideboard,maybeboard,name};
   },
 
   exportTxt(deck,format='moxfield'){
@@ -281,8 +311,11 @@ const Parser={
     }
     const cmdrs=[deck.commander,deck.partner].filter(Boolean);
     const others=deck.cards.filter(c=>!cmdrs.includes(c.name));
-    const lands=[],spells=[];
-    for(const c of others){const cd=Store.card(c.name);if((cd?.type_line||'').toLowerCase().includes('land'))lands.push(c);else spells.push(c);}
+    const sections=Object.fromEntries(DECK_CARD_SECTION_ORDER.map(label=>[label,[]]));
+    for(const c of others){
+      const cd=Store.card(c.name);
+      sections[getDeckCardSection(cd?.type_line||'')].push(c);
+    }
     const fmt=arr=>arr.sort((a,b)=>a.name.localeCompare(b.name)).map(c=>{
       if(format==='csv') return `"${c.name}",${c.qty},${c.foil?'foil':''},${parseFloat(Store.card(c.name)?.prices?.eur||0).toFixed(2)}`;
       const flags=[c.foil&&'*F*',c.etched&&'*E*'].filter(Boolean).join(' ');
@@ -292,11 +325,49 @@ const Parser={
       return `${c.qty} ${c.name}${printInfo}${flags?' '+flags:''}`;
     });
     if(format==='csv'){lines.length=0;lines.push('Name,Qty,Foil,Price_EUR');}
-    if(lands.length){if(format!=='csv')lines.push('// Lands');lines.push(...fmt(lands),'');}
-    if(spells.length){if(format!=='csv')lines.push('// Spells');lines.push(...fmt(spells),'');}
+    for(const label of DECK_CARD_SECTION_ORDER){
+      const arr=sections[label];
+      if(!arr.length)continue;
+      if(format!=='csv')lines.push(`// ${label}`);
+      lines.push(...fmt(arr),'');
+    }
+    const maybe=deck.maybeboard||[];
+    if(maybe.length){
+      if(format!=='csv')lines.push('// Maybeboard');
+      lines.push(...fmt(maybe),'');
+    }
+    const side=deck.sideboard||[];
+    if(side.length){
+      if(format!=='csv')lines.push('// Sideboard');
+      lines.push(...fmt(side),'');
+    }
     return lines.join('\n');
   }
 };
+
+function normalizeDeckZones(payload){
+  let parsed=payload;
+  if(typeof parsed==='string'){
+    try{parsed=JSON.parse(parsed||'[]');}catch{parsed=[];}
+  }
+  if(Array.isArray(parsed))return{cards:parsed,sideboard:[],maybeboard:[]};
+  if(parsed&&typeof parsed==='object'){
+    return{
+      cards:Array.isArray(parsed.main)?parsed.main:(Array.isArray(parsed.cards)?parsed.cards:[]),
+      sideboard:Array.isArray(parsed.sideboard)?parsed.sideboard:[],
+      maybeboard:Array.isArray(parsed.maybeboard)?parsed.maybeboard:[]
+    };
+  }
+  return{cards:[],sideboard:[],maybeboard:[]};
+}
+
+function serializeDeckZones(deck){
+  return JSON.stringify({
+    main:deck.cards||[],
+    sideboard:deck.sideboard||[],
+    maybeboard:deck.maybeboard||[]
+  });
+}
 
 /* ═══ SCRYFALL ═════════════════════════════════════════════ */
 const SF={

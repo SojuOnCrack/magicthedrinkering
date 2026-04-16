@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -26,8 +26,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <script>
+<<<<<<< HEAD
 window.APP_VERSION = '202604161120';
 window.INITIAL_SECTION = location.pathname.replace(/\/+$/,'') === '/tracker' ? 'tracker' : '';
+=======
+window.APP_VERSION = '202604020101';
+>>>>>>> d1cf5506a01880fc56942f11aa4827e87f25410d
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -55,8 +59,8 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         </div>
       </div>
     </div>
-    <button class="tbtn sm" id="synergy-btn" onclick="SynergyScanner.open()" style="display:none;font-size:10px;border-color:var(--purple);color:var(--purple2)" title="Commander Synergy Scanner">Synergy</button>
-    <button class="tbtn sm" id="edit-deck-btn" onclick="P.editDeck()" style="display:none;font-size:10px" title="Edit deck name, tags and mechanics">Edit</button>
+    <button class="tbtn sm" id="synergy-btn" onclick="SynergyScanner.open()" style="display:none;font-size:10px;border-color:var(--purple);color:var(--purple2)" title="Scans your deck for synergy and upgrades">Synergy Scan</button>
+    <button class="tbtn sm" id="edit-deck-btn" onclick="P.editDeck()" style="display:none;font-size:10px" title="Rename your deck and update tags">Edit Deck</button>
 
     <div class="spacer"></div>
     <div id="deck-stats">
@@ -66,8 +70,8 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
     </div>
     <div style="width:1px;height:28px;background:var(--border)"></div>
     <div class="view-toggle" id="view-toggle-wrap">
-      <button class="vtb on" id="vt-g" onclick="App.setView('grid')">Grid</button>
-      <button class="vtb"    id="vt-l" onclick="App.setView('list')">List</button>
+      <button class="vtb on" id="vt-g" onclick="App.setView('grid')" title="Gallery view">Gallery</button>
+      <button class="vtb"    id="vt-l" onclick="App.setView('list')" title="Edit view">Edit</button>
     </div>
     <button class="tbtn" onclick="P.export()">Export</button>
     <button class="tbtn gold" onclick="P.import()">Import</button>
@@ -87,35 +91,35 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
 
   <!-- ICON MENU (far left column) -->
   <nav id="icon-menu">
-    <button class="im-btn on" data-section="forge" onclick="Menu.go('forge')" title="Deck Editor">
-      <div class="im-ico">⚒️</div><div class="im-lbl">Forge</div>
-      <div class="im-tooltip">Deck Forge</div>
+    <button class="im-btn on" data-section="forge" onclick="Menu.go('forge')" title="Deck Builder">
+      <div class="im-ico">DB</div><div class="im-lbl">Builder</div>
+      <div class="im-tooltip">Deck Builder</div>
     </button>
     <div class="im-sep"></div>
     <button class="im-btn" data-section="search" onclick="Menu.go('search')" title="Card Search">
-      <div class="im-ico">🔎</div><div class="im-lbl">Search</div>
+      <div class="im-ico">SR</div><div class="im-lbl">Search</div>
       <div class="im-tooltip">Card Search</div>
     </button>
     <div class="im-sep"></div>
-    <button class="im-btn" data-section="collection" onclick="Menu.go('collection')" title="My Collection">
-      <div class="im-ico">📚</div><div class="im-lbl">Collect</div>
-      <div class="im-tooltip">My Collection</div>
+    <button class="im-btn" data-section="collection" onclick="Menu.go('collection')" title="Collection">
+      <div class="im-ico">CL</div><div class="im-lbl">Collection</div>
+      <div class="im-tooltip">Collection</div>
     </button>
     <div class="im-sep"></div>
     <button class="im-btn" data-section="wishlist" onclick="Menu.go('wishlist')" title="Wishlist">
-      <div class="im-ico">⭐</div><div class="im-lbl">Wish</div>
+      <div class="im-ico">WL</div><div class="im-lbl">Wish</div>
       <div class="im-badge" id="wish-nav-badge"></div>
       <div class="im-tooltip">Wishlist</div>
     </button>
     <div class="im-sep"></div>
-    <button class="im-btn" data-section="trade" onclick="Menu.go('trade')" title="Trade">
-      <div class="im-ico">🤝</div><div class="im-lbl">Trade</div>
+    <button class="im-btn" data-section="trade" onclick="Menu.go('trade')" title="Trade Cards">
+      <div class="im-ico">TR</div><div class="im-lbl">Trade</div>
       <div class="im-badge" id="trade-nav-badge"></div>
-      <div class="im-tooltip">Trade Tracker</div>
+      <div class="im-tooltip">Trade Cards</div>
     </button>
     <div class="im-sep"></div>
     <button class="im-btn" data-section="bulk" onclick="Menu.go('bulk')" title="Bulk Pool">
-      <div class="im-ico">📦</div><div class="im-lbl">Bulk</div>
+      <div class="im-ico">BK</div><div class="im-lbl">Bulk</div>
       <div class="im-tooltip">Shared Bulk Pool</div>
     </button>
     <div class="im-sep"></div>
@@ -125,27 +129,27 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
     </button>
     <div class="im-sep"></div>
     <button class="im-btn" data-section="vault" onclick="Menu.go('vault')" title="Vault">
-      <div class="im-ico">🏛️</div><div class="im-lbl">Vault</div>
+      <div class="im-ico">VT</div><div class="im-lbl">Vault</div>
       <div class="im-tooltip">Vault &amp; Analysis</div>
     </button>
     <div class="im-sep"></div>
     <button class="im-btn" data-section="vault" onclick="Menu.go('vault');VaultNav.go('bracket')" title="Bracket">
-      <div class="im-ico">🏷️</div><div class="im-lbl">Bracket</div>
+      <div class="im-ico">BR</div><div class="im-lbl">Bracket</div>
       <div class="im-tooltip">Bracket Calculator</div>
     </button>
     <div class="im-sep"></div>
     <button class="im-btn" data-section="vault" onclick="Menu.go('vault');VaultNav.go('tradematching')" title="Trade Matching">
-      <div class="im-ico">🔗</div><div class="im-lbl">Match</div>
+      <div class="im-ico">TM</div><div class="im-lbl">Match</div>
       <div class="im-tooltip">Trade Matching</div>
     </button>
     <div class="im-sep"></div>
     <button class="im-btn" data-section="community" onclick="Menu.go('community')" title="Community">
-      <div class="im-ico">👥</div><div class="im-lbl">Friends</div>
+      <div class="im-ico">CM</div><div class="im-lbl">Friends</div>
       <div class="im-tooltip">Friends &amp; Community</div>
     </button>
     <div class="im-spacer"></div>
     <button class="im-btn" data-section="settings" onclick="SettingsMgr.open()" title="Settings">
-      <div class="im-ico">⚙️</div><div class="im-lbl">Settings</div>
+      <div class="im-ico">FX</div><div class="im-lbl">Settings</div>
       <div class="im-tooltip">Settings &amp; Cloud Sync</div>
     </button>
   </nav>
@@ -174,7 +178,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
           <div class="vn-ico">&#127968;</div>
           <div><div class="vn-label">Dashboard</div><div class="vn-sub">Overview &amp; status</div></div>
         </div>
-        <div class="vn-item" data-vpage="price" onclick="VaultNav.go('price')">
+        <div class="vn-item" data-vpage="price" onclick="VaultNav.go('price')" title="Scans your deck for cheaper printings and price changes">
           <div class="vn-ico">&#128182;</div>
           <div><div class="vn-label">Price Analysis</div><div class="vn-sub">Multi-provider data</div></div>
         </div>
@@ -192,7 +196,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
           <div class="vn-ico">&#129518;</div>
           <div><div class="vn-label">Bracket</div><div class="vn-sub">Power level calculator</div></div>
         </div>
-        <div class="vn-item" data-vpage="tradematching" onclick="VaultNav.go('tradematching')">
+        <div class="vn-item" data-vpage="tradematching" onclick="VaultNav.go('tradematching')" title="Compare collections and trade lists with friends">
           <div class="vn-ico">&#129309;</div>
           <div><div class="vn-label">Trade Matching</div><div class="vn-sub">Find your best trades</div></div>
         </div>
@@ -227,7 +231,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <div style="font-size:11px;color:var(--text3);padding:8px 4px;line-height:1.7">Your private card library.<br>Organised in folders.</div>
       </div>
       <div style="padding:8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:4px;">
-        <button class="sbbtn g" onclick="MyCollection.newFolder()">📁 New Folder</button>
+        <button class="sbbtn g" onclick="MyCollection.newFolder()">New Folder</button>
       </div>
     </div>
 
@@ -263,12 +267,12 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         </div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2);margin-top:6px">
           Pool stats:<br>
-          <span id="bulk-sb-cards" style="color:var(--gold2)">0</span> cards �
+          <span id="bulk-sb-cards" style="color:var(--gold2)">0</span> cards -
           <span id="bulk-sb-contrib" style="color:var(--ice)">0</span> contributors
         </div>
       </div>
       <div style="padding:8px;border-top:1px solid var(--border)">
-        <button class="sbbtn" onclick="SettingsMgr.open()">⚙ Settings</button>
+        <button class="sbbtn" onclick="SettingsMgr.open()">Settings</button>
       </div>
     </div>
 
@@ -295,16 +299,16 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
       <div class="ctx-hdr"><div class="ctx-hdr-title">Community</div></div>
       <div id="community-nav" style="flex:1;padding:8px;overflow-y:auto;">
         <div class="vn-item on" data-cpage="friends" onclick="CommunityNav.go('friends')">
-          <div class="vn-ico">👥</div>
+          <div class="vn-ico">CM</div>
           <div><div class="vn-label">All Users</div><div class="vn-sub">Browse everyone</div></div>
         </div>
         <div class="vn-item" data-cpage="myfriends" onclick="CommunityNav.go('myfriends')">
-          <div class="vn-ico">⭐</div>
+          <div class="vn-ico">FR</div>
           <div><div class="vn-label">My Friends</div><div class="vn-sub">Following</div></div>
         </div>
       </div>
       <div style="padding:8px;border-top:1px solid var(--border)">
-        <button class="sbbtn" onclick="SettingsMgr.open()">⚙ Settings</button>
+        <button class="sbbtn" onclick="SettingsMgr.open()">âš™ Settings</button>
       </div>
     </div>
   </aside>
@@ -312,10 +316,10 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
   <!-- MAIN CONTENT -->
   <main id="main">
 
-    <!-- ══ FORGE: Deck Editor ══ -->
+    <!-- â•â• FORGE: Deck Editor â•â• -->
     <div id="section-forge" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
       <div id="fbar">
-        <input id="srch" type="text" placeholder="🔍 Search…" oninput="App.filter()">
+        <input id="srch" type="text" placeholder="Search..." oninput="App.filter()">
         <button class="fb on"  data-f="all"         onclick="App.setFilter(this)">All</button>
         <button class="fb"     data-f="creature"    onclick="App.setFilter(this)">Creatures</button>
         <button class="fb"     data-f="instant"     onclick="App.setFilter(this)">Instants</button>
@@ -326,52 +330,91 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <button class="fb"     data-f="artifact"    onclick="App.setFilter(this)">Artifacts</button>
         <div class="spacer"></div>
         <select id="srt" onchange="App.resort()">
-          <option value="name">Name A–Z</option>
-          <option value="cmc">CMC ↑</option>
+          <option value="name">Name A-Z</option>
+          <option value="cmc">CMC Asc</option>
           <option value="type">Type</option>
-          <option value="price">Price ↓</option>
+          <option value="price">Price Desc</option>
         </select>
       </div>
-      <!-- ══ ADD CARD INLINE SEARCH ══ -->
-      <div id="forge-add-row" style="display:none;gap:6px;padding:6px 10px 0;background:var(--bg2);border-bottom:1px solid var(--border);position:relative">
-        <input id="forge-add-inp" class="ni" placeholder="Card name…" autocomplete="off"
+      <!-- â•â• ADD CARD INLINE SEARCH â•â• -->
+      <div id="forge-add-row" class="forge-add-row" style="display:none;position:relative">
+        <div class="forge-add-main">
+        <input id="forge-add-inp" class="ni" placeholder="Add a card to this deck..." autocomplete="off"
           oninput="App._addSearch(this.value)"
           onkeydown="App._addKeydown(event)"
           style="flex:1;font-size:12px;padding:6px 10px">
-        <button class="tbtn sm" onclick="App._addCardCommit()" style="font-size:10px">＋ Add</button>
-        <button class="tbtn sm" onclick="App._hideAddRow()" style="font-size:10px;color:var(--text3)">✕</button>
-        <div id="forge-add-ac" style="display:none;position:absolute;top:100%;left:10px;right:10px;background:var(--bg2);border:1px solid var(--gold3);border-radius:0 0 8px 8px;z-index:200;max-height:200px;overflow-y:auto"></div>
-      </div>
-      <div id="card-area">
-        <div id="empty">
-          <div class="empty-ico">⚔</div>
-          <div class="empty-ttl">No Deck Loaded</div>
-          <div class="empty-sub">Import a deck in Moxfield / MTGO format or create a new one.</div>
-          <button class="tbtn gold" onclick="P.import()">📥 Import Deck</button>
+        <input id="forge-add-qty" class="ni forge-add-qty" type="number" min="1" max="20" value="1" onkeydown="App._addQtyKeydown(event)">
+        <button class="tbtn sm gold" onclick="App._addCardCommit()" style="font-size:10px">Add to Deck</button>
+        <button class="tbtn sm" onclick="App._hideAddRow()" style="font-size:10px;color:var(--text3)">Close</button>
         </div>
-        <div id="card-grid"></div>
-        <div id="list-wrap"><table id="ltbl">
-          <thead><tr>
-            <th style="width:38px"></th>
-            <th onclick="App.sortBy('name')">Name</th>
-            <th>Mana</th>
-            <th onclick="App.sortBy('type')">Type</th>
-            <th onclick="App.sortBy('cmc')" style="width:50px">CMC</th>
-            <th style="width:72px">Qty</th>
-            <th onclick="App.sortBy('price')" style="width:66px">Price</th>
-            <th style="width:28px"></th>
-          </tr></thead>
-          <tbody id="ltbody"></tbody>
-        </table></div>
+        <div class="forge-add-hint">Enter adds instantly. Arrow keys switch suggestions. The row stays open so you can add multiple cards fast.</div>
+        <div id="forge-add-ac" class="forge-add-ac" style="display:none"></div>
+      </div>
+      <div id="forge-builder-kpis" class="forge-kpis" style="display:none">
+        <div class="forge-kpi"><div class="forge-kpi-label">Cards</div><div class="forge-kpi-value" id="forge-kpi-cards">0 / 100</div></div>
+        <div class="forge-kpi"><div class="forge-kpi-label">Lands</div><div class="forge-kpi-value" id="forge-kpi-lands">0</div></div>
+        <div class="forge-kpi"><div class="forge-kpi-label">Ramp</div><div class="forge-kpi-value" id="forge-kpi-ramp">0</div></div>
+        <div class="forge-kpi"><div class="forge-kpi-label">Removal</div><div class="forge-kpi-value" id="forge-kpi-removal">0</div></div>
+        <div class="forge-kpi"><div class="forge-kpi-label">Draw</div><div class="forge-kpi-value" id="forge-kpi-draw">0</div></div>
+        <div class="forge-kpi"><div class="forge-kpi-label">Avg CMC</div><div class="forge-kpi-value" id="forge-kpi-cmc">0.0</div></div>
+        <div class="forge-kpi accent"><div class="forge-kpi-label">Value</div><div class="forge-kpi-value" id="forge-kpi-value">€0</div></div>
+      </div>
+      <div id="forge-zone-switch" class="forge-zone-switch">
+        <button class="forge-zone-btn on" id="forge-zone-main" onclick="App._setZone('main')">Mainboard <span id="forge-zone-count-main">0</span></button>
+        <button class="forge-zone-btn" id="forge-zone-maybeboard" onclick="App._setZone('maybeboard')">Maybeboard <span id="forge-zone-count-maybeboard">0</span></button>
+        <button class="forge-zone-btn" id="forge-zone-sideboard" onclick="App._setZone('sideboard')">Sideboard <span id="forge-zone-count-sideboard">0</span></button>
+      </div>
+      <div id="forge-builder-shell">
+        <div id="card-area" ondragover="App._onScryfallDragOver(event)" ondragleave="App._onScryfallDragLeave(event)" ondrop="App._onScryfallDrop(event)">
+          <div id="empty">
+            <div class="empty-ico">Deck</div>
+            <div class="empty-ttl">Start Your Next Deck</div>
+            <div class="empty-sub">Import a list from Moxfield or MTGO, or start a fresh brew from scratch.</div>
+            <button class="tbtn gold" onclick="P.import()">Import Deck</button>
+          </div>
+          <div id="card-grid"></div>
+          <div id="list-wrap"><table id="ltbl">
+            <thead><tr>
+              <th style="width:38px"></th>
+              <th onclick="App.sortBy('name')">Name</th>
+              <th>Mana</th>
+              <th onclick="App.sortBy('type')">Type</th>
+              <th onclick="App.sortBy('cmc')" style="width:50px">CMC</th>
+              <th style="width:72px">Qty</th>
+              <th onclick="App.sortBy('price')" style="width:66px">Price</th>
+              <th style="width:28px"></th>
+            </tr></thead>
+            <tbody id="ltbody"></tbody>
+          </table></div>
+        </div>
+        <aside id="forge-insights" class="collapsed">
+          <button class="forge-insights-toggle" id="forge-insights-toggle" type="button" onclick="App._toggleInsights()">
+            <span class="forge-insights-toggle-label">Builder Insights</span>
+            <span class="forge-insights-toggle-state">Show</span>
+          </button>
+          <div id="forge-insights-body">
+            <div id="forge-section-summary" class="forge-section-summary"></div>
+            <div class="forge-builder-panels">
+              <div class="forge-mini-panel">
+                <div class="forge-mini-kicker">Live Advice</div>
+                <div id="forge-advice-list" class="forge-advice-list"></div>
+              </div>
+              <div class="forge-mini-panel">
+                <div class="forge-mini-kicker">Recent Changes</div>
+                <div id="forge-change-list" class="forge-change-list"></div>
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
 
-    <!-- ══ BULK SECTION ══ -->
+    <!-- â•â• BULK SECTION â•â• -->
     <div id="section-bulk" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-      <div style="padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--border);font-family:'Cinzel',serif;font-size:12px;color:var(--gold2)">📦 Bulk Card Pool</div>
+      <div style="padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--border);font-family:'Cinzel',serif;font-size:12px;color:var(--gold2)">Bulk Card Pool</div>
       <div class="vpage show" id="vpage-bulk-main" style="display:block;flex:1;overflow-y:auto;padding:20px">
-        <div class="pg-title">📦 Bulk Pool</div>
-        <div class="pg-sub">Shared group collection — add single cards or paste a list</div>
+        <div class="pg-title">Bulk Pool</div>
+        <div class="pg-sub">Shared group pool for lending, trading, and tracking extra cards together</div>
 
         <!-- Stats row -->
         <div class="bulk-stats" style="margin-bottom:14px">
@@ -379,13 +422,13 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
           <div class="bulk-stat">Unique: <b id="bulk-unique">0</b></div>
           <div class="bulk-stat">Value: <b id="bulk-value">&euro;0</b></div>
           <div class="bulk-stat">Contributors: <b id="bulk-contributors">0</b></div>
-          <div style="margin-left:auto"><span class="pool-badge">🌐 Shared Pool</span></div>
+          <div style="margin-left:auto"><span class="pool-badge">Shared Pool</span></div>
         </div>
 
-        <!-- Add bar — same layout as Card Search -->
+        <!-- Add bar â€” same layout as Card Search -->
         <div class="cs-bar">
           <div style="flex:1;min-width:160px;position:relative">
-            <input class="cs-inp" id="bulk-add-name" placeholder="Add a card to the pool…" autocomplete="off"
+            <input class="cs-inp" id="bulk-add-name" placeholder="Add a card to the pool..." autocomplete="off"
               oninput="BulkPool._acType(this.value)" onkeydown="BulkPool._acKey(event)"
               style="width:100%">
             <div id="bulk-add-ac" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;
@@ -398,9 +441,9 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <option value="NM">NM</option><option value="LP">LP</option>
             <option value="MP">MP</option><option value="HP">HP</option>
           </select>
-          <button class="tbtn gold" id="bulk-add-btn" onclick="BulkPool.add()" style="font-size:11px">＋ Add</button>
-          <button class="tbtn" onclick="BulkPool.togglePaste()" style="font-size:11px">📋 Paste List</button>
-          <button class="tbtn" onclick="BulkPool.refresh()" style="font-size:11px">🔄</button>
+          <button class="tbtn gold" id="bulk-add-btn" onclick="BulkPool.add()" style="font-size:11px">+ Add</button>
+          <button class="tbtn" onclick="BulkPool.togglePaste()" style="font-size:11px">Paste List</button>
+          <button class="tbtn" onclick="BulkPool.refresh()" style="font-size:11px">Refresh</button>
         </div>
 
         <!-- Paste area (collapsible) -->
@@ -413,23 +456,23 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
           <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
             <select class="cs-sel" id="bulk-paste-cond"><option value="NM">NM</option><option value="LP">LP</option><option value="MP">MP</option><option value="HP">HP</option></select>
             <button class="tbtn" onclick="BulkPool.previewPaste()">Preview</button>
-            <button class="tbtn gold" id="bulk-paste-submit" onclick="BulkPool.submitPaste()" style="display:none">✦ Add All to Pool</button>
-            <button class="tbtn" onclick="BulkPool.togglePaste()" style="margin-left:auto;color:var(--text3);font-size:10px">✕ Close</button>
+            <button class="tbtn gold" id="bulk-paste-submit" onclick="BulkPool.submitPaste()" style="display:none">Add All to Pool</button>
+            <button class="tbtn" onclick="BulkPool.togglePaste()" style="margin-left:auto;color:var(--text3);font-size:10px">X Close</button>
           </div>
         </div>
 
         <!-- Filter bar -->
         <div class="cs-bar" style="margin-bottom:12px">
-          <input class="cs-inp" id="bulk-search" placeholder="🔍 Filter pool…"
+          <input class="cs-inp" id="bulk-search" placeholder="Filter pool..."
             oninput="BulkPool.filter()" style="flex:1">
           <select class="cs-sel" id="bulk-filter-owner" onchange="BulkPool.filter()">
             <option value="">All contributors</option>
             <option value="mine">My cards only</option>
           </select>
           <select class="cs-sel" id="bulk-sort" onchange="BulkPool.filter()">
-            <option value="name">Name A–Z</option>
-            <option value="qty">Qty ↓</option>
-            <option value="price">Price ↓</option>
+            <option value="name">Name A-Z</option>
+            <option value="qty">Qty Desc</option>
+            <option value="price">Price Desc</option>
             <option value="added">Recent</option>
           </select>
         </div>
@@ -437,18 +480,20 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <div class="cs-status" id="bulk-status"></div>
         <div class="cs-grid" id="bulk-list"></div>
         <div id="bulk-pagination" class="bulk-pagination" style="display:none">
-          <button class="tbtn" id="bulk-prev-btn" onclick="BulkPool.prevPage()">← Prev</button>
+          <button class="tbtn" id="bulk-prev-btn" onclick="BulkPool.prevPage()">Prev</button>
           <div class="bulk-page-label" id="bulk-page-label">Page 1 / 1</div>
-          <button class="tbtn" id="bulk-next-btn" onclick="BulkPool.nextPage()">Next →</button>
+          <button class="tbtn" id="bulk-next-btn" onclick="BulkPool.nextPage()">Next</button>
         </div>
-        <div id="bulk-empty" style="display:none;padding:40px;text-align:center">
-          <div style="font-size:40px;opacity:.2;margin-bottom:12px">📦</div>
-          <div style="font-family:'Cinzel',serif;font-size:13px;color:var(--text2);margin-bottom:6px">Pool is empty</div>
-          <div style="font-size:12px;color:var(--text3)">Be the first to add cards above</div>
+        <div id="bulk-empty" class="empty-panel" style="display:none">
+          <div class="empty-kicker">Shared Pool</div>
+          <div class="empty-ico">Pool</div>
+          <div class="empty-ttl">Nothing In The Pool Yet</div>
+          <div class="empty-sub">Add the first cards above so your group can browse, borrow, or trade them.</div>
         </div>
       </div>
     </div>
 
+<<<<<<< HEAD
     <!-- ══ COMMUNITY SECTION ══ -->
     <!-- TRACKER SECTION -->
     <div id="section-tracker" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
@@ -481,81 +526,84 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
       </div>
     </div>
 
+=======
+    <!-- â•â• COMMUNITY SECTION â•â• -->
+>>>>>>> d1cf5506a01880fc56942f11aa4827e87f25410d
     <div id="section-community" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
       <div id="community-tabs" style="display:flex;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0">
-        <button class="vtb on" id="ct-friends" onclick="CommunityNav.go('friends')" style="padding:10px 20px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.06em;text-transform:uppercase">👥 All Users</button>
-        <button class="vtb" id="ct-myfriends" onclick="CommunityNav.go('myfriends')" style="padding:10px 20px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.06em;text-transform:uppercase">⭐ My Friends</button>
-        <button class="vtb" id="ct-profile" onclick="CommunityNav.go('profile')" style="padding:10px 20px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.06em;text-transform:uppercase">👤 My Profile</button>
+        <button class="vtb on" id="ct-friends" onclick="CommunityNav.go('friends')" style="padding:10px 20px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.06em;text-transform:uppercase">All Users</button>
+        <button class="vtb" id="ct-myfriends" onclick="CommunityNav.go('myfriends')" style="padding:10px 20px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.06em;text-transform:uppercase">My Friends</button>
+        <button class="vtb" id="ct-profile" onclick="CommunityNav.go('profile')" style="padding:10px 20px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.06em;text-transform:uppercase">My Profile</button>
       </div>
       <div style="flex:1;overflow-y:auto;padding:20px;-webkit-overflow-scrolling:touch" id="community-content">
         <!-- Populated by CommunityNav.go() -->
       </div>
     </div>
 
-    <!-- ══ VAULT pages ══ -->
+    <!-- â•â• VAULT pages â•â• -->
     <div id="section-vault" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0;">
 
       <!-- Mobile vault tab bar (hidden on desktop via media query) -->
       <div id="vault-mobile-tabs">
         <button class="vmt-btn on" data-vpage="dashboard" onclick="VaultNav.go('dashboard');VaultNav._setMobileTab('dashboard')">
-          <span class="vmt-ico">◈</span><span class="vmt-lbl">Dashboard</span>
+          <span class="vmt-ico">DB</span><span class="vmt-lbl">Dashboard</span>
         </button>
         <button class="vmt-btn" data-vpage="mycollection" onclick="VaultNav.go('mycollection');VaultNav._setMobileTab('mycollection')">
-          <span class="vmt-ico">📚</span><span class="vmt-lbl">Collection</span>
+          <span class="vmt-ico">CL</span><span class="vmt-lbl">Collection</span>
         </button>
         <button class="vmt-btn" data-vpage="price" onclick="VaultNav.go('price');VaultNav._setMobileTab('price')">
-          <span class="vmt-ico">💰</span><span class="vmt-lbl">Prices</span>
+          <span class="vmt-ico">$</span><span class="vmt-lbl">Prices</span>
         </button>
         <button class="vmt-btn" data-vpage="analysis" onclick="VaultNav.go('analysis');VaultNav._setMobileTab('analysis')">
-          <span class="vmt-ico">📊</span><span class="vmt-lbl">Analysis</span>
+          <span class="vmt-ico">AN</span><span class="vmt-lbl">Analysis</span>
         </button>
         <button class="vmt-btn" data-vpage="alerts" onclick="VaultNav.go('alerts');VaultNav._setMobileTab('alerts')">
-          <span class="vmt-ico">🔔</span><span class="vmt-lbl">Alerts</span>
+          <span class="vmt-ico">AL</span><span class="vmt-lbl">Alerts</span>
         </button>
         <button class="vmt-btn" data-vpage="bracket" onclick="VaultNav.go('bracket');VaultNav._setMobileTab('bracket')">
-          <span class="vmt-ico">🏆</span><span class="vmt-lbl">Bracket</span>
+          <span class="vmt-ico">BR</span><span class="vmt-lbl">Bracket</span>
         </button>
 
         <button class="vmt-btn" data-vpage="bulk" onclick="VaultNav.go('bulk');VaultNav._setMobileTab('bulk')">
-          <span class="vmt-ico">📦</span><span class="vmt-lbl">Bulk</span>
+          <span class="vmt-ico">BK</span><span class="vmt-lbl">Bulk</span>
         </button>
         <button class="vmt-btn" data-vpage="friends" onclick="VaultNav.go('friends');VaultNav._setMobileTab('friends')">
-          <span class="vmt-ico">👥</span><span class="vmt-lbl">Friends</span>
+          <span class="vmt-ico">CM</span><span class="vmt-lbl">Friends</span>
         </button>
         <button class="vmt-btn" data-vpage="tradematching" onclick="VaultNav.go('tradematching');VaultNav._setMobileTab('tradematching')">
-          <span class="vmt-ico">🔀</span><span class="vmt-lbl">Trades</span>
+          <span class="vmt-ico">TM</span><span class="vmt-lbl">Trades</span>
         </button>
         <button class="vmt-btn" data-vpage="deckhealth" onclick="VaultNav.go('deckhealth');VaultNav._setMobileTab('deckhealth')">
-          <span class="vmt-ico">💊</span><span class="vmt-lbl">Health</span>
+          <span class="vmt-ico">HP</span><span class="vmt-lbl">Health</span>
         </button>
         <button class="vmt-btn" data-vpage="cardsearch" onclick="VaultNav.go('cardsearch');VaultNav._setMobileTab('cardsearch')">
-          🔍<span>Search</span>
+          <span class="vmt-ico">SR</span><span class="vmt-lbl">Search</span>
         </button>
         <button class="vmt-btn" data-vpage="reprints" onclick="VaultNav.go('reprints');VaultNav._setMobileTab('reprints')">
-          <span class="vmt-ico">🔄</span><span class="vmt-lbl">Reprints</span>
+          <span class="vmt-ico">RP</span><span class="vmt-lbl">Reprints</span>
         </button>
       </div>
 
       <!-- Dashboard -->
       <div class="vpage show" id="vpage-dashboard">
-        <div class="pg-title">◈ Dashboard</div>
+        <div class="pg-title">Dashboard</div>
         <div class="pg-sub">Portfolio overview, engine status &amp; alerts</div>
         <div id="dash-reprint-banner"></div>
         <div class="alert-strip">
-          <div class="alert-chip green"><span>●</span> Engine Online</div>
-          <div class="alert-chip gold" id="dash-alert-watch">◎ 0 Watching</div>
-          <div class="alert-chip red" id="dash-alert-triggered" style="display:none">⚡ <span id="dash-trig-count">0</span> Triggered</div>
+          <div class="alert-chip green"><span>On</span> Engine Online</div>
+          <div class="alert-chip gold" id="dash-alert-watch">0 Watching</div>
+          <div class="alert-chip red" id="dash-alert-triggered" style="display:none">Alert <span id="dash-trig-count">0</span> Triggered</div>
           <div class="alert-chip grey" id="dash-last-sync">Last sync: never</div>
         </div>
         <div class="kpi-row">
-          <div class="kpi gold"><div class="kpi-top-row"><div class="kpi-icon">💰</div><div class="kpi-trend" id="kpi-portfolio-trend"></div></div><div class="kpi-val" id="kpi-portfolio">&euro;0</div><div class="kpi-lbl">Portfolio</div><div class="kpi-bar"><div class="kpi-bar-fill" id="kpi-portfolio-bar" style="width:0%"></div></div></div>
-          <div class="kpi ice"><div class="kpi-top-row"><div class="kpi-icon">🃏</div></div><div class="kpi-val" id="kpi-cards">0</div><div class="kpi-lbl">Total Cards</div><div class="kpi-bar"><div class="kpi-bar-fill" id="kpi-cards-bar" style="width:0%"></div></div></div>
-          <div class="kpi green"><div class="kpi-top-row"><div class="kpi-icon">⚔</div></div><div class="kpi-val" id="kpi-decks">0</div><div class="kpi-lbl">Decks</div><div class="kpi-bar"><div class="kpi-bar-fill" id="kpi-decks-bar" style="width:60%"></div></div></div>
-          <div class="kpi crimson"><div class="kpi-top-row"><div class="kpi-icon">📈</div></div><div class="kpi-val" id="kpi-topcard">—</div><div class="kpi-lbl">Most Valuable</div></div>
-          <div class="kpi purple"><div class="kpi-top-row"><div class="kpi-icon">🔔</div></div><div class="kpi-val" id="kpi-alerts">0</div><div class="kpi-lbl">Active Alerts</div></div>
+          <div class="kpi gold"><div class="kpi-top-row"><div class="kpi-icon">PV</div><div class="kpi-trend" id="kpi-portfolio-trend"></div></div><div class="kpi-val" id="kpi-portfolio">&euro;0</div><div class="kpi-lbl">Portfolio</div><div class="kpi-bar"><div class="kpi-bar-fill" id="kpi-portfolio-bar" style="width:0%"></div></div></div>
+          <div class="kpi ice"><div class="kpi-top-row"><div class="kpi-icon">TC</div></div><div class="kpi-val" id="kpi-cards">0</div><div class="kpi-lbl">Total Cards</div><div class="kpi-bar"><div class="kpi-bar-fill" id="kpi-cards-bar" style="width:0%"></div></div></div>
+          <div class="kpi green"><div class="kpi-top-row"><div class="kpi-icon">DK</div></div><div class="kpi-val" id="kpi-decks">0</div><div class="kpi-lbl">Decks</div><div class="kpi-bar"><div class="kpi-bar-fill" id="kpi-decks-bar" style="width:60%"></div></div></div>
+          <div class="kpi crimson"><div class="kpi-top-row"><div class="kpi-icon">MV</div></div><div class="kpi-val" id="kpi-topcard">-</div><div class="kpi-lbl">Most Valuable</div></div>
+          <div class="kpi purple"><div class="kpi-top-row"><div class="kpi-icon">AL</div></div><div class="kpi-val" id="kpi-alerts">0</div><div class="kpi-lbl">Active Alerts</div></div>
         </div>
         <div class="dash-grid">
-          <div class="chart-card"><div class="chart-title">Portfolio Value — 7 days <span>Trend</span></div><div class="line-chart-wrap" id="dash-portfolio-chart"></div></div>
+          <div class="chart-card"><div class="chart-title">Portfolio Value - 7 days <span>Trend</span></div><div class="line-chart-wrap" id="dash-portfolio-chart"></div></div>
           <div class="chart-card"><div class="chart-title">Mana Curve <span id="dash-curve-deck-name"></span></div>
             <div style="padding-top:8px"><div class="mini-chart" id="dash-curve-chart" style="height:90px"></div>
             <div class="chart-bottom-labels" id="dash-curve-labels"></div></div>
@@ -563,10 +611,10 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         </div>
         <div class="chart-card"><div class="chart-title">Engine Status</div>
           <div style="display:flex;gap:20px;flex-wrap:wrap">
-            <div><div class="engine-status"><div class="engine-dot"></div>Scryfall API — Connected</div></div>
-            <div><div class="engine-status"><div class="engine-dot warn"></div>MTGStocks — No key</div></div>
-            <div><div class="engine-status"><div class="engine-dot err"></div>MKM — Not configured</div></div>
-            <div><div class="engine-status"><div class="engine-dot"></div>TCGPlayer — Simulated</div></div>
+            <div><div class="engine-status"><div class="engine-dot"></div>Scryfall API - Connected</div></div>
+            <div><div class="engine-status"><div class="engine-dot warn"></div>MTGStocks - No key</div></div>
+            <div><div class="engine-status"><div class="engine-dot err"></div>MKM - Not configured</div></div>
+            <div><div class="engine-status"><div class="engine-dot"></div>TCGPlayer - Simulated</div></div>
             <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)" id="dash-engine-cache">Cache: 0</div>
           </div>
         </div>
@@ -576,13 +624,13 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
 
       <!-- Price -->
       <div class="vpage" id="vpage-price" style="display:none">
-        <div class="pg-title">💰 Price Analysis</div>
+        <div class="pg-title">Price Analysis</div>
         <div class="pg-sub">Multi-provider comparison, historical trends &amp; top movers</div>
         <div class="price-provider-row">
           <div class="prov-card on" data-prov="scryfall"><div class="prov-name">Scryfall</div><div class="prov-val" id="prov-scryfall">&euro;0.00</div><div class="prov-diff eq" id="prov-scryfall-d">Baseline</div></div>
-          <div class="prov-card" data-prov="tcgplayer"><div class="prov-name">TCGPlayer</div><div class="prov-val" id="prov-tcgplayer">&euro;0.00</div><div class="prov-diff eq" id="prov-tcgplayer-d">—</div></div>
-          <div class="prov-card" data-prov="mkm"><div class="prov-name">MKM / Cardmarket</div><div class="prov-val" id="prov-mkm">&euro;0.00</div><div class="prov-diff eq" id="prov-mkm-d">—</div></div>
-          <div class="prov-card" data-prov="mtgstocks"><div class="prov-name">MTGStocks</div><div class="prov-val" id="prov-mtgstocks">&euro;0.00</div><div class="prov-diff eq" id="prov-mtgstocks-d">—</div></div>
+          <div class="prov-card" data-prov="tcgplayer"><div class="prov-name">TCGPlayer</div><div class="prov-val" id="prov-tcgplayer">&euro;0.00</div><div class="prov-diff eq" id="prov-tcgplayer-d">-</div></div>
+          <div class="prov-card" data-prov="mkm"><div class="prov-name">MKM / Cardmarket</div><div class="prov-val" id="prov-mkm">&euro;0.00</div><div class="prov-diff eq" id="prov-mkm-d">-</div></div>
+          <div class="prov-card" data-prov="mtgstocks"><div class="prov-name">MTGStocks</div><div class="prov-val" id="prov-mtgstocks">&euro;0.00</div><div class="prov-diff eq" id="prov-mtgstocks-d">-</div></div>
         </div>
         <div class="chart-card"><div class="chart-title">30-Day History <span>Scryfall</span></div><div class="line-chart-wrap" id="price-history-chart"></div></div>
         <div class="chart-card"><div class="chart-title">Top Movers <span id="price-movers-deck"></span></div>
@@ -593,13 +641,13 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
 
       <!-- Analysis -->
       <div class="vpage" id="vpage-analysis" style="display:none">
-        <div class="pg-title">📊 Analysis</div>
-        <div class="pg-sub">Deep statistics for any deck — pick one to analyse</div>
+        <div class="pg-title">Analysis</div>
+        <div class="pg-sub">Deep statistics for any deck - pick one to analyse</div>
 
         <!-- Deck selector (like Bracket tab) -->
         <div class="ana-deck-selector">
           <select class="ana-deck-sel" id="ana-deck-select" onchange="AnalysisView.selectDeck(this.value)">
-            <option value="">— Select a deck —</option>
+            <option value="">- Select a deck -</option>
           </select>
           <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)" id="ana-selected-cmdr"></div>
         </div>
@@ -642,20 +690,23 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
           </div>
         </div>
 
-        <div id="ana-empty-msg" style="padding:40px;text-align:center;color:var(--text3);font-size:13px">
-          Select a deck above to see its full analysis.
+        <div id="ana-empty-msg" class="empty-panel">
+          <div class="empty-kicker">Analysis</div>
+          <div class="empty-ico">AN</div>
+          <div class="empty-ttl">Choose A Deck To Analyse</div>
+          <div class="empty-sub">Pick a deck above to see curve, color spread, value, and card type breakdowns.</div>
         </div>
       </div>
 
       <!-- Alerts -->
       <div class="vpage" id="vpage-alerts" style="display:none">
-        <div class="pg-title">🔔 Alerts</div>
+        <div class="pg-title">Alerts</div>
         <div class="pg-sub">Price threshold monitoring &amp; triggered alert tracking</div>
         <div class="add-alert-form">
-          <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:.08em;color:var(--gold2);margin-bottom:12px;text-transform:uppercase">✦ New Alert</div>
+          <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:.08em;color:var(--gold2);margin-bottom:12px;text-transform:uppercase">New Alert</div>
           <div class="form-row">
             <span class="form-label">Card</span>
-            <input class="form-inp" id="alert-card" placeholder="Card name…" list="alert-card-list">
+            <input class="form-inp" id="alert-card" placeholder="Card name..." list="alert-card-list">
             <datalist id="alert-card-list"></datalist>
           </div>
           <div class="form-row">
@@ -670,17 +721,22 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
               <option value="scryfall">Scryfall</option><option value="tcgplayer">TCGPlayer</option>
             </select>
           </div>
-          <button class="tbtn gold" onclick="AlertMgr.add()">✦ Add Alert</button>
+          <button class="tbtn gold" onclick="AlertMgr.add()">Add Alert</button>
         </div>
         <div id="alert-list"></div>
-        <div id="alert-empty" style="display:none;padding:30px;text-align:center;color:var(--text3);font-size:13px">No alerts yet. Add one above.</div>
+        <div id="alert-empty" class="empty-panel" style="display:none">
+          <div class="empty-kicker">Alerts</div>
+          <div class="empty-ico">AL</div>
+          <div class="empty-ttl">No Alerts Active</div>
+          <div class="empty-sub">Create a price alert above and the app will keep watch for you.</div>
+        </div>
       </div>
 
 
       <!-- Bracket Calculator -->
       <div class="vpage" id="vpage-bracket" style="display:none">
-        <div class="pg-title">🏆 Bracket Calculator</div>
-        <div class="pg-sub">Official 5-bracket Commander system (Wizards of the Coast) — based on Game Changers list, combos, and deck-building rules</div>
+        <div class="pg-title">Bracket Calculator</div>
+        <div class="pg-sub">Official 5-bracket Commander system (Wizards of the Coast) - based on Game Changers list, combos, and deck-building rules</div>
 
         <div class="bracket-overview">
           <div class="bracket-card b1" id="bcard-1"><div class="bc-num b1">1</div><div class="bc-name b1">Exhibition</div><div class="bc-desc">No Game Changers, no combos, no extra turns, no land denial. Play for fun and story.</div></div>
@@ -691,10 +747,10 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         </div>
 
         <div class="bracket-result" id="bracket-result">
-          <div id="bracket-no-deck" class="bracket-no-data">← Select a deck below to calculate its bracket rating.</div>
+          <div id="bracket-no-deck" class="bracket-no-data">Select a deck below to calculate its bracket rating.</div>
           <div id="bracket-analysis" style="display:none">
             <div class="br-deck-row">
-              <div class="br-deck-name" id="br-deck-name">—</div>
+              <div class="br-deck-name" id="br-deck-name">-</div>
               <div class="spacer"></div>
               <div id="br-bracket-pill"></div>
               <div class="br-score" id="br-score"></div>
@@ -705,23 +761,23 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         </div>
 
         <div class="bracket-all-decks">
-          <div class="bad-title">All Decks — Click to Analyse</div>
+          <div class="bad-title">All Decks - Click to Analyse</div>
           <div id="bracket-deck-list"></div>
         </div>
 
         <div class="bracket-legend" style="margin-top:20px">
           <div class="bl-title">Bracket Reference</div>
-          <div class="bl-row"><span class="bl-cat" style="color:#c22b3e">B4–B5 (Game Changers)</span><span class="bl-items">Mana Crypt · Mana Vault · Mox Diamond · Lotus Petal · Jeweled Lotus · Grim Monolith · Demonic Tutor · Vampiric Tutor · Imperial Seal · Timetwister · Wheel of Fortune · Underworld Breach · Dockside Extortionist · Thassa's Oracle · Hermit Druid · Doomsday · Armageddon + land denial · Winter Orb / Stasis / Static Orb</span></div>
-          <div class="bl-row"><span class="bl-cat" style="color:#c8a84b">B3 trigger</span><span class="bl-items">1–3 cards from the Game Changers list. OR 5+ tutors (Mystical, Enlightened, Worldly, Diabolic…). OR late-game two-card infinite combo. Extra turns in low quantity, not chained.</span></div>
-          <div class="bl-row"><span class="bl-cat" style="color:#6ec9e0">B2 trigger</span><span class="bl-items">No Game Changers. Sparse tutors (1–4). Sparse extra turns (1–2). No infinite combos. Efficient ramp, removal, counterspells all fine.</span></div>
+          <div class="bl-row"><span class="bl-cat" style="color:#c22b3e">B4-B5 (Game Changers)</span><span class="bl-items">Mana Crypt · Mana Vault · Mox Diamond · Lotus Petal · Jeweled Lotus · Grim Monolith · Demonic Tutor · Vampiric Tutor · Imperial Seal · Timetwister · Wheel of Fortune · Underworld Breach · Dockside Extortionist · Thassa's Oracle · Hermit Druid · Doomsday · Armageddon + land denial · Winter Orb / Stasis / Static Orb</span></div>
+          <div class="bl-row"><span class="bl-cat" style="color:#c8a84b">B3 trigger</span><span class="bl-items">1-3 cards from the Game Changers list. OR 5+ tutors (Mystical, Enlightened, Worldly, Diabolic...). OR late-game two-card infinite combo. Extra turns in low quantity, not chained.</span></div>
+          <div class="bl-row"><span class="bl-cat" style="color:#6ec9e0">B2 trigger</span><span class="bl-items">No Game Changers. Sparse tutors (1-4). Sparse extra turns (1-2). No infinite combos. Efficient ramp, removal, counterspells all fine.</span></div>
           <div class="bl-row"><span class="bl-cat" style="color:#5aaa6a">B1 (Exhibition)</span><span class="bl-items">No Game Changers. No combos. No extra turns. No mass land denial. Tutors very sparse or absent.</span></div>
         </div>
       </div>
 
 
-      <!-- ══ MY COLLECTION ══ -->
+      <!-- â•â• MY COLLECTION â•â• -->
       <div class="vpage" id="vpage-mycollection" style="display:none">
-        <div class="pg-title">🗂 My Collection</div>
+        <div class="pg-title">My Collection</div>
         <div class="pg-sub">Your full card library with folders, stats and trade tracking</div>
 
         <!-- KPI row -->
@@ -739,22 +795,22 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
 
         <!-- Controls bar -->
         <div style="display:flex;gap:8px;align-items:center;margin:14px 0 10px;flex-wrap:wrap">
-          <input id="mycoll-search" class="bulk-inp" placeholder="🔍 Search…" oninput="MyCollection.filter()" style="flex:1;min-width:120px">
+          <input id="mycoll-search" class="bulk-inp" placeholder="Search..." oninput="MyCollection.filter()" style="flex:1;min-width:120px">
           <select id="mycoll-folder-filter" class="coll-sel" onchange="MyCollection.filter()">
             <option value="">All folders</option>
           </select>
           <select id="mycoll-sort" class="coll-sel" onchange="MyCollection.filter()">
-            <option value="name">Name A–Z</option>
-            <option value="qty">Qty ↓</option>
-            <option value="price_desc">Price ↓</option>
+            <option value="name">Name A-Z</option>
+            <option value="qty">Qty Desc</option>
+            <option value="price_desc">Price Desc</option>
             <option value="cmc">CMC</option>
             <option value="rarity">Rarity</option>
           </select>
           <div class="view-toggle">
-            <button class="vtb" id="mycoll-vt-grid" onclick="MyCollection.setView('grid')">⊞</button>
-            <button class="vtb on" id="mycoll-vt-list" onclick="MyCollection.setView('list')">≡</button>
+            <button class="vtb" id="mycoll-vt-grid" onclick="MyCollection.setView('grid')">Grid</button>
+            <button class="vtb on" id="mycoll-vt-list" onclick="MyCollection.setView('list')">List</button>
           </div>
-          <button class="tbtn gold" onclick="MyCollection.newFolder()">📁 New Folder</button>
+          <button class="tbtn gold" onclick="MyCollection.newFolder()">New Folder</button>
         </div>
 
         <!-- Card area (populated by JS) -->
@@ -771,13 +827,13 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
       </div>
 
 
-      <!-- ══ TRADE TRACKER ══ -->
+      <!-- â•â• TRADE TRACKER â•â• -->
       <div class="vpage" id="vpage-trade" style="display:none">
-        <div class="pg-title">🤝 Trade Tracker</div>
-        <div class="pg-sub">Cards you have available for trade — visible to friends and community</div>
+        <div class="pg-title">Trade Tracker</div>
+        <div class="pg-sub">List cards you can trade so friends and the community can spot opportunities quickly</div>
         <div class="bulk-add-row" style="position:relative;align-items:flex-start">
           <div style="flex:1;position:relative;min-width:0">
-            <input class="bulk-inp" id="trade-add-name" placeholder="Start typing a card name…" autocomplete="off"
+            <input class="bulk-inp" id="trade-add-name" placeholder="Start typing a card name..." autocomplete="off"
               oninput="TradeAC.onType('trade-add-name', this.value)"
               onkeydown="TradeAC.onKey('trade-add-name', event)"
               style="width:100%">
@@ -788,19 +844,24 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
           <select class="form-sel" id="trade-add-cond">
             <option value="NM">NM</option><option value="LP">LP</option><option value="MP">MP</option>
           </select>
-          <button class="tbtn gold" onclick="TradeMgr.add()">＋ Add for Trade</button>
+          <button class="tbtn gold" onclick="TradeMgr.add()">+ Add for Trade</button>
         </div>
         <div id="trade-list"></div>
-        <div id="trade-empty" style="padding:30px;text-align:center;color:var(--text3);font-size:13px">No cards listed for trade yet.</div>
+        <div id="trade-empty" class="empty-panel" style="display:none">
+          <div class="empty-kicker">Trade Cards</div>
+          <div class="empty-ico">TR</div>
+          <div class="empty-ttl">No Trade Cards Yet</div>
+          <div class="empty-sub">Add cards above to start building a trade list others can browse.</div>
+        </div>
       </div>
 
-      <!-- ══ WISHLIST ══ -->
+      <!-- â•â• WISHLIST â•â• -->
       <div class="vpage" id="vpage-wishlist" style="display:none">
-        <div class="pg-title">⭐ Wishlist</div>
-        <div class="pg-sub">Cards you want — shown on friends collections as "wanted by you"</div>
+        <div class="pg-title">Wishlist</div>
+        <div class="pg-sub">Track wanted cards so friends can instantly see what you are looking for</div>
         <div class="bulk-add-row" style="position:relative">
           <div style="flex:1;position:relative;min-width:0">
-            <input class="bulk-inp" id="wish-add-name" placeholder="Start typing a card name…"
+            <input class="bulk-inp" id="wish-add-name" placeholder="Start typing a card name..."
               autocomplete="off"
               oninput="WishlistMgr.onType(this.value)"
               onkeydown="WishlistMgr.onKey(event)"
@@ -810,23 +871,31 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
               max-height:220px;overflow-y:auto;box-shadow:var(--shadow)"></div>
           </div>
           <input class="bulk-inp" id="wish-add-note" placeholder="Note (optional)" style="flex:1.5">
-          <button class="tbtn gold" onclick="WishlistMgr.add()">⭐ Add to Wishlist</button>
+          <button class="tbtn gold" onclick="WishlistMgr.add()">Add to Wishlist</button>
         </div>
         <div id="wish-list"></div>
-        <div id="wish-empty" style="padding:30px;text-align:center;color:var(--text3);font-size:13px">Wishlist is empty.</div>
+        <div id="wish-empty" class="empty-panel" style="display:none">
+          <div class="empty-kicker">Wishlist</div>
+          <div class="empty-ico">WL</div>
+          <div class="empty-ttl">No Wanted Cards Yet</div>
+          <div class="empty-sub">Add cards above so your friends know what to bring to the next trade night.</div>
+        </div>
       </div>
 
 
 
-      <!-- ══ CARD SEARCH ══ -->
+      <!-- â•â• CARD SEARCH â•â• -->
       <div class="vpage" id="vpage-cardsearch" style="display:none">
-        <div class="pg-title">🔍 Card Search</div>
-        <div class="pg-sub">Search all Magic cards — add to deck, wishlist or trade list</div>
+        <div class="pg-title">Card Search</div>
+        <div class="pg-sub">Search every Magic card, then add it straight to a deck, wishlist, or trade list</div>
 
         <div class="cs-bar">
-          <input class="cs-inp" id="cs-query" placeholder="Search cards… e.g. flying vigilance, draw a card, Atraxa"
-            oninput="CardSearch.onType(this.value)"
-            onkeydown="if(event.key==='Enter')CardSearch.search()">
+          <div class="cs-search-wrap">
+            <input class="cs-inp" id="cs-query" placeholder="Search cards... e.g. flying vigilance, draw a card, Atraxa"
+              oninput="CardSearch.onType(this.value)"
+              onkeydown="CardSearch.onKey(event)">
+            <div class="cs-suggest" id="cs-suggest"></div>
+          </div>
           <select class="cs-sel" id="cs-color" onchange="CardSearch.search()">
             <option value="">Any color</option>
             <option value="W">White</option>
@@ -865,23 +934,23 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <option value="6">6+</option>
           </select>
           <select class="cs-sel cs-deck-sel" id="cs-target-deck">
-            <option value="">— Add to deck —</option>
+            <option value="">- Add to deck -</option>
           </select>
-          <button class="tbtn gold" onclick="CardSearch.search()" style="font-size:11px">🔍 Search</button>
+          <button class="tbtn gold" onclick="CardSearch.search()" title="Search cards and open details faster">Search Cards</button>
         </div>
 
         <div class="cs-status" id="cs-status"></div>
         <div class="cs-grid" id="cs-results"></div>
-        <button class="cs-load-more" id="cs-load-more" onclick="CardSearch.loadMore()" style="display:none">Load more results</button>
+        <button class="cs-load-more" id="cs-load-more" onclick="CardSearch.loadMore()" style="display:none">Show More Cards</button>
       </div>
 
-      <!-- ══ TRADE MATCHING ══ -->
+      <!-- â•â• TRADE MATCHING â•â• -->
       <div class="vpage" id="vpage-tradematching" style="display:none">
         <div class="pg-title">Trade Matching</div>
-        <div class="pg-sub">Cross-reference all wishlists vs trade lists automatically</div>
+        <div class="pg-sub">Find the strongest trade opportunities by comparing wishlists, trade lists, and owned cards</div>
         <div class="match-filter-row">
           <button class="tbtn gold" id="trade-match-refresh" onclick="TradeMatch.run()">Find Matches</button>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)" id="trade-match-status">Click to scan all users</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)" id="trade-match-status">Scan the community for two-way trade opportunities</div>
         </div>
         <div class="match-section-hdr" id="tm-sec-mutual" style="display:none">Mutual matches - <span style="color:var(--green2)">you can trade with each other</span> <span style="color:var(--text3);font-size:9px" id="tm-mutual-count"></span></div>
         <div id="tm-mutual-list"></div>
@@ -889,10 +958,10 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <div id="tm-want-list"></div>
         <div class="match-section-hdr" id="tm-sec-have" style="display:none">People who want cards <span style="color:var(--gold2)">you have</span> <span style="color:var(--text3);font-size:9px" id="tm-have-count"></span></div>
         <div id="tm-have-list"></div>
-        <div id="tm-empty" class="match-empty">Click <strong>Find Matches</strong> to scan everyone's trade lists and wishlists.<br><span style="font-size:11px">Add cards to your Wishlist and Trade Tracker first, then ask friends to do the same.</span></div>
+        <div id="tm-empty" class="match-empty-panel">Click <strong>Find Matches</strong> to scan wishlists and trade lists.<br><span style="font-size:11px">Add cards to your Wishlist and Trade Tracker first, then invite friends to do the same.</span></div>
       </div>
 
-      <!-- ══ DECK HEALTH ══ -->
+      <!-- â•â• DECK HEALTH â•â• -->
       <div class="vpage" id="vpage-deckhealth" style="display:none">
         <div class="pg-title">Deck Health Score</div>
         <div class="pg-sub">Automatic checklist - archetype-aware scoring with commander context</div>
@@ -923,10 +992,11 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <div id="health-sug-list"></div>
           </div>
         </div>
-        <div id="health-empty" style="padding:40px 20px;text-align:center">
-          <div style="font-size:40px;opacity:.25;margin-bottom:14px">+</div>
-          <div style="font-family:'Cinzel',serif;font-size:13px;color:var(--text2);margin-bottom:6px">No deck selected</div>
-          <div style="font-size:12px;color:var(--text3)">Choose a deck above to calculate the health score</div>
+        <div id="health-empty" class="empty-panel">
+          <div class="empty-kicker">Deck Health</div>
+          <div class="empty-ico">HP</div>
+          <div class="empty-ttl">Pick A Deck To Score</div>
+          <div class="empty-sub">Choose a deck above to review balance, mana, and upgrade suggestions.</div>
         </div>
       </div>
       <!-- REPRINT ALERTS PAGE -->
@@ -940,22 +1010,30 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         </div>
         <div id="reprint-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px"></div>
         <div id="reprint-list" style="display:flex;flex-direction:column;gap:8px">
-          <div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">Click "Scan for Reprints Now" to check recent sets.</div>
+          <div class="empty-panel">
+            <div class="empty-kicker">Reprint Watch</div>
+            <div class="empty-ico">RP</div>
+            <div class="empty-ttl">No Reprint Scan Yet</div>
+            <div class="empty-sub">Run a scan to check recent sets for reprints that affect your collection.</div>
+          </div>
         </div>
       </div>
 
     </div><!-- /section-vault -->
 
-    <!-- ══ SEARCH SECTION ══ -->
+    <!-- â•â• SEARCH SECTION â•â• -->
     <div id="section-search" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
       <div style="flex:1;overflow-y:auto;padding:20px;">
         <!-- Card Search (reuses vpage-cardsearch content) -->
-        <div class="pg-title">🔍 Card Search</div>
-        <div class="pg-sub">Search all Magic cards — add to deck, wishlist or trade list</div>
+        <div class="pg-title">Card Search</div>
+        <div class="pg-sub">Search every Magic card, then add it straight to a deck, wishlist, or trade list</div>
         <div class="cs-bar" style="margin-top:14px">
-          <input class="cs-inp" id="cs2-query" placeholder="Search cards… e.g. flying vigilance, draw a card, Atraxa"
-            oninput="CardSearch2.onType(this.value)"
-            onkeydown="if(event.key==='Enter')CardSearch2.search()">
+          <div class="cs-search-wrap">
+            <input class="cs-inp" id="cs2-query" placeholder="Search cards... e.g. flying vigilance, draw a card, Atraxa"
+              oninput="CardSearch2.onType(this.value)"
+              onkeydown="CardSearch2.onKey(event)">
+            <div class="cs-suggest" id="cs2-suggest"></div>
+          </div>
           <select class="cs-sel" id="cs2-color" onchange="CardSearch2.search()">
             <option value="">Any color</option>
             <option value="W">White</option><option value="U">Blue</option>
@@ -980,21 +1058,21 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6+</option>
           </select>
           <select class="cs-sel cs-deck-sel" id="cs2-target-deck">
-            <option value="">— Add to deck —</option>
+            <option value="">- Add to deck -</option>
           </select>
-          <button class="tbtn gold" onclick="CardSearch2.search()" style="font-size:11px">🔍 Search</button>
+          <button class="tbtn gold" onclick="CardSearch2.search()" title="Search cards and open details faster">Search Cards</button>
         </div>
         <div class="cs-status" id="cs2-status"></div>
         <div class="cs-grid" id="cs2-results"></div>
-        <button class="cs-load-more" id="cs2-load-more" onclick="CardSearch2.loadMore()" style="display:none">Load more results</button>
+        <button class="cs-load-more" id="cs2-load-more" onclick="CardSearch2.loadMore()" style="display:none">Show More Cards</button>
       </div>
     </div>
 
-    <!-- ══ COLLECTION SECTION ══ -->
+    <!-- â•â• COLLECTION SECTION â•â• -->
     <div id="section-collection" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
       <div style="flex:1;overflow-y:auto;padding:20px;">
-        <div class="pg-title">🗂 My Collection</div>
-        <div class="pg-sub">Your private card library with folders — click any card to open details</div>
+        <div class="pg-title">My Collection</div>
+        <div class="pg-sub">Your private card library with folders - click any card to open details</div>
         <div class="mycoll-kpi-row">
           <div class="mycoll-kpi gold"><div class="mycoll-kpi-val" id="coll2-kpi-unique">0</div><div class="mycoll-kpi-lbl">Unique</div></div>
           <div class="mycoll-kpi ice"><div class="mycoll-kpi-val" id="coll2-kpi-total">0</div><div class="mycoll-kpi-lbl">Copies</div></div>
@@ -1003,21 +1081,21 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         </div>
         <div class="folder-grid" id="coll2-folders" style="margin-bottom:14px"></div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-          <input id="coll2-search" class="bulk-inp" placeholder="🔍 Search collection…" oninput="CollSection.filter()" style="flex:1;min-width:120px">
+          <input id="coll2-search" class="bulk-inp" placeholder="Search collection..." oninput="CollSection.filter()" style="flex:1;min-width:120px">
           <select id="coll2-folder-filter" class="coll-sel" onchange="CollSection.filter()">
             <option value="">All folders</option>
           </select>
           <select id="coll2-sort" class="coll-sel" onchange="CollSection.filter()">
-            <option value="name">Name A–Z</option>
-            <option value="qty">Qty ↓</option>
-            <option value="price_desc">Price ↓</option>
+            <option value="name">Name A-Z</option>
+            <option value="qty">Qty Desc</option>
+            <option value="price_desc">Price Desc</option>
             <option value="rarity">Rarity</option>
           </select>
           <div class="view-toggle">
-            <button class="vtb on" id="coll2-vt-grid" onclick="CollSection.setView('grid')">⊞</button>
-            <button class="vtb" id="coll2-vt-list" onclick="CollSection.setView('list')">≡</button>
+            <button class="vtb on" id="coll2-vt-grid" onclick="CollSection.setView('grid')">Grid</button>
+            <button class="vtb" id="coll2-vt-list" onclick="CollSection.setView('list')">List</button>
           </div>
-          <button class="tbtn gold" onclick="CollSection.addCard()">＋ Add Card</button>
+          <button class="tbtn gold" onclick="CollSection.addCard()">+ Add Card</button>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)" id="coll2-folder-title">All Cards</div>
@@ -1027,14 +1105,14 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
       </div>
     </div>
 
-    <!-- ══ WISHLIST SECTION ══ -->
+    <!-- â•â• WISHLIST SECTION â•â• -->
     <div id="section-wishlist" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
       <div style="flex:1;overflow-y:auto;padding:20px;">
-        <div class="pg-title">⭐ Wishlist</div>
-        <div class="pg-sub">Cards you want — shown on your profile so friends can offer trades</div>
+        <div class="pg-title">Wishlist</div>
+        <div class="pg-sub">Track the cards you still need so friends can spot easy trade opportunities</div>
         <div class="bulk-add-row" style="position:relative;margin-bottom:16px">
           <div style="flex:1;position:relative;min-width:0">
-            <input class="bulk-inp" id="wish2-add-name" placeholder="Start typing a card name…"
+            <input class="bulk-inp" id="wish2-add-name" placeholder="Start typing a card name..."
               autocomplete="off"
               oninput="WishSection.onType(this.value)"
               onkeydown="WishSection.onKey(event)"
@@ -1044,25 +1122,26 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
               max-height:220px;overflow-y:auto;box-shadow:var(--shadow)"></div>
           </div>
           <input class="bulk-inp" id="wish2-add-note" placeholder="Note (optional)" style="flex:1.5">
-          <button class="tbtn gold" onclick="WishSection.add()">⭐ Add to Wishlist</button>
+          <button class="tbtn gold" onclick="WishSection.add()">Add to Wishlist</button>
         </div>
-        <div id="wish2-list"></div>
-        <div id="wish2-empty" style="padding:40px;text-align:center;color:var(--text3);font-size:13px">
-          <div style="font-size:40px;opacity:.25;margin-bottom:14px">⭐</div>
-          <div style="font-family:'Cinzel',serif;font-size:13px;color:var(--text2);margin-bottom:6px">Wishlist is empty</div>
-          <div style="font-size:12px;color:var(--text3)">Add cards you want above — friends will see them on your profile</div>
+        <div id="wish2-list" class="cs-grid"></div>
+        <div id="wish2-empty" class="empty-panel">
+          <div class="empty-kicker">Wishlist</div>
+          <div class="empty-ico">WL</div>
+          <div class="empty-ttl">Nothing Saved Yet</div>
+          <div class="empty-sub">Add wanted cards above so friends can see what to trade you.</div>
         </div>
       </div>
     </div>
 
-    <!-- ══ TRADE SECTION ══ -->
+    <!-- â•â• TRADE SECTION â•â• -->
     <div id="section-trade" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
       <div style="flex:1;overflow-y:auto;padding:20px;">
-        <div class="pg-title">🤝 Trade Tracker</div>
-        <div class="pg-sub">Cards you have available for trade or sale — visible to the whole community</div>
+        <div class="pg-title">Trade Tracker</div>
+        <div class="pg-sub">List cards you can trade or sell so the community can find the right match faster</div>
         <div class="bulk-add-row" style="margin-bottom:16px;position:relative;align-items:flex-start">
           <div style="flex:1;position:relative;min-width:0">
-            <input class="bulk-inp" id="trade2-add-name" placeholder="Start typing a card name…" autocomplete="off"
+            <input class="bulk-inp" id="trade2-add-name" placeholder="Start typing a card name..." autocomplete="off"
               oninput="TradeAC.onType('trade2-add-name', this.value)"
               onkeydown="TradeAC.onKey('trade2-add-name', event)"
               style="width:100%">
@@ -1075,13 +1154,14 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <option value="MP">MP</option><option value="HP">HP</option>
           </select>
           <input class="bulk-inp" id="trade2-add-price" type="number" min="0" step="0.01" placeholder="Price (optional)" style="max-width:110px">
-          <button class="tbtn gold" onclick="TradeSection.add()">＋ List for Trade</button>
+          <button class="tbtn gold" onclick="TradeSection.add()">+ List for Trade</button>
         </div>
         <div id="trade2-list"></div>
-        <div id="trade2-empty" style="padding:40px;text-align:center;color:var(--text3);font-size:13px">
-          <div style="font-size:40px;opacity:.25;margin-bottom:14px">🤝</div>
-          <div style="font-family:'Cinzel',serif;font-size:13px;color:var(--text2);margin-bottom:6px">No cards listed for trade</div>
-          <div style="font-size:12px;color:var(--text3)">Add cards above to make them visible to the community</div>
+        <div id="trade2-empty" class="empty-panel">
+          <div class="empty-kicker">Trade Cards</div>
+          <div class="empty-ico">TR</div>
+          <div class="empty-ttl">Your Trade List Is Empty</div>
+          <div class="empty-sub">Add cards above to make them visible to friends and the wider community.</div>
         </div>
       </div>
     </div>
@@ -1096,11 +1176,11 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
 <!-- UNDO TOAST -->
 <div id="undo-toast">
   <span id="undo-msg">Removed card</span>
-  <button id="undo-toast-btn" onclick="UndoMgr.undo()">↩ Undo</button>
+  <button id="undo-toast-btn" onclick="UndoMgr.undo()">Undo</button>
   <span style="font-size:9px;color:var(--text3);margin-left:4px" id="undo-timer">5s</span>
 </div>
 
-<div id="prog"><div class="spin-wrap"><div class="spin"></div><span id="prog-txt">Loading…</span></div></div>
+<div id="prog"><div class="spin-wrap"><div class="spin"></div><span id="prog-txt">Loading...</span></div></div>
 
 <!-- ART ZOOM OVERLAY -->
 <div id="art-zoom-overlay" onclick="document.getElementById('art-zoom-overlay').classList.remove('open')">
@@ -1110,7 +1190,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
 <!-- CARD MODAL -->
 <div id="mo" onclick="M.bgClose(event)">
   <div id="mc">
-    <button id="mc-close" onclick="M.close()">✕</button>
+    <button id="mc-close" onclick="M.close()">X</button>
     <div id="mc-img"><img id="mc-img-el" src="" alt=""></div>
     <div id="mc-info">
       <div id="mc-name"></div><div id="mc-mana"></div><div id="mc-type"></div>
@@ -1121,14 +1201,14 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
       <!-- Edition / Print picker -->
       <div id="mc-edition-section">
         <div class="ep-toggle" onclick="PrintPicker.toggle()">
-          <span class="ep-toggle-arrow" id="ep-arrow">▶</span>
+          <span class="ep-toggle-arrow" id="ep-arrow">></span>
           <span class="ep-toggle-label">Change Edition / Printing</span>
           <span id="ep-count" style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);margin-left:auto"></span>
         </div>
         <div id="ep-current-set" style="display:none;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ice2);margin-bottom:8px;padding:4px 8px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)"></div>
         <div id="ep-body" style="display:none">
           <div class="ep-search-row">
-            <input class="ep-search-inp" id="ep-search" placeholder="Filter by set name, code or number…" oninput="PrintPicker.filterList()">
+            <input class="ep-search-inp" id="ep-search" placeholder="Filter by set name, code or number..." oninput="PrintPicker.filterList()">
           </div>
           <div id="ep-loading" style="display:none;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);padding:8px 0"></div>
           <div id="ep-list"></div>
@@ -1141,7 +1221,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
 <!-- PANELS -->
 <div id="po" onclick="P.bgClose(event)">
   <div class="panel" id="panel-inner">
-    <div class="ph"><div class="pt" id="ptitle"></div><button class="pc" onclick="P.close()">✕</button></div>
+    <div class="ph"><div class="pt" id="ptitle"></div><button class="pc" onclick="P.close()">X</button></div>
     <div class="pb" id="pbody"></div>
     <div class="pf" id="pfoot"></div>
   </div>
@@ -1175,19 +1255,19 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
 <div id="share-modal" onclick="if(event.target===this)ShareMgr.close()">
   <div class="share-box">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <div class="share-title">📤 Share Deck</div>
-      <button style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer" onclick="ShareMgr.close()">✕</button>
+      <div class="share-title">Share Deck</div>
+      <button style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer" onclick="ShareMgr.close()">X</button>
     </div>
-    <div class="share-sub" id="share-deck-name">—</div>
+    <div class="share-sub" id="share-deck-name">-</div>
     <div class="share-url-row">
       <input class="share-url-inp" id="share-url-inp" readonly>
-      <button class="tbtn gold" onclick="ShareMgr.copyLink()">📋 Copy</button>
+      <button class="tbtn gold" onclick="ShareMgr.copyLink()">Copy</button>
     </div>
     <div id="share-qr" class="share-qr"></div>
     <div class="share-opts">
-      <button class="share-opt" onclick="ShareMgr.openLink()">🔗 Open link</button>
-      <button class="share-opt" onclick="ShareMgr.copyMoxfield()">📄 Copy as Moxfield text</button>
-      <button class="share-opt" onclick="ShareMgr.regenerate()">🔄 New link</button>
+      <button class="share-opt" onclick="ShareMgr.openLink()">Open link</button>
+      <button class="share-opt" onclick="ShareMgr.copyMoxfield()">Copy as Moxfield text</button>
+      <button class="share-opt" onclick="ShareMgr.regenerate()">New link</button>
     </div>
     <div style="margin-top:12px;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">
       Shared decks are read-only. Anyone with the link can view but not edit.
@@ -1199,22 +1279,22 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
 <div id="settings-panel" onclick="if(event.target===this)SettingsMgr.close()">
   <div class="settings-box">
     <div class="settings-hdr">
-      <div class="settings-title">⚙ Settings</div>
-      <button class="pc" onclick="SettingsMgr.close()">✕</button>
+      <div class="settings-title">Settings</div>
+      <button class="pc" onclick="SettingsMgr.close()">X</button>
     </div>
     <div class="settings-body">
 
       <div class="settings-section">
-        <div class="settings-section-title">🃏 Card Database</div>
+        <div class="settings-section-title">Card Database</div>
         <div id="settings-bulk-status" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);padding:6px 0" onclick="ScryfallBulk._updateSettingsStatus()"></div>
-        <button class="settings-save" onclick="ScryfallBulk.forceRefresh();SettingsMgr.close()">⬇ Re-download All Cards</button>
+        <button class="settings-save" onclick="ScryfallBulk.forceRefresh();SettingsMgr.close()">Re-download All Cards</button>
         <div class="settings-note">Downloads ~20MB from Scryfall once. After that all card lookups are instant and offline-capable. Re-download to get new set cards.</div>
       </div>
 
       <div class="settings-section">
-        <div class="settings-section-title">☁ Cloud Sync</div>
+        <div class="settings-section-title">Cloud Sync</div>
         <div style="display:flex;align-items:center;gap:10px;padding:8px 0;flex-wrap:wrap">
-          <span id="cfg-sb-status-fixed" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green2)">✓ Connected to Supabase</span>
+          <span id="cfg-sb-status-fixed" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green2)">Connected to Supabase</span>
           <button class="tbtn sm" onclick="Auth.show()" style="font-size:10px">Sign In / Switch Account</button>
           <button class="tbtn sm" onclick="DB.pullDecks()" style="font-size:10px">Pull from cloud</button>
           <button class="tbtn sm" onclick="DB.pushDecks()" style="font-size:10px">Push to cloud</button>
@@ -1223,7 +1303,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
       </div>
 
       <div class="settings-section">
-        <div class="settings-section-title">💰 Price API Keys</div>
+        <div class="settings-section-title">Price API Keys</div>
         <div class="settings-row">
           <span class="settings-label">TCGPlayer Public</span>
           <input class="settings-input" id="cfg-tcp-pub" placeholder="TCGPlayer public key">
@@ -1259,9 +1339,9 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <div class="settings-section-title">About</div>
         <div class="settings-note">
           MagicTheDrinkering v1.5.5<br>
-          Built with Scryfall API � Supabase � Cloudflare Pages<br>
-          <a href="https://scryfall.com" target="_blank" style="color:var(--ice)">Scryfall</a> �
-          <a href="https://supabase.com" target="_blank" style="color:var(--ice)">Supabase</a> �
+          Built with Scryfall API - Supabase - Cloudflare Pages<br>
+          <a href="https://scryfall.com" target="_blank" style="color:var(--ice)">Scryfall</a> -
+          <a href="https://supabase.com" target="_blank" style="color:var(--ice)">Supabase</a> -
           <a href="https://pages.cloudflare.com" target="_blank" style="color:var(--ice)">Cloudflare Pages</a>
         </div>
       </div>
@@ -1273,14 +1353,18 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
 <!-- MOBILE BOTTOM NAV -->
 <nav id="mobile-nav">
   <button class="mn-btn on" id="mn-forge" onclick="MobileNav.go('forge')">
-    <span class="mn-ico">Forge</span><span class="mn-lbl">Forge</span>
+    <span class="mn-ico">Build</span><span class="mn-lbl">Builder</span>
   </button>
   <button class="mn-btn" id="mn-search" onclick="MobileNav.go('search')">
     <span class="mn-ico">Search</span><span class="mn-lbl">Search</span>
   </button>
-  <button class="mn-btn" id="mn-collection" onclick="MobileNav.go('collection')">
-    <span class="mn-ico">Collect</span><span class="mn-lbl">Collect</span>
+  <button class="mn-btn" id="mn-vault" onclick="MobileNav.go('vault')">
+    <span class="mn-ico">Vault</span><span class="mn-lbl">Vault</span>
   </button>
+  <button class="mn-btn" id="mn-collection" onclick="MobileNav.go('collection')">
+    <span class="mn-ico">Cards</span><span class="mn-lbl">Collection</span>
+  </button>
+<<<<<<< HEAD
   <button class="mn-btn" id="mn-wishlist" onclick="MobileNav.go('wishlist')">
     <span class="mn-ico">Wish</span><span class="mn-lbl">Wish</span>
   </button>
@@ -1298,15 +1382,37 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
   </button>
   <button class="mn-btn" id="mn-settings" onclick="SettingsMgr.open()">
     <span class="mn-ico">Settings</span><span class="mn-lbl">Settings</span>
+=======
+  <button class="mn-btn" id="mn-more" onclick="MobileNav.toggleMore()" title="Open more sections">
+    <span class="mn-ico">More</span><span class="mn-lbl">Mehr</span>
+>>>>>>> d1cf5506a01880fc56942f11aa4827e87f25410d
   </button>
 </nav>
+
+<!-- MOBILE MORE DRAWER -->
+<div id="mobile-more-drawer" onclick="if(event.target===this)MobileNav.closeMore()">
+  <div id="mobile-more-sheet">
+    <div class="mobile-sheet-hdr">
+      <span class="mobile-sheet-title">More</span>
+      <button class="mobile-sheet-close" onclick="MobileNav.closeMore()" aria-label="Close more menu">X</button>
+    </div>
+    <div class="mobile-sheet-sub">Alle Bereiche der Website, mobil optimiert.</div>
+    <div id="mobile-more-grid">
+      <button class="mobile-more-btn" onclick="MobileNav.go('wishlist')">Wishlist</button>
+      <button class="mobile-more-btn" onclick="MobileNav.go('trade')">Trade</button>
+      <button class="mobile-more-btn" onclick="MobileNav.go('bulk')">Bulk Pool</button>
+      <button class="mobile-more-btn" onclick="MobileNav.go('community')">Community</button>
+      <button class="mobile-more-btn" onclick="MobileNav.openSettings()">Settings</button>
+    </div>
+  </div>
+</div>
 
 <!-- MOBILE DECK DRAWER -->
 <div id="mobile-deck-drawer" onclick="if(event.target===this)MobileNav.closeDecks()">
   <div id="mobile-deck-inner">
     <div style="padding:12px 14px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
       <span style="font-family:'Cinzel',serif;font-size:12px;color:var(--gold2)">My Decks</span>
-      <button style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer" onclick="MobileNav.closeDecks()">�</button>
+      <button style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer" onclick="MobileNav.closeDecks()">ï¿½</button>
     </div>
     <div id="mobile-deck-list" style="flex:1;overflow-y:auto;padding:6px"></div>
     <div style="padding:8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px">
