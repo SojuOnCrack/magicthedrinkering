@@ -990,9 +990,11 @@ textarea.ia:focus{border-color:var(--gold3);}
     display:flex;position:fixed;bottom:0;left:0;right:0;z-index:200;
     background:var(--bg2);border-top:1px solid var(--border);
     padding:0;box-shadow:0 -4px 20px rgba(0,0,0,.5);
+    overflow-x:auto;scrollbar-width:none;
   }
+  #mobile-nav::-webkit-scrollbar{display:none;}
   .mn-btn{
-    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    flex:1 0 58px;display:flex;flex-direction:column;align-items:center;justify-content:center;
     padding:8px 4px;gap:2px;background:transparent;border:none;cursor:pointer;
     color:var(--text3);transition:all .15s;
   }
@@ -1072,7 +1074,18 @@ textarea.ia:focus{border-color:var(--gold3);}
   #share-btn{display:none!important;}
 
   /* Fix section heights on mobile */
-  #section-forge,#section-vault{min-height:0;flex:1;}
+  #section-forge,#section-vault,#section-tracker{min-height:0;flex:1;}
+  .tracker-shell{padding:10px 10px 84px;gap:12px;}
+  .tracker-toolbar{padding:12px;align-items:flex-start;}
+  .tracker-title{font-size:20px;}
+  .tracker-actions{width:100%;}
+  .tracker-actions .tbtn{flex:1;min-height:34px;}
+  .tracker-board,.tracker-board.players-2,.tracker-board.players-5,.tracker-board.players-6{grid-template-columns:1fr;}
+  .tracker-card{min-height:292px;padding:12px;}
+  .tracker-life{font-size:68px;}
+  .tracker-life-controls{grid-template-columns:repeat(3,1fr);}
+  .tracker-panel-head{align-items:flex-start;flex-direction:column;}
+  .tracker-damage-grid{grid-template-columns:1fr;}
 
   /* Settings panel full width on mobile */
   #settings-panel{padding-top:0;align-items:flex-end;}
@@ -1404,6 +1417,85 @@ textarea.ia:focus{border-color:var(--gold3);}
 .bulk-page-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2);min-width:88px;text-align:center;}
 
 /* ── DECK HEALTH SCORE ── */
+/* -- COMMANDER LIFE TRACKER -- */
+.tracker-shell{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:16px;background:
+  radial-gradient(circle at 18% 10%,rgba(200,168,75,.10),transparent 30%),
+  radial-gradient(circle at 82% 14%,rgba(110,201,224,.09),transparent 28%),
+  var(--bg);}
+.tracker-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+                 padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;}
+.tracker-kicker{font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);}
+.tracker-title{font-family:'Cinzel',serif;font-size:24px;color:var(--gold2);font-weight:700;line-height:1.1;margin:3px 0 0;}
+.tracker-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.tracker-board{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(240px,1fr));}
+.tracker-board.players-2{grid-template-columns:repeat(2,minmax(260px,1fr));}
+.tracker-board.players-5,.tracker-board.players-6{grid-template-columns:repeat(3,minmax(220px,1fr));}
+.tracker-card{position:relative;min-height:315px;background:linear-gradient(180deg,var(--bg2),var(--bg5));
+              border:1px solid var(--border);border-radius:8px;padding:14px;overflow:hidden;
+              display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 28px rgba(0,0,0,.28);}
+.tracker-card::before{content:'';position:absolute;inset:0 0 auto;height:3px;background:var(--gold);opacity:.85;}
+.tracker-card.ice::before{background:var(--ice);}
+.tracker-card.green::before{background:var(--green2);}
+.tracker-card.crimson::before{background:var(--crimson2);}
+.tracker-card.purple::before{background:var(--purple2);}
+.tracker-card.steel::before{background:var(--border2);}
+.tracker-card.is-active{border-color:var(--gold3);box-shadow:0 0 0 1px rgba(200,168,75,.28),0 12px 34px rgba(0,0,0,.38);}
+.tracker-card.is-out{opacity:.62;filter:saturate(.55);}
+.tracker-card-top{display:flex;align-items:center;gap:8px;position:relative;z-index:1;}
+.tracker-name{flex:1;min-width:0;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;
+              padding:7px 9px;font-family:'Cinzel',serif;font-size:13px;color:var(--text);}
+.tracker-name:focus{border-color:var(--gold3);}
+.tracker-turn{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 9px;
+              color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:10px;white-space:nowrap;}
+.tracker-card.is-active .tracker-turn{border-color:var(--gold3);color:var(--gold2);background:var(--gold4);}
+.tracker-life{font-family:'JetBrains Mono',monospace;font-size:78px;line-height:1;text-align:center;color:var(--text);
+              font-weight:600;letter-spacing:0;text-shadow:0 0 28px rgba(200,168,75,.14);}
+.tracker-life.low{color:var(--crimson2);}
+.tracker-life-controls{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
+.tracker-life-controls button,.tracker-counter button,.tracker-damage-controls button,.tracker-tags button{
+  background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text2);
+  font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 0;transition:all .15s;
+}
+.tracker-life-controls button:hover,.tracker-counter button:hover,.tracker-damage-controls button:hover,.tracker-tags button:hover{
+  border-color:var(--gold3);color:var(--gold2);background:var(--bg4);
+}
+.tracker-mini-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.tracker-counter{background:rgba(17,26,44,.65);border:1px solid var(--border);border-radius:8px;padding:9px;
+                 display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:52px;}
+.tracker-counter span{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);}
+.tracker-counter div{display:flex;align-items:center;gap:7px;}
+.tracker-counter b,.tracker-counter strong{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--gold2);min-width:24px;text-align:center;}
+.tracker-counter strong.danger{color:var(--crimson2);}
+.tracker-counter button{width:28px;height:28px;padding:0;}
+.tracker-tags{display:flex;gap:8px;margin-top:auto;}
+.tracker-tags button{flex:1;}
+.tracker-tags button.on{border-color:var(--gold3);color:var(--gold2);background:var(--gold4);}
+.tracker-out{position:absolute;inset:auto 12px 12px;padding:8px;border:1px solid var(--crimson2);border-radius:6px;
+             background:rgba(139,26,42,.24);color:#f0a0a8;text-align:center;font-family:'Cinzel',serif;
+             font-size:11px;text-transform:uppercase;letter-spacing:.1em;}
+.tracker-damage-panel{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;}
+.tracker-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;}
+.tracker-panel-title{font-family:'Cinzel',serif;font-size:13px;color:var(--text2);margin-top:3px;}
+.tracker-damage-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;}
+.tracker-damage-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg3);
+                    border:1px solid var(--border);border-radius:8px;padding:9px 10px;}
+.tracker-damage-row.danger{border-color:var(--crimson2);background:rgba(139,26,42,.16);}
+.tracker-damage-label{min-width:0;}
+.tracker-damage-label b{display:block;font-family:'Cinzel',serif;font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tracker-damage-label span{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);}
+.tracker-damage-controls{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.tracker-damage-controls button{width:28px;height:28px;padding:0;}
+.tracker-damage-controls strong{font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--gold2);min-width:24px;text-align:center;}
+body[data-section="tracker"] #cmdr-zone,
+body[data-section="tracker"] #deck-stats,
+body[data-section="tracker"] #view-toggle-wrap,
+body[data-section="tracker"] #synergy-btn,
+body[data-section="tracker"] #edit-deck-btn,
+body[data-section="tracker"] #forge-add-btn,
+body[data-section="tracker"] #share-btn,
+body[data-section="tracker"] #topbar button[onclick="P.export()"],
+body[data-section="tracker"] #topbar button[onclick="P.import()"]{display:none!important;}
+
 .health-deck-sel{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);
                   padding:8px 12px;color:var(--text);font-family:'Cinzel',serif;font-size:12px;
                   width:100%;margin-bottom:16px;cursor:pointer;}

@@ -4,11 +4,13 @@
 const Menu={
   cur:'forge',
   NAV_KEY:'cforge_nav',
-  SECTIONS:['forge','search','collection','wishlist','trade','bulk','vault','community'],
+  SECTIONS:['forge','search','collection','wishlist','trade','bulk','tracker','vault','community'],
   go(section){
     this.cur=section;
     localStorage.setItem(this.NAV_KEY,section);
+    document.body.dataset.section=section;
     document.querySelectorAll('.im-btn').forEach(b=>b.classList.toggle('on',b.dataset.section===section));
+    document.querySelectorAll('.mn-btn').forEach(b=>b.classList.toggle('on',b.id==='mn-'+section));
     this.SECTIONS.forEach(s=>{
       const el=document.getElementById('section-'+s);
       if(el)el.style.display=s===section?'flex':'none';
@@ -25,6 +27,11 @@ const Menu={
     if(section==='collection')CollSection.render();
     if(section==='wishlist')WishSection.render();
     if(section==='trade')TradeSection.render();
+    if(section==='tracker'&&typeof CommanderTracker!=='undefined')CommanderTracker.render();
+    if(history?.replaceState){
+      const target=section==='tracker'?'/tracker':'/';
+      if(location.pathname!==target&&(section==='tracker'||location.pathname==='/tracker'))history.replaceState(null,'',target);
+    }
     App?.refreshTopbarStats?.();
   }
 };

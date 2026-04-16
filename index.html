@@ -26,7 +26,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <script>
-window.APP_VERSION = '202603281420';
+window.APP_VERSION = '202604161120';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -116,6 +116,11 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
     <button class="im-btn" data-section="bulk" onclick="Menu.go('bulk')" title="Bulk Pool">
       <div class="im-ico">📦</div><div class="im-lbl">Bulk</div>
       <div class="im-tooltip">Shared Bulk Pool</div>
+    </button>
+    <div class="im-sep"></div>
+    <button class="im-btn" data-section="tracker" onclick="Menu.go('tracker')" title="Life Tracker">
+      <div class="im-ico">&#9829;</div><div class="im-lbl">Life</div>
+      <div class="im-tooltip">Commander Life Tracker</div>
     </button>
     <div class="im-sep"></div>
     <button class="im-btn" data-section="vault" onclick="Menu.go('vault')" title="Vault">
@@ -263,6 +268,24 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
       </div>
       <div style="padding:8px;border-top:1px solid var(--border)">
         <button class="sbbtn" onclick="SettingsMgr.open()">⚙ Settings</button>
+      </div>
+    </div>
+
+    <!-- TRACKER sidebar -->
+    <div id="tracker-sidebar" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="ctx-hdr"><div class="ctx-hdr-title">Life Tracker</div></div>
+      <div style="flex:1;padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;">
+        <div style="font-size:11px;color:var(--text3);line-height:1.7">
+          Track Commander pods with life, poison and commander damage.
+        </div>
+        <button class="sbbtn g" onclick="CommanderTracker.resetGame()">New Game</button>
+        <button class="sbbtn" onclick="CommanderTracker.addPlayer()">Add Player</button>
+        <button class="sbbtn" onclick="CommanderTracker.removePlayer()">Remove Player</button>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2);line-height:1.7;margin-top:4px">
+          Start life: <span style="color:var(--gold2)">40</span><br>
+          Commander damage ends at <span style="color:var(--crimson2)">21</span><br>
+          Poison ends at <span style="color:var(--green2)">10</span>
+        </div>
       </div>
     </div>
 
@@ -426,6 +449,37 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
     </div>
 
     <!-- ══ COMMUNITY SECTION ══ -->
+    <!-- TRACKER SECTION -->
+    <div id="section-tracker" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="tracker-shell">
+        <div class="tracker-toolbar">
+          <div>
+            <div class="tracker-kicker">Commander pod</div>
+            <h1 class="tracker-title">Life Tracker</h1>
+          </div>
+          <div class="tracker-actions">
+            <button class="tbtn" onclick="CommanderTracker.adjustAll(-1)">All -1</button>
+            <button class="tbtn" onclick="CommanderTracker.adjustAll(1)">All +1</button>
+            <button class="tbtn" onclick="CommanderTracker.addPlayer()">Add Player</button>
+            <button class="tbtn gold" onclick="CommanderTracker.resetGame()">New Game</button>
+          </div>
+        </div>
+
+        <div class="tracker-board" id="tracker-board"></div>
+
+        <div class="tracker-damage-panel">
+          <div class="tracker-panel-head">
+            <div>
+              <div class="tracker-kicker">Commander damage</div>
+              <div class="tracker-panel-title">21 from one commander knocks a player out.</div>
+            </div>
+            <button class="tbtn sm" onclick="CommanderTracker.clearCommanderDamage()">Clear damage</button>
+          </div>
+          <div class="tracker-damage-grid" id="tracker-damage-grid"></div>
+        </div>
+      </div>
+    </div>
+
     <div id="section-community" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
       <div id="community-tabs" style="display:flex;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0">
         <button class="vtb on" id="ct-friends" onclick="CommunityNav.go('friends')" style="padding:10px 20px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.06em;text-transform:uppercase">👥 All Users</button>
@@ -1235,6 +1289,9 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
   <button class="mn-btn" id="mn-bulk" onclick="MobileNav.go('bulk')">
     <span class="mn-ico">Bulk</span><span class="mn-lbl">Bulk</span>
   </button>
+  <button class="mn-btn" id="mn-tracker" onclick="MobileNav.go('tracker')">
+    <span class="mn-ico">Life</span><span class="mn-lbl">Life</span>
+  </button>
   <button class="mn-btn" id="mn-community" onclick="MobileNav.go('community')">
     <span class="mn-ico">Friends</span><span class="mn-lbl">Friends</span>
   </button>
@@ -1285,6 +1342,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
     '/js/settings.js',
     '/js/price-proxy.js',
     '/js/mobile-nav.js',
+    '/js/tracker.js',
     '/js/deck-health.js',
     '/js/trade-match.js',
     '/js/vault.js',
