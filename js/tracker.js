@@ -111,8 +111,7 @@ const CommanderTracker={
 
   adjustCommander(targetId,sourceId,delta){
     this._setDamage(targetId,sourceId,this._damage(targetId,sourceId)+delta);
-    this._save();this.renderDamage();
-    this.renderBoard();
+    this._save();this.render();
   },
 
   setName(id,value){
@@ -161,6 +160,20 @@ const CommanderTracker={
   _playerCard(p,i){
     const out=this._isOut(p);
     const maxCmd=Math.max(0,...this.state.players.filter(src=>src.id!==p.id).map(src=>this._damage(p.id,src.id)));
+    const commanderRows=this.state.players
+      .filter(src=>src.id!==p.id)
+      .map(src=>{
+        const value=this._damage(p.id,src.id);
+        return`
+          <div class="tracker-inline-cmd ${value>=21?'danger':''}">
+            <button class="tracker-inline-btn" onclick="CommanderTracker.adjustCommander('${p.id}','${src.id}',-1)" aria-label="Reduce commander damage from ${esc(src.name)} to ${esc(p.name)}">-</button>
+            <button class="tracker-inline-main" onclick="CommanderTracker.adjustCommander('${p.id}','${src.id}',1)" aria-label="Add commander damage from ${esc(src.name)} to ${esc(p.name)}">
+              <span>${esc(src.name)}</span>
+              <strong>${value}</strong>
+            </button>
+            <button class="tracker-inline-btn" onclick="CommanderTracker.adjustCommander('${p.id}','${src.id}',1)" aria-label="Add commander damage from ${esc(src.name)} to ${esc(p.name)}">+</button>
+          </div>`;
+      }).join('');
     return`
       <article class="tracker-card ${this.colors[i%this.colors.length]} ${out?'is-out':''} ${this.state.active===p.id?'is-active':''}">
         <div class="tracker-card-top">
@@ -191,6 +204,10 @@ const CommanderTracker={
             <span>Cmdr max</span>
             <strong class="${maxCmd>=21?'danger':''}">${maxCmd}</strong>
           </div>
+        </div>
+        <div class="tracker-inline-section">
+          <div class="tracker-inline-title">Commander damage taken</div>
+          <div class="tracker-inline-grid">${commanderRows}</div>
         </div>
         <div class="tracker-tags">
           <button class="${p.monarch?'on':''}" onclick="CommanderTracker.toggle('${p.id}','monarch')">Monarch</button>
