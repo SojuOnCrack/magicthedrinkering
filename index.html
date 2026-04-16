@@ -26,12 +26,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <script>
-<<<<<<< HEAD
 window.APP_VERSION = '202604161120';
 window.INITIAL_SECTION = location.pathname.replace(/\/+$/,'') === '/tracker' ? 'tracker' : '';
-=======
-window.APP_VERSION = '202604020101';
->>>>>>> d1cf5506a01880fc56942f11aa4827e87f25410d
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -493,7 +489,6 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
       </div>
     </div>
 
-<<<<<<< HEAD
     <!-- ══ COMMUNITY SECTION ══ -->
     <!-- TRACKER SECTION -->
     <div id="section-tracker" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
@@ -526,9 +521,6 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
       </div>
     </div>
 
-=======
-    <!-- â•â• COMMUNITY SECTION â•â• -->
->>>>>>> d1cf5506a01880fc56942f11aa4827e87f25410d
     <div id="section-community" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
       <div id="community-tabs" style="display:flex;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0">
         <button class="vtb on" id="ct-friends" onclick="CommunityNav.go('friends')" style="padding:10px 20px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.06em;text-transform:uppercase">All Users</button>
@@ -1364,28 +1356,8 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
   <button class="mn-btn" id="mn-collection" onclick="MobileNav.go('collection')">
     <span class="mn-ico">Cards</span><span class="mn-lbl">Collection</span>
   </button>
-<<<<<<< HEAD
-  <button class="mn-btn" id="mn-wishlist" onclick="MobileNav.go('wishlist')">
-    <span class="mn-ico">Wish</span><span class="mn-lbl">Wish</span>
-  </button>
-  <button class="mn-btn" id="mn-trade" onclick="MobileNav.go('trade')">
-    <span class="mn-ico">Trade</span><span class="mn-lbl">Trade</span>
-  </button>
-  <button class="mn-btn" id="mn-bulk" onclick="MobileNav.go('bulk')">
-    <span class="mn-ico">Bulk</span><span class="mn-lbl">Bulk</span>
-  </button>
-  <button class="mn-btn" id="mn-tracker" onclick="MobileNav.go('tracker')">
-    <span class="mn-ico">Life</span><span class="mn-lbl">Life</span>
-  </button>
-  <button class="mn-btn" id="mn-community" onclick="MobileNav.go('community')">
-    <span class="mn-ico">Friends</span><span class="mn-lbl">Friends</span>
-  </button>
-  <button class="mn-btn" id="mn-settings" onclick="SettingsMgr.open()">
-    <span class="mn-ico">Settings</span><span class="mn-lbl">Settings</span>
-=======
   <button class="mn-btn" id="mn-more" onclick="MobileNav.toggleMore()" title="Open more sections">
     <span class="mn-ico">More</span><span class="mn-lbl">Mehr</span>
->>>>>>> d1cf5506a01880fc56942f11aa4827e87f25410d
   </button>
 </nav>
 
@@ -1401,6 +1373,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
       <button class="mobile-more-btn" onclick="MobileNav.go('wishlist')">Wishlist</button>
       <button class="mobile-more-btn" onclick="MobileNav.go('trade')">Trade</button>
       <button class="mobile-more-btn" onclick="MobileNav.go('bulk')">Bulk Pool</button>
+      <button class="mobile-more-btn" onclick="MobileNav.go('tracker')">Life Tracker</button>
       <button class="mobile-more-btn" onclick="MobileNav.go('community')">Community</button>
       <button class="mobile-more-btn" onclick="MobileNav.openSettings()">Settings</button>
     </div>

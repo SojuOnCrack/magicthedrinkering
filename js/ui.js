@@ -166,11 +166,7 @@ const Menu={
     localStorage.setItem(this.NAV_KEY,section);
     document.body.dataset.section=section;
     document.querySelectorAll('.im-btn').forEach(b=>b.classList.toggle('on',b.dataset.section===section));
-<<<<<<< HEAD
-    document.querySelectorAll('.mn-btn').forEach(b=>b.classList.toggle('on',b.id==='mn-'+section));
-=======
     if(typeof MobileNav!=='undefined')MobileNav.setActive(section);
->>>>>>> d1cf5506a01880fc56942f11aa4827e87f25410d
     this.SECTIONS.forEach(s=>{
       const el=document.getElementById('section-'+s);
       if(el)el.style.display=s===section?'flex':'none';

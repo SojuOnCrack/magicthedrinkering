@@ -2,7 +2,7 @@
 
 const MobileNav={
   PRIMARY_SECTIONS:['forge','search','vault','collection'],
-  SECONDARY_SECTIONS:['wishlist','trade','bulk','community','settings'],
+  SECONDARY_SECTIONS:['wishlist','trade','bulk','tracker','community','settings'],
 
   syncDeckButton(){
     const label=document.getElementById('mobile-decks-label');
