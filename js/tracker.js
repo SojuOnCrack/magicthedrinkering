@@ -60,6 +60,31 @@ const CommanderTracker={
     return this.state.players.some(src=>src.id!==player.id&&this._damage(player.id,src.id)>=21);
   },
 
+  _lifeState(player){
+    if(player.life<=5)return'critical';
+    if(player.life<=10)return'low';
+    if(player.life<=20)return'warning';
+    if(player.life>=50)return'high';
+    return'stable';
+  },
+
+  _damageState(value){
+    if(value>=21)return'danger';
+    if(value>=14)return'warning';
+    if(value>=7)return'pressure';
+    return'value';
+  },
+
+  _initials(name){
+    return String(name||'Player')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0,2)
+      .map(part=>part[0]?.toUpperCase()||'')
+      .join('')||'P';
+  },
+
   addPlayer(){
     if(this.state.players.length>=this.MAX_PLAYERS){if(typeof Notify!=='undefined')Notify.show('Maximum 6 players','inf');return;}
     const next=this.state.players.length+1;
@@ -159,13 +184,21 @@ const CommanderTracker={
 
   _playerCard(p,i){
     const out=this._isOut(p);
+    const lifeState=this._lifeState(p);
     const maxCmd=Math.max(0,...this.state.players.filter(src=>src.id!==p.id).map(src=>this._damage(p.id,src.id)));
+    const badges=[
+      this.state.active===p.id?'<span class="tracker-status-badge active">Active Turn</span>':'',
+      p.monarch?'<span class="tracker-status-badge monarch">Monarch</span>':'',
+      p.initiative?'<span class="tracker-status-badge initiative">Initiative</span>':'',
+      out?'<span class="tracker-status-badge out">Knocked Out</span>':''
+    ].filter(Boolean).join('');
     const commanderRows=this.state.players
       .filter(src=>src.id!==p.id)
       .map(src=>{
         const value=this._damage(p.id,src.id);
+        const state=this._damageState(value);
         return`
-          <div class="tracker-inline-cmd ${value>=21?'danger':''}">
+          <div class="tracker-inline-cmd ${state}">
             <button class="tracker-inline-btn" onclick="CommanderTracker.adjustCommander('${p.id}','${src.id}',-1)" aria-label="Reduce commander damage from ${esc(src.name)} to ${esc(p.name)}">-</button>
             <button class="tracker-inline-main" onclick="CommanderTracker.adjustCommander('${p.id}','${src.id}',1)" aria-label="Add commander damage from ${esc(src.name)} to ${esc(p.name)}">
               <span>${esc(src.name)}</span>
@@ -176,13 +209,18 @@ const CommanderTracker={
       }).join('');
     return`
       <article class="tracker-card ${this.colors[i%this.colors.length]} ${out?'is-out':''} ${this.state.active===p.id?'is-active':''}">
+        <div class="tracker-card-orb">${this._initials(p.name)}</div>
+        <div class="tracker-card-status">${badges}</div>
         <div class="tracker-card-top">
           <input class="tracker-name" value="${esc(p.name)}" maxlength="24"
             onchange="CommanderTracker.setName('${p.id}',this.value)"
             onfocus="this.select()" aria-label="Player name">
           <button class="tracker-turn" onclick="CommanderTracker.setActive('${p.id}')">${this.state.active===p.id?'Turn':'Set Turn'}</button>
         </div>
-        <div class="tracker-life ${p.life<=10?'low':''}">${p.life}</div>
+        <div class="tracker-life-wrap">
+          <div class="tracker-life-kicker">Life Total</div>
+          <div class="tracker-life ${lifeState}">${p.life}</div>
+        </div>
         <div class="tracker-life-controls">
           <button onclick="CommanderTracker.adjustLife('${p.id}',-10)">-10</button>
           <button onclick="CommanderTracker.adjustLife('${p.id}',-5)">-5</button>
@@ -200,9 +238,9 @@ const CommanderTracker={
               <button onclick="CommanderTracker.adjustPoison('${p.id}',1)">+</button>
             </div>
           </div>
-          <div class="tracker-counter">
+          <div class="tracker-counter ${this._damageState(maxCmd)}">
             <span>Cmdr max</span>
-            <strong class="${maxCmd>=21?'danger':''}">${maxCmd}</strong>
+            <strong class="${this._damageState(maxCmd)}">${maxCmd}</strong>
           </div>
         </div>
         <div class="tracker-inline-section">
@@ -224,8 +262,9 @@ const CommanderTracker={
       for(const source of this.state.players){
         if(source.id===target.id)continue;
         const value=this._damage(target.id,source.id);
+        const state=this._damageState(value);
         rows.push(`
-          <div class="tracker-damage-row ${value>=21?'danger':''}">
+          <div class="tracker-damage-row ${state}">
             <div class="tracker-damage-label">
               <b>${esc(source.name)}</b>
               <span>to ${esc(target.name)}</span>
