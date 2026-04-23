@@ -2019,12 +2019,33 @@ body.tracker-page{overflow:hidden;}
   color:var(--gold2);
 }
 .tracker-setup-seat-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.tracker-setup-seat-actions{display:flex;align-items:center;gap:8px;}
 .tracker-setup-chip{
   display:inline-flex;align-items:center;min-height:24px;padding:4px 9px;border-radius:999px;border:1px solid var(--border2);
   font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);
   background:rgba(17,26,44,.72);
 }
 .tracker-setup-chip.active{border-color:rgba(200,168,75,.45);background:rgba(122,96,40,.24);color:var(--gold2);}
+.tracker-seat-remove{
+  min-height:28px;
+  padding:5px 10px;
+  border:1px solid rgba(194,43,62,.35);
+  border-radius:999px;
+  background:rgba(139,26,42,.12);
+  color:#f0a0a8;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  transition:all .18s ease;
+}
+.tracker-seat-remove:hover{
+  border-color:rgba(194,43,62,.58);
+  background:rgba(139,26,42,.2);
+  color:#ffd2d7;
+}
+.tracker-seat-remove:disabled{
+  opacity:.4;
+  cursor:not-allowed;
+}
 .tracker-field{display:flex;flex-direction:column;gap:6px;}
 .tracker-field span{
   font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);
@@ -2070,16 +2091,43 @@ body.tracker-page{overflow:hidden;}
 .tracker-empty-wide{grid-column:1/-1;}
 .tracker-board{gap:10px;}
 .tracker-card{
-  min-height:350px;
-  gap:10px;
-  border-radius:16px;
-  box-shadow:0 10px 28px rgba(0,0,0,.26);
+  min-height:380px;
+  gap:12px;
+  border-radius:18px;
+  box-shadow:0 14px 34px rgba(0,0,0,.28);
 }
 .tracker-card:hover{transform:translateY(-2px) scale(1.003);}
-.tracker-card-top{gap:10px;}
+.tracker-card-topline{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.tracker-card-top{
+  gap:12px;
+  align-items:flex-start;
+}
+.tracker-card-heading{
+  gap:6px;
+}
 .tracker-name{border-radius:10px;}
 .tracker-turn{border-radius:10px;}
-.tracker-life{font-size:80px;}
+.tracker-card-orb{
+  position:static;
+  flex-shrink:0;
+  width:52px;
+  height:52px;
+  font-size:15px;
+}
+.tracker-card-status{
+  padding-right:0;
+  justify-content:flex-end;
+  min-height:28px;
+}
+.tracker-life-wrap{
+  padding:12px 0 6px;
+}
+.tracker-life{font-size:92px;}
 .tracker-life-controls{gap:5px;}
 .tracker-mini-row{gap:6px;}
 .tracker-counter{min-height:52px;border-radius:10px;}

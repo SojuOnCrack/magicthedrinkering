@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script>
-window.APP_VERSION = '202604240020';
+window.APP_VERSION = '202604240045';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -52,6 +52,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             </div>
             <div class="tracker-action-group">
               <button class="tbtn" onclick="CommanderTracker.addPlayer()">Add Player</button>
+              <button class="tbtn" onclick="CommanderTracker.removePlayer()">Remove Player</button>
               <button class="tbtn" id="tracker-start-btn" onclick="CommanderTracker.startGame()">Start Game</button>
             </div>
             <div class="tracker-action-group tracker-action-group-emphasis">

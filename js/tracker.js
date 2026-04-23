@@ -675,6 +675,22 @@ const CommanderTracker={
     this.render();
   },
 
+  removeSpecificPlayer(id){
+    if(this.state.players.length<=this.MIN_PLAYERS||this._canPlay())return;
+    const index=this.state.players.findIndex(player=>player.id===id);
+    if(index<0)return;
+    const removed=this.state.players[index];
+    this.state.players.splice(index,1);
+    delete this.state.damage[removed.id];
+    Object.values(this.state.damage).forEach(row=>delete row[removed.id]);
+    delete this.state.stats[removed.id];
+    this.state.eliminated=this.state.eliminated.filter(entry=>entry.id!==removed.id);
+    if(this.state.active===removed.id)this.state.active=this.state.players[0]?.id||'';
+    this._log(`${removed.name} was removed from the pod`,'leave');
+    this._save();
+    this.render();
+  },
+
   adjustLife(id,delta){
     const player=this._player(id);
     if(!player||!delta||!this._canPlay()||this._isEliminated(id))return;
@@ -862,7 +878,10 @@ const CommanderTracker={
         <div class="tracker-setup-card ${this.state.active===player.id?'is-starting':''}">
           <div class="tracker-setup-seat-row">
             <div class="tracker-setup-seat">Seat ${index+1}</div>
-            <span class="tracker-setup-chip ${this.state.active===player.id?'active':''}">${this.state.active===player.id?'Starter':'Seat ready'}</span>
+            <div class="tracker-setup-seat-actions">
+              <span class="tracker-setup-chip ${this.state.active===player.id?'active':''}">${this.state.active===player.id?'Starter':'Seat ready'}</span>
+              <button class="tracker-seat-remove" onclick="CommanderTracker.removeSpecificPlayer('${player.id}')" ${this.state.players.length<=this.MIN_PLAYERS||this._canPlay()?'disabled':''}>Remove</button>
+            </div>
           </div>
           <label class="tracker-field">
             <span>Player</span>
@@ -940,8 +959,10 @@ const CommanderTracker={
 
     return`
       <article class="tracker-card ${this.colors[index%this.colors.length]} ${out?'is-out':''} ${this.state.active===player.id&&this._canPlay()?'is-active':''} ${locked?'is-setup':''}">
-        <div class="tracker-card-orb">${this._initials(player.name)}</div>
-        <div class="tracker-card-status">${badges}</div>
+        <div class="tracker-card-topline">
+          <div class="tracker-card-orb">${this._initials(player.name)}</div>
+          <div class="tracker-card-status">${badges}</div>
+        </div>
         <div class="tracker-card-top">
           <div class="tracker-card-heading">
             <input class="tracker-name" value="${esc(player.name)}" maxlength="24" onchange="CommanderTracker.setPlayerName('${player.id}',this.value)" onfocus="this.select()">
