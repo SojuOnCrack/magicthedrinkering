@@ -648,6 +648,26 @@ const CommanderTracker={
     this.renderBoard();
   },
 
+  setPlayerNameChoice(id,value){
+    const player=this._player(id);
+    if(!player)return;
+    if(value==='__custom__'){
+      this.setPlayerName(id,player.name);
+      return;
+    }
+    this.setPlayerName(id,value);
+  },
+
+  setPlayerDeckChoice(id,value){
+    const player=this._player(id);
+    if(!player)return;
+    if(value==='__custom__'){
+      this.setPlayerDeck(id,player.deck);
+      return;
+    }
+    this.setPlayerDeck(id,value);
+  },
+
   setStartingPlayer(id){
     if(this.state.phase==='finished'||!this._player(id))return;
     this.state.active=id;
@@ -826,14 +846,15 @@ const CommanderTracker={
     wrap.classList.toggle('locked',this.state.phase==='live');
     toggle.textContent=this.state.setupCollapsed?'Show setup':'Hide setup';
 
-    const nameOptions=(this.data.nameOptions||[]).map(name=>`<option value="${esc(name)}"></option>`).join('');
-    const deckOptions=(this.data.deckOptions||[]).map(option=>{
-      const label=option.ownerName&&option.ownerName!=='My Collection'?`${option.name} - ${option.ownerName}`:option.name;
-      return `<option value="${esc(option.name)}" label="${esc(label)}"></option>`;
-    }).join('');
-
     grid.innerHTML=this.state.players.map((player,index)=>{
       const suggestion=this._findDeckSuggestion(player.deck);
+      const nameChoices=[...new Set([player.name,...(this.data.nameOptions||[]).filter(Boolean)])];
+      const deckChoices=[
+        ...new Map((this.data.deckOptions||[])
+          .filter(option=>option?.name)
+          .map(option=>[option.name.toLowerCase(),option]))
+          .values()
+      ];
       const ownerLabel=suggestion?.ownerName
         ? `<div class="tracker-setup-hint">${esc(suggestion.ownerName)}${suggestion.commander?` · ${esc(suggestion.commander)}${suggestion.partner?` + ${esc(suggestion.partner)}`:''}`:''}</div>`
         : `<div class="tracker-setup-hint">${player.deck?'Deck linked manually':'Pick from local/cloud deck data or type freely'}</div>`;
@@ -844,17 +865,33 @@ const CommanderTracker={
             <span class="tracker-setup-chip ${this.state.active===player.id?'active':''}">${this.state.active===player.id?'Starter':'Seat ready'}</span>
           </div>
           <label class="tracker-field">
-            <span>Name</span>
-            <input class="tracker-setup-input" list="tracker-name-options" value="${esc(player.name)}" maxlength="24" onchange="CommanderTracker.setPlayerName('${player.id}',this.value)" placeholder="Player name">
+            <span>Player</span>
+            <select class="tracker-setup-select" onchange="CommanderTracker.setPlayerNameChoice('${player.id}',this.value)">
+              ${nameChoices.map(name=>`<option value="${esc(name)}" ${name===player.name?'selected':''}>${esc(name)}</option>`).join('')}
+              <option value="__custom__">Current custom name behalten</option>
+            </select>
           </label>
           <label class="tracker-field">
             <span>Deck</span>
-            <input class="tracker-setup-input deck" list="tracker-deck-options" value="${esc(player.deck||'')}" maxlength="60" onchange="CommanderTracker.setPlayerDeck('${player.id}',this.value)" placeholder="Choose a deck">
+            <select class="tracker-setup-select deck" onchange="CommanderTracker.setPlayerDeckChoice('${player.id}',this.value)">
+              <option value="" ${!player.deck?'selected':''}>No deck selected</option>
+              ${deckChoices.map(option=>{
+                const label=option.ownerName&&option.ownerName!=='My Collection'
+                  ? `${option.name} - ${option.ownerName}`
+                  : option.name;
+                return `<option value="${esc(option.name)}" ${option.name===player.deck?'selected':''}>${esc(label)}</option>`;
+              }).join('')}
+              <option value="__custom__">Current custom deck behalten</option>
+            </select>
           </label>
           ${ownerLabel}
+          <div class="tracker-setup-manual">
+            <input class="tracker-setup-input" value="${esc(player.name)}" maxlength="24" onchange="CommanderTracker.setPlayerName('${player.id}',this.value)" placeholder="Custom player name">
+            <input class="tracker-setup-input deck" value="${esc(player.deck||'')}" maxlength="60" onchange="CommanderTracker.setPlayerDeck('${player.id}',this.value)" placeholder="Custom deck name">
+          </div>
           <button class="tracker-setup-btn ${this.state.active===player.id?'active':''}" onclick="CommanderTracker.setStartingPlayer('${player.id}')">${this.state.active===player.id?'Starting Player':'Set Starter'}</button>
         </div>`;
-    }).join('')+`<datalist id="tracker-name-options">${nameOptions}</datalist><datalist id="tracker-deck-options">${deckOptions}</datalist>`;
+    }).join('');
   },
 
   renderDashboard(){

@@ -1953,8 +1953,28 @@ body.tracker-page{overflow:hidden;}
 .tracker-field span{
   font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);
 }
+.tracker-setup-select{
+  width:100%;
+  min-height:42px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:9px 10px;
+  background:var(--bg3);
+  color:var(--text);
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  appearance:none;
+}
+.tracker-setup-select.deck{color:var(--ice);}
+.tracker-setup-select:focus{border-color:var(--gold3);}
 .tracker-setup-hint{
   min-height:18px;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.45;color:var(--text2);
+}
+.tracker-setup-manual{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+  padding-top:2px;
 }
 .tracker-empty-wide{grid-column:1/-1;}
 .tracker-card.is-setup{
