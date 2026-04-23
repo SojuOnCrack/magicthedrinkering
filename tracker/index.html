@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script>
-window.APP_VERSION = '202604231620';
+window.APP_VERSION = '202604231740';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -88,6 +88,25 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
           </div>
         </div>
 
+        <div class="tracker-dashboard">
+          <div class="tracker-chip">
+            <span>Turn</span>
+            <strong id="tracker-turn-chip">Turn 1</strong>
+          </div>
+          <div class="tracker-chip">
+            <span>Active</span>
+            <strong id="tracker-active-chip">Player 1</strong>
+          </div>
+          <div class="tracker-chip">
+            <span>Elapsed</span>
+            <strong id="tracker-elapsed-chip">00:00</strong>
+          </div>
+          <div class="tracker-chip">
+            <span>Pod</span>
+            <strong id="tracker-pod-chip">4 Players</strong>
+          </div>
+        </div>
+
         <div class="tracker-board" id="tracker-board"></div>
 
         <div class="tracker-damage-panel">
@@ -99,6 +118,28 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <button class="tbtn sm" onclick="CommanderTracker.clearCommanderDamage()">Clear damage</button>
           </div>
           <div class="tracker-damage-grid" id="tracker-damage-grid"></div>
+        </div>
+
+        <div class="tracker-meta-grid">
+          <section class="tracker-meta-panel">
+            <div class="tracker-panel-head">
+              <div>
+                <div class="tracker-kicker">Match summary</div>
+                <div class="tracker-panel-title">Live snapshot of the current pod.</div>
+              </div>
+            </div>
+            <div class="tracker-summary-grid" id="tracker-summary-grid"></div>
+          </section>
+
+          <section class="tracker-meta-panel">
+            <div class="tracker-panel-head">
+              <div>
+                <div class="tracker-kicker">Event log</div>
+                <div class="tracker-panel-title">Track the flow of the game in real time.</div>
+              </div>
+            </div>
+            <div class="tracker-log-list" id="tracker-log-list"></div>
+          </section>
         </div>
       </div>
     </div>

@@ -5,15 +5,19 @@ const CommanderTracker={
   START_LIFE:40,
   MIN_PLAYERS:2,
   MAX_PLAYERS:6,
+  HISTORY_LIMIT:24,
   colors:['gold','ice','green','crimson','purple','steel'],
   state:null,
+  _clock:null,
 
   init(){
     this.state=this._load();
+    this._startClock();
     this.render();
   },
 
   _fresh(count=4){
+    const now=Date.now();
     const players=Array.from({length:count},(_,i)=>({
       id:'p'+(i+1),
       name:'Player '+(i+1),
@@ -22,17 +26,33 @@ const CommanderTracker={
       monarch:false,
       initiative:false
     }));
-    return{players,damage:{},active:players[0].id,updated:Date.now()};
+    return{
+      players,
+      damage:{},
+      active:players[0].id,
+      turnNumber:1,
+      startedAt:now,
+      history:[{id:'evt-'+now,type:'system',text:'Game started',ts:now}],
+      updated:now
+    };
+  },
+
+  _normalizeState(saved){
+    const base=this._fresh(saved?.players?.length||4);
+    const state={...base,...saved};
+    state.players=Array.isArray(saved?.players)&&saved.players.length>=this.MIN_PLAYERS?saved.players:base.players;
+    state.damage=saved?.damage||{};
+    state.active=state.players.some(p=>p.id===saved?.active)?saved.active:state.players[0].id;
+    state.turnNumber=Number.isFinite(saved?.turnNumber)&&saved.turnNumber>0?saved.turnNumber:1;
+    state.startedAt=Number.isFinite(saved?.startedAt)?saved.startedAt:Date.now();
+    state.history=Array.isArray(saved?.history)?saved.history.slice(0,this.HISTORY_LIMIT):base.history;
+    return state;
   },
 
   _load(){
     try{
       const saved=JSON.parse(localStorage.getItem(this.KEY)||'null');
-      if(saved?.players?.length>=this.MIN_PLAYERS){
-        saved.damage=saved.damage||{};
-        saved.active=saved.active||saved.players[0].id;
-        return saved;
-      }
+      if(saved?.players?.length>=this.MIN_PLAYERS)return this._normalizeState(saved);
     }catch{}
     return this._fresh();
   },
@@ -40,6 +60,15 @@ const CommanderTracker={
   _save(){
     this.state.updated=Date.now();
     localStorage.setItem(this.KEY,JSON.stringify(this.state));
+  },
+
+  _startClock(){
+    if(this._clock)clearInterval(this._clock);
+    this._clock=setInterval(()=>{
+      if(!this.state)return;
+      this.renderDashboard();
+      this.renderSummary();
+    },1000);
   },
 
   _player(id){
@@ -85,17 +114,43 @@ const CommanderTracker={
       .join('')||'P';
   },
 
+  _elapsedMs(){
+    return Math.max(0,Date.now()-(this.state?.startedAt||Date.now()));
+  },
+
+  _formatElapsed(ms){
+    const total=Math.floor(ms/1000);
+    const hours=Math.floor(total/3600);
+    const minutes=Math.floor((total%3600)/60);
+    const seconds=total%60;
+    if(hours>0)return`${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+    return`${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+  },
+
+  _log(text,type='event'){
+    const ts=Date.now();
+    this.state.history=[{id:'evt-'+ts+'-'+Math.random().toString(36).slice(2,6),type,text,ts},...(this.state.history||[])].slice(0,this.HISTORY_LIMIT);
+  },
+
+  _statusText(player){
+    if(this._isOut(player))return'Eliminated';
+    if(player.id===this.state.active)return'In turn';
+    return'Ready';
+  },
+
   addPlayer(){
     if(this.state.players.length>=this.MAX_PLAYERS){if(typeof Notify!=='undefined')Notify.show('Maximum 6 players','inf');return;}
     const next=this.state.players.length+1;
-    this.state.players.push({
+    const player={
       id:'p'+Date.now().toString(36),
       name:'Player '+next,
       life:this.START_LIFE,
       poison:0,
       monarch:false,
       initiative:false
-    });
+    };
+    this.state.players.push(player);
+    this._log(`${player.name} joined the pod`,'join');
     this._save();this.render();
   },
 
@@ -105,6 +160,7 @@ const CommanderTracker={
     delete this.state.damage[removed.id];
     Object.values(this.state.damage).forEach(row=>delete row[removed.id]);
     if(this.state.active===removed.id)this.state.active=this.state.players[0].id;
+    this._log(`${removed.name} was removed from the pod`,'leave');
     this._save();this.render();
   },
 
@@ -118,44 +174,72 @@ const CommanderTracker={
   },
 
   adjustLife(id,delta){
-    const p=this._player(id);if(!p)return;
+    const p=this._player(id);if(!p||!delta)return;
+    const before=p.life;
     p.life=Math.max(-99,Math.min(999,p.life+delta));
+    if(before!==p.life){
+      this._log(`${p.name} ${delta>0?'gained':'lost'} ${Math.abs(delta)} life (${p.life})`,delta>0?'heal':'damage');
+      if(this._isOut(p))this._log(`${p.name} was eliminated`,'out');
+    }
     this._save();this.render();
   },
 
   adjustAll(delta){
+    if(!delta)return;
     this.state.players.forEach(p=>{p.life=Math.max(-99,Math.min(999,p.life+delta));});
+    this._log(`All players ${delta>0?'gained':'lost'} ${Math.abs(delta)} life`,'global');
     this._save();this.render();
   },
 
   adjustPoison(id,delta){
-    const p=this._player(id);if(!p)return;
+    const p=this._player(id);if(!p||!delta)return;
+    const before=p.poison;
     p.poison=Math.max(0,Math.min(10,p.poison+delta));
+    if(before!==p.poison){
+      this._log(`${p.name} ${delta>0?'gained':'lost'} ${Math.abs(delta)} poison (${p.poison})`,delta>0?'poison':'cleanse');
+      if(this._isOut(p))this._log(`${p.name} was eliminated by poison`,'out');
+    }
     this._save();this.render();
   },
 
   adjustCommander(targetId,sourceId,delta){
-    this._setDamage(targetId,sourceId,this._damage(targetId,sourceId)+delta);
+    if(!delta)return;
+    const target=this._player(targetId);
+    const source=this._player(sourceId);
+    if(!target||!source)return;
+    const before=this._damage(targetId,sourceId);
+    this._setDamage(targetId,sourceId,before+delta);
+    const after=this._damage(targetId,sourceId);
+    if(before!==after){
+      this._log(`${source.name} ${delta>0?'dealt':'reduced'} commander damage ${delta>0?'to':'on'} ${target.name} (${after})`,'commander');
+      if(after>=21)this._log(`${target.name} reached 21 commander damage from ${source.name}`,'out');
+    }
     this._save();this.render();
   },
 
   setName(id,value){
     const p=this._player(id);if(!p)return;
+    const old=p.name;
     p.name=(value||'').trim().slice(0,24)||'Player';
+    if(old!==p.name)this._log(`${old} is now ${p.name}`,'rename');
     this._save();this.render();
   },
 
   setActive(id){
+    const p=this._player(id);if(!p)return;
     this.state.active=id;
+    this._log(`${p.name} is now in turn`,'turn');
     this._save();this.render();
   },
 
   nextTurn(){
-    const players=this.state.players||[];
+    const players=(this.state.players||[]).filter(p=>!this._isOut(p));
     if(!players.length)return;
     const currentIndex=Math.max(0,players.findIndex(p=>p.id===this.state.active));
     const nextIndex=(currentIndex+1)%players.length;
     this.state.active=players[nextIndex].id;
+    this.state.turnNumber=(this.state.turnNumber||1)+1;
+    this._log(`Turn ${this.state.turnNumber}: ${players[nextIndex].name} is up`,'turn');
     this._save();this.render();
   },
 
@@ -165,25 +249,43 @@ const CommanderTracker={
       const next=!p.monarch;
       this.state.players.forEach(x=>x.monarch=false);
       p.monarch=next;
+      this._log(next?`${p.name} became the Monarch`:`${p.name} is no longer the Monarch`,'badge');
     }
     if(key==='initiative'){
       const next=!p.initiative;
       this.state.players.forEach(x=>x.initiative=false);
       p.initiative=next;
+      this._log(next?`${p.name} took the Initiative`:`${p.name} no longer has the Initiative`,'badge');
     }
     this._save();this.render();
   },
 
   clearCommanderDamage(){
     this.state.damage={};
+    this._log('Commander damage was cleared','reset');
     this._save();this.render();
   },
 
   render(){
     if(!document.getElementById('tracker-board'))return;
     if(!this.state)this.state=this._load();
+    this.renderDashboard();
     this.renderBoard();
     this.renderDamage();
+    this.renderSummary();
+    this.renderHistory();
+  },
+
+  renderDashboard(){
+    const active=this._player(this.state.active);
+    const turn=document.getElementById('tracker-turn-chip');
+    const player=document.getElementById('tracker-active-chip');
+    const elapsed=document.getElementById('tracker-elapsed-chip');
+    const pod=document.getElementById('tracker-pod-chip');
+    if(turn)turn.textContent='Turn '+(this.state.turnNumber||1);
+    if(player)player.textContent=active?active.name:'-';
+    if(elapsed)elapsed.textContent=this._formatElapsed(this._elapsedMs());
+    if(pod)pod.textContent=this.state.players.length+' Players';
   },
 
   renderBoard(){
@@ -229,7 +331,7 @@ const CommanderTracker={
           <button class="tracker-turn ${this.state.active===p.id?'active':''}" onclick="${this.state.active===p.id?'CommanderTracker.nextTurn()':`CommanderTracker.setActive('${p.id}')`}">${this.state.active===p.id?'Pass Turn':'Set Turn'}</button>
         </div>
         <div class="tracker-life-wrap">
-          <div class="tracker-life-kicker">Life Total</div>
+          <div class="tracker-life-kicker">${this._statusText(p)}</div>
           <div class="tracker-life ${lifeState}">${p.life}</div>
         </div>
         <div class="tracker-life-controls">
@@ -289,6 +391,59 @@ const CommanderTracker={
       }
     }
     grid.innerHTML=rows.join('');
+  },
+
+  renderSummary(){
+    const body=document.getElementById('tracker-summary-grid');
+    if(!body)return;
+    const living=this.state.players.filter(p=>!this._isOut(p));
+    const leader=[...this.state.players].sort((a,b)=>b.life-a.life)[0];
+    const monarch=this.state.players.find(p=>p.monarch);
+    const initiative=this.state.players.find(p=>p.initiative);
+    const highestDamage=this.state.players.reduce((best,target)=>{
+      this.state.players.forEach(source=>{
+        if(source.id===target.id)return;
+        const value=this._damage(target.id,source.id);
+        if(value>best.value)best={value,source,target};
+      });
+      return best;
+    },{value:0,source:null,target:null});
+    body.innerHTML=`
+      <div class="tracker-summary-stat">
+        <span>Players Alive</span>
+        <strong>${living.length}</strong>
+        <small>${this.state.players.length-living.length} eliminated</small>
+      </div>
+      <div class="tracker-summary-stat">
+        <span>Life Leader</span>
+        <strong>${leader?esc(leader.name):'-'}</strong>
+        <small>${leader?leader.life+' life':'No data'}</small>
+      </div>
+      <div class="tracker-summary-stat">
+        <span>Monarch</span>
+        <strong>${monarch?esc(monarch.name):'Unclaimed'}</strong>
+        <small>${initiative?`Initiative: ${esc(initiative.name)}`:'Initiative open'}</small>
+      </div>
+      <div class="tracker-summary-stat">
+        <span>Top Threat</span>
+        <strong>${highestDamage.value>0&&highestDamage.source?esc(highestDamage.source.name):'Quiet board'}</strong>
+        <small>${highestDamage.value>0&&highestDamage.target?`${highestDamage.value} to ${esc(highestDamage.target.name)}`:'No commander pressure yet'}</small>
+      </div>`;
+  },
+
+  renderHistory(){
+    const list=document.getElementById('tracker-log-list');
+    if(!list)return;
+    const items=this.state.history||[];
+    if(!items.length){
+      list.innerHTML='<div class="tracker-log-empty">No events yet. Start the game and the tracker will build a match log.</div>';
+      return;
+    }
+    list.innerHTML=items.map(item=>`
+      <div class="tracker-log-item ${item.type||'event'}">
+        <div class="tracker-log-time">${new Date(item.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+        <div class="tracker-log-text">${esc(item.text)}</div>
+      </div>`).join('');
   }
 };
 
