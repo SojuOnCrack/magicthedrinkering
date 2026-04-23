@@ -15,37 +15,49 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script>
-window.APP_VERSION = '202604232355';
+window.APP_VERSION = '202604240005';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
 <body class="tracker-page" data-section="tracker">
 <div id="shell">
-  <header id="topbar">
-    <div class="logo">MagicThe<em> Drinkering</em></div>
-    <div class="cmdr-pill" title="Eigenstaendige Tracker-Seite">
-      <div class="cmdr-pill-name">Tracker</div>
+  <header id="topbar" class="tracker-topbar">
+    <div class="tracker-topbar-brand">
+      <div class="logo">MagicThe<em> Drinkering</em></div>
+      <div class="tracker-topbar-copy">
+        <span class="tracker-topbar-kicker">Commander pod</span>
+        <strong>Tracker</strong>
+      </div>
     </div>
     <div class="spacer"></div>
-    <a class="tbtn" href="/">Startseite</a>
-    <a class="tbtn gold" href="/tracker/">Tracker</a>
+    <div class="tracker-topbar-actions">
+      <a class="tbtn" href="/">Startseite</a>
+      <a class="tbtn gold" href="/tracker/">Tracker</a>
+    </div>
   </header>
 
   <main id="main">
     <div id="section-tracker" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
       <div class="tracker-shell">
         <div class="tracker-toolbar">
-          <div>
-            <div class="tracker-kicker">Commander pod</div>
-            <h1 class="tracker-title">Tracker</h1>
+          <div class="tracker-toolbar-copy">
+            <div class="tracker-kicker">Live match</div>
+            <h1 class="tracker-title">Pod Control</h1>
+            <p class="tracker-toolbar-sub">Setup, turn flow and match state in one focused view.</p>
           </div>
           <div class="tracker-actions">
-            <button class="tbtn" onclick="CommanderTracker.adjustAll(-1)">All -1</button>
-            <button class="tbtn" onclick="CommanderTracker.adjustAll(1)">All +1</button>
-            <button class="tbtn" onclick="CommanderTracker.addPlayer()">Add Player</button>
-            <button class="tbtn" id="tracker-finish-btn" onclick="CommanderTracker.finishGame('', 'Stopped manually')">Finish</button>
-            <button class="tbtn" id="tracker-start-btn" onclick="CommanderTracker.startGame()">Start Game</button>
-            <button class="tbtn gold" id="tracker-reset-btn" onclick="CommanderTracker.resetGame()">New Game</button>
+            <div class="tracker-action-group">
+              <button class="tbtn" onclick="CommanderTracker.adjustAll(-1)">All -1</button>
+              <button class="tbtn" onclick="CommanderTracker.adjustAll(1)">All +1</button>
+            </div>
+            <div class="tracker-action-group">
+              <button class="tbtn" onclick="CommanderTracker.addPlayer()">Add Player</button>
+              <button class="tbtn" id="tracker-start-btn" onclick="CommanderTracker.startGame()">Start Game</button>
+            </div>
+            <div class="tracker-action-group tracker-action-group-emphasis">
+              <button class="tbtn" id="tracker-finish-btn" onclick="CommanderTracker.finishGame('', 'Stopped manually')">Finish</button>
+              <button class="tbtn gold" id="tracker-reset-btn" onclick="CommanderTracker.resetGame()">New Game</button>
+            </div>
           </div>
         </div>
 
