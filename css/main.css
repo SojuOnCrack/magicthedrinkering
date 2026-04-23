@@ -1931,11 +1931,60 @@ body.tracker-page{overflow:hidden;}
   color:var(--text2);font-size:13px;line-height:1.55;box-shadow:var(--shadow-soft);}
 .tracker-page-note strong{color:var(--gold2);font-family:'Cinzel',serif;font-weight:700;}
 .tracker-page-note code{font-family:'JetBrains Mono',monospace;color:var(--ice);}
+.tracker-setup-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+.tracker-data-pill{
+  display:inline-flex;align-items:center;min-height:36px;padding:8px 12px;border-radius:999px;border:1px solid rgba(110,201,224,.22);
+  background:rgba(14,28,40,.82);color:var(--ice);font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.4;
+}
+.tracker-data-pill.loading{color:var(--text2);border-color:var(--border2);}
+.tracker-setup-panel.locked{border-color:rgba(200,168,75,.24);}
+.tracker-setup-panel.locked .tracker-panel-title::after{
+  content:'  ·  Live game running';
+  color:var(--gold2);
+}
+.tracker-setup-seat-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.tracker-setup-chip{
+  display:inline-flex;align-items:center;min-height:24px;padding:4px 9px;border-radius:999px;border:1px solid var(--border2);
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);
+  background:rgba(17,26,44,.72);
+}
+.tracker-setup-chip.active{border-color:rgba(200,168,75,.45);background:rgba(122,96,40,.24);color:var(--gold2);}
+.tracker-field{display:flex;flex-direction:column;gap:6px;}
+.tracker-field span{
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);
+}
+.tracker-setup-hint{
+  min-height:18px;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.45;color:var(--text2);
+}
+.tracker-empty-wide{grid-column:1/-1;}
+.tracker-card.is-setup{
+  border-color:rgba(110,201,224,.16);
+  background:
+    radial-gradient(circle at top right,rgba(110,201,224,.05),transparent 28%),
+    linear-gradient(180deg,rgba(14,22,40,.94),rgba(10,16,30,.98));
+}
+.tracker-card.is-setup .tracker-life-controls button,
+.tracker-card.is-setup .tracker-counter button,
+.tracker-card.is-setup .tracker-inline-btn,
+.tracker-card.is-setup .tracker-inline-main,
+.tracker-card.is-setup .tracker-tags button{
+  opacity:.58;
+}
+.tracker-card.is-setup .tracker-life-kicker{color:var(--ice);}
+.tracker-actions .tbtn:disabled,
+.tracker-turn:disabled,
+.tracker-status-badge:disabled{
+  cursor:not-allowed;
+  opacity:.5;
+  transform:none!important;
+}
 
 @media (max-width: 900px){
   .tracker-page #shell{grid-template-columns:1fr;}
   .tracker-page #ctx-sidebar{display:none;}
   .tracker-page-intro{padding:14px 14px 0;}
+  .tracker-setup-actions{justify-content:flex-start;}
+  .tracker-data-pill{width:100%;justify-content:center;}
 }
 
 .health-deck-sel{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);

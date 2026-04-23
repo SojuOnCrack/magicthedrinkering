@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script>
-window.APP_VERSION = '202604232230';
+window.APP_VERSION = '202604232355';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -69,7 +69,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
   <main id="main">
     <div class="tracker-page-intro">
       <div class="tracker-page-note">
-        <strong>Testinhalt:</strong> Diese Seite wird direkt unter <code>/tracker/</code> ausgeliefert und lebt im bestehenden Projekt.
+        <strong>Tracker live im Projekt:</strong> Diese Seite wird direkt unter <code>/tracker/</code> ausgeliefert, nutzt eure bestehenden Styles und kann Namen sowie Decks aus der vorhandenen lokalen Sammlung und der bestehenden Cloud-Datenbasis vorschlagen.
       </div>
     </div>
 
@@ -84,8 +84,9 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <button class="tbtn" onclick="CommanderTracker.adjustAll(-1)">All -1</button>
             <button class="tbtn" onclick="CommanderTracker.adjustAll(1)">All +1</button>
             <button class="tbtn" onclick="CommanderTracker.addPlayer()">Add Player</button>
-            <button class="tbtn" onclick="CommanderTracker.finishGame('', 'Stopped manually')">Finish</button>
-            <button class="tbtn gold" onclick="CommanderTracker.resetGame()">New Game</button>
+            <button class="tbtn" id="tracker-finish-btn" onclick="CommanderTracker.finishGame('', 'Stopped manually')">Finish</button>
+            <button class="tbtn" id="tracker-start-btn" onclick="CommanderTracker.startGame()">Start Game</button>
+            <button class="tbtn gold" id="tracker-reset-btn" onclick="CommanderTracker.resetGame()">New Game</button>
           </div>
         </div>
 
@@ -114,7 +115,12 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
               <div class="tracker-kicker">Pod setup</div>
               <div class="tracker-panel-title">Choose names, decks and the starting seat before the game gets hectic.</div>
             </div>
-            <button class="tbtn sm" id="tracker-setup-toggle" onclick="CommanderTracker.toggleSetup()">Hide setup</button>
+            <div class="tracker-setup-actions">
+              <div class="tracker-data-pill" id="tracker-data-pill">Loading deck data...</div>
+              <button class="tbtn sm" onclick="CommanderTracker.autoFillPod()">Auto Fill Pod</button>
+              <button class="tbtn sm" onclick="CommanderTracker.randomizeStarter()">Random Starter</button>
+              <button class="tbtn sm" id="tracker-setup-toggle" onclick="CommanderTracker.toggleSetup()">Hide setup</button>
+            </div>
           </div>
           <div class="tracker-setup-grid" id="tracker-setup-grid"></div>
         </section>
@@ -186,6 +192,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
 <script>
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 document.write('<script src="/js/tracker.js?v='+window.APP_VERSION+'"><\/script>');
 </script>
