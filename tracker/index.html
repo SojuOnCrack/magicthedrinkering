@@ -31,48 +31,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
     <a class="tbtn gold" href="/tracker/">Tracker</a>
   </header>
 
-  <nav id="icon-menu" aria-label="Bereichsnavigation">
-    <a class="im-btn" href="/" title="Zur Startseite">
-      <div class="im-ico">HM</div>
-      <div class="im-tooltip">Startseite</div>
-    </a>
-    <div class="im-sep"></div>
-    <a class="im-btn on" href="/tracker/" title="Tracker">
-      <div class="im-ico">&#9829;</div>
-      <div class="im-tooltip">Tracker</div>
-    </a>
-    <div class="im-spacer"></div>
-  </nav>
-
-  <aside id="ctx-sidebar">
-    <div id="tracker-sidebar" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
-      <div class="ctx-hdr">
-        <div class="ctx-hdr-title">Tracker</div>
-      </div>
-      <div style="flex:1;padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;">
-        <div style="font-size:11px;color:var(--text3);line-height:1.7">
-          Eigenstaendige Unterseite unter <code>/tracker/</code>.<br>
-          Nutzt die vorhandenen Projekt-Styles und das bestehende Tracker-Skript.
-        </div>
-        <button class="sbbtn g" onclick="CommanderTracker.resetGame()">New Game</button>
-        <button class="sbbtn" onclick="CommanderTracker.addPlayer()">Add Player</button>
-        <button class="sbbtn" onclick="CommanderTracker.removePlayer()">Remove Player</button>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2);line-height:1.7;margin-top:4px">
-          Start life: <span style="color:var(--gold2)">40</span><br>
-          Commander damage ends at <span style="color:var(--crimson2)">21</span><br>
-          Poison ends at <span style="color:var(--green2)">10</span>
-        </div>
-      </div>
-    </div>
-  </aside>
-
   <main id="main">
-    <div class="tracker-page-intro">
-      <div class="tracker-page-note">
-        <strong>Tracker live im Projekt:</strong> Diese Seite wird direkt unter <code>/tracker/</code> ausgeliefert, nutzt eure bestehenden Styles und kann Namen sowie Decks aus der vorhandenen lokalen Sammlung und der bestehenden Cloud-Datenbasis vorschlagen.
-      </div>
-    </div>
-
     <div id="section-tracker" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
       <div class="tracker-shell">
         <div class="tracker-toolbar">
