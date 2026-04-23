@@ -27,7 +27,7 @@
 
 <script>
 window.APP_VERSION = '202604161120';
-window.INITIAL_SECTION = location.pathname.replace(/\/+$/,'') === '/tracker' ? 'tracker' : '';
+window.INITIAL_SECTION = '';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -117,11 +117,6 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
     <button class="im-btn" data-section="bulk" onclick="Menu.go('bulk')" title="Bulk Pool">
       <div class="im-ico">BK</div><div class="im-lbl">Bulk</div>
       <div class="im-tooltip">Shared Bulk Pool</div>
-    </button>
-    <div class="im-sep"></div>
-    <button class="im-btn" data-section="tracker" onclick="Menu.go('tracker')" title="Life Tracker">
-      <div class="im-ico">&#9829;</div><div class="im-lbl">Life</div>
-      <div class="im-tooltip">Commander Life Tracker</div>
     </button>
     <div class="im-sep"></div>
     <button class="im-btn" data-section="vault" onclick="Menu.go('vault')" title="Vault">
@@ -1373,7 +1368,6 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
       <button class="mobile-more-btn" onclick="MobileNav.go('wishlist')">Wishlist</button>
       <button class="mobile-more-btn" onclick="MobileNav.go('trade')">Trade</button>
       <button class="mobile-more-btn" onclick="MobileNav.go('bulk')">Bulk Pool</button>
-      <button class="mobile-more-btn" onclick="MobileNav.go('tracker')">Life Tracker</button>
       <button class="mobile-more-btn" onclick="MobileNav.go('community')">Community</button>
       <button class="mobile-more-btn" onclick="MobileNav.openSettings()">Settings</button>
     </div>
