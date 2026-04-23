@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Tracker | MagicTheDrinkering</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#06090f">
+<meta name="description" content="MagicTheDrinkering Tracker - eigenstaendige Unterseite fuer den Commander Life Tracker">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/main.css">
+</head>
+<body class="tracker-page" data-section="tracker">
+<div id="shell">
+  <header id="topbar">
+    <div class="logo">MagicThe<em> Drinkering</em></div>
+    <div class="cmdr-pill" title="Eigenstaendige Tracker-Seite">
+      <div class="cmdr-pill-name">Tracker</div>
+    </div>
+    <div class="spacer"></div>
+    <a class="tbtn" href="/">Startseite</a>
+    <a class="tbtn gold" href="/tracker">Tracker</a>
+  </header>
+
+  <nav id="icon-menu" aria-label="Bereichsnavigation">
+    <a class="im-btn" href="/" title="Zur Startseite">
+      <div class="im-ico">HM</div>
+      <div class="im-tooltip">Startseite</div>
+    </a>
+    <div class="im-sep"></div>
+    <a class="im-btn on" href="/tracker" title="Tracker">
+      <div class="im-ico">&#9829;</div>
+      <div class="im-tooltip">Tracker</div>
+    </a>
+    <div class="im-spacer"></div>
+  </nav>
+
+  <aside id="ctx-sidebar">
+    <div id="tracker-sidebar" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="ctx-hdr">
+        <div class="ctx-hdr-title">Tracker</div>
+      </div>
+      <div style="flex:1;padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;">
+        <div style="font-size:11px;color:var(--text3);line-height:1.7">
+          Eigenstaendige Unterseite unter <code>/tracker</code>.<br>
+          Nutzt die vorhandenen Projekt-Styles und das bestehende Tracker-Skript.
+        </div>
+        <button class="sbbtn g" onclick="CommanderTracker.resetGame()">New Game</button>
+        <button class="sbbtn" onclick="CommanderTracker.addPlayer()">Add Player</button>
+        <button class="sbbtn" onclick="CommanderTracker.removePlayer()">Remove Player</button>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2);line-height:1.7;margin-top:4px">
+          Start life: <span style="color:var(--gold2)">40</span><br>
+          Commander damage ends at <span style="color:var(--crimson2)">21</span><br>
+          Poison ends at <span style="color:var(--green2)">10</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div class="tracker-page-intro">
+      <div class="tracker-page-note">
+        <strong>Testinhalt:</strong> Diese Seite wird direkt unter <code>/tracker</code> ausgeliefert und lebt im bestehenden Projekt.
+      </div>
+    </div>
+
+    <div id="section-tracker" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="tracker-shell">
+        <div class="tracker-toolbar">
+          <div>
+            <div class="tracker-kicker">Commander pod</div>
+            <h1 class="tracker-title">Tracker</h1>
+          </div>
+          <div class="tracker-actions">
+            <button class="tbtn" onclick="CommanderTracker.adjustAll(-1)">All -1</button>
+            <button class="tbtn" onclick="CommanderTracker.adjustAll(1)">All +1</button>
+            <button class="tbtn" onclick="CommanderTracker.addPlayer()">Add Player</button>
+            <button class="tbtn gold" onclick="CommanderTracker.resetGame()">New Game</button>
+          </div>
+        </div>
+
+        <div class="tracker-board" id="tracker-board"></div>
+
+        <div class="tracker-damage-panel">
+          <div class="tracker-panel-head">
+            <div>
+              <div class="tracker-kicker">Commander damage</div>
+              <div class="tracker-panel-title">21 damage from one commander knocks a player out.</div>
+            </div>
+            <button class="tbtn sm" onclick="CommanderTracker.clearCommanderDamage()">Clear damage</button>
+          </div>
+          <div class="tracker-damage-grid" id="tracker-damage-grid"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+</script>
+<script src="/js/tracker.js"></script>
+</body>
+</html>
