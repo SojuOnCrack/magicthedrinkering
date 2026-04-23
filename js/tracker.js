@@ -81,7 +81,21 @@ const CommanderTracker={
   _load(){
     try{
       const saved=JSON.parse(localStorage.getItem(this.KEY)||'null');
-      if(saved?.players?.length>=this.MIN_PLAYERS)return this._normalizeState(saved);
+      if(saved?.players?.length>=this.MIN_PLAYERS){
+        const state=this._normalizeState(saved);
+        if(state.finishedAt){
+          const reset=this._fresh(state.players.length);
+          reset.players=reset.players.map((p,i)=>({
+            ...p,
+            name:state.players[i]?.name||p.name,
+            deck:state.players[i]?.deck||''
+          }));
+          reset.stats=Object.fromEntries(reset.players.map(p=>[p.id,this._emptyStats()]));
+          reset.setupCollapsed=state.setupCollapsed;
+          return reset;
+        }
+        return state;
+      }
     }catch{}
     return this._fresh();
   },
