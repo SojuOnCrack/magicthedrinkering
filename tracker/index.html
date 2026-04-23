@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script>
-window.APP_VERSION = '202604231740';
+window.APP_VERSION = '202604231910';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -84,6 +84,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <button class="tbtn" onclick="CommanderTracker.adjustAll(-1)">All -1</button>
             <button class="tbtn" onclick="CommanderTracker.adjustAll(1)">All +1</button>
             <button class="tbtn" onclick="CommanderTracker.addPlayer()">Add Player</button>
+            <button class="tbtn" onclick="CommanderTracker.finishGame('', 'Stopped manually')">Finish</button>
             <button class="tbtn gold" onclick="CommanderTracker.resetGame()">New Game</button>
           </div>
         </div>
@@ -128,7 +129,10 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
                 <div class="tracker-panel-title">Live snapshot of the current pod.</div>
               </div>
             </div>
+            <div class="tracker-summary-banner" id="tracker-summary-banner"></div>
             <div class="tracker-summary-grid" id="tracker-summary-grid"></div>
+            <div id="tracker-winner-chooser"></div>
+            <div class="tracker-order-list" id="tracker-elimination-order"></div>
           </section>
 
           <section class="tracker-meta-panel">
@@ -139,6 +143,29 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
               </div>
             </div>
             <div class="tracker-log-list" id="tracker-log-list"></div>
+          </section>
+        </div>
+
+        <div class="tracker-meta-grid tracker-meta-grid-secondary">
+          <section class="tracker-meta-panel">
+            <div class="tracker-panel-head">
+              <div>
+                <div class="tracker-kicker">Match notes</div>
+                <div class="tracker-panel-title">Save the key moments of the pod.</div>
+              </div>
+            </div>
+            <textarea id="tracker-note-input" class="tracker-note-input" placeholder="Add notes about swings, politics, misplays or epic moments..." oninput="CommanderTracker.setNotes(this.value)"></textarea>
+          </section>
+
+          <section class="tracker-meta-panel">
+            <div class="tracker-panel-head">
+              <div>
+                <div class="tracker-kicker">Recent matches</div>
+                <div class="tracker-panel-title">Stored locally on this device.</div>
+              </div>
+              <button class="tbtn sm" onclick="CommanderTracker.exportHistory()">Export</button>
+            </div>
+            <div class="tracker-match-history" id="tracker-match-history"></div>
           </section>
         </div>
       </div>
