@@ -147,20 +147,31 @@ const CommanderTracker={
 
   setActive(id){
     this.state.active=id;
-    this._save();this.renderBoard();
+    this._save();this.render();
+  },
+
+  nextTurn(){
+    const players=this.state.players||[];
+    if(!players.length)return;
+    const currentIndex=Math.max(0,players.findIndex(p=>p.id===this.state.active));
+    const nextIndex=(currentIndex+1)%players.length;
+    this.state.active=players[nextIndex].id;
+    this._save();this.render();
   },
 
   toggle(id,key){
     const p=this._player(id);if(!p)return;
     if(key==='monarch'){
+      const next=!p.monarch;
       this.state.players.forEach(x=>x.monarch=false);
-      p.monarch=true;
+      p.monarch=next;
     }
     if(key==='initiative'){
+      const next=!p.initiative;
       this.state.players.forEach(x=>x.initiative=false);
-      p.initiative=true;
+      p.initiative=next;
     }
-    this._save();this.renderBoard();
+    this._save();this.render();
   },
 
   clearCommanderDamage(){
@@ -187,9 +198,9 @@ const CommanderTracker={
     const lifeState=this._lifeState(p);
     const maxCmd=Math.max(0,...this.state.players.filter(src=>src.id!==p.id).map(src=>this._damage(p.id,src.id)));
     const badges=[
-      this.state.active===p.id?'<span class="tracker-status-badge active">Active Turn</span>':'',
-      p.monarch?'<span class="tracker-status-badge monarch">Monarch</span>':'',
-      p.initiative?'<span class="tracker-status-badge initiative">Initiative</span>':'',
+      this.state.active===p.id?'<button class="tracker-status-badge active" onclick="CommanderTracker.nextTurn()" title="Pass turn to the next player">Active Turn</button>':'',
+      p.monarch?`<button class="tracker-status-badge monarch" onclick="CommanderTracker.toggle('${p.id}','monarch')" title="Remove Monarch">Monarch</button>`:'',
+      p.initiative?`<button class="tracker-status-badge initiative" onclick="CommanderTracker.toggle('${p.id}','initiative')" title="Remove Initiative">Initiative</button>`:'',
       out?'<span class="tracker-status-badge out">Knocked Out</span>':''
     ].filter(Boolean).join('');
     const commanderRows=this.state.players
@@ -215,7 +226,7 @@ const CommanderTracker={
           <input class="tracker-name" value="${esc(p.name)}" maxlength="24"
             onchange="CommanderTracker.setName('${p.id}',this.value)"
             onfocus="this.select()" aria-label="Player name">
-          <button class="tracker-turn" onclick="CommanderTracker.setActive('${p.id}')">${this.state.active===p.id?'Turn':'Set Turn'}</button>
+          <button class="tracker-turn ${this.state.active===p.id?'active':''}" onclick="${this.state.active===p.id?'CommanderTracker.nextTurn()':`CommanderTracker.setActive('${p.id}')`}">${this.state.active===p.id?'Pass Turn':'Set Turn'}</button>
         </div>
         <div class="tracker-life-wrap">
           <div class="tracker-life-kicker">Life Total</div>

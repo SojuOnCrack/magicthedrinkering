@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script>
-window.APP_VERSION = '202604231500';
+window.APP_VERSION = '202604231620';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -108,6 +108,8 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
 <script>
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 </script>
-<script src="/js/tracker.js?v=202604231500"></script>
+<script>
+document.write('<script src="/js/tracker.js?v='+window.APP_VERSION+'"><\/script>');
+</script>
 </body>
 </html>
