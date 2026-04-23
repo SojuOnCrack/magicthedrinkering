@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script>
-window.APP_VERSION = '202604231910';
+window.APP_VERSION = '202604232020';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -107,6 +107,16 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <strong id="tracker-pod-chip">4 Players</strong>
           </div>
         </div>
+
+        <section class="tracker-setup-panel">
+          <div class="tracker-panel-head">
+            <div>
+              <div class="tracker-kicker">Pod setup</div>
+              <div class="tracker-panel-title">Choose names, decks and the starting seat before the game gets hectic.</div>
+            </div>
+          </div>
+          <div class="tracker-setup-grid" id="tracker-setup-grid"></div>
+        </section>
 
         <div class="tracker-board" id="tracker-board"></div>
 
