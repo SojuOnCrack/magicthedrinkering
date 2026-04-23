@@ -6,8 +6,8 @@ const CommanderTracker={
   START_LIFE:40,
   MIN_PLAYERS:2,
   MAX_PLAYERS:6,
-  HISTORY_LIMIT:24,
-  MATCH_HISTORY_LIMIT:12,
+  HISTORY_LIMIT:18,
+  MATCH_HISTORY_LIMIT:10,
   colors:['gold','ice','green','crimson','purple','steel'],
   state:null,
   _clock:null,
@@ -18,9 +18,12 @@ const CommanderTracker={
     this.render();
   },
 
-  _fresh(count=4){
-    const now=Date.now();
-    const players=Array.from({length:count},(_,i)=>({
+  _emptyStats(){
+    return{kills:0,lifeGain:0,lifeLoss:0,poisonGiven:0,commanderGiven:0};
+  },
+
+  _freshPlayers(count){
+    return Array.from({length:count},(_,i)=>({
       id:'p'+(i+1),
       name:'Player '+(i+1),
       deck:'',
@@ -29,11 +32,16 @@ const CommanderTracker={
       monarch:false,
       initiative:false
     }));
+  },
+
+  _fresh(count=4){
+    const now=Date.now();
+    const players=this._freshPlayers(count);
     return{
       matchId:'match-'+now,
       players,
       damage:{},
-      stats:this._freshStats(players),
+      stats:Object.fromEntries(players.map(p=>[p.id,this._emptyStats()])),
       active:players[0].id,
       turnNumber:1,
       startedAt:now,
@@ -42,35 +50,20 @@ const CommanderTracker={
       winnerId:'',
       archived:false,
       notes:'',
+      setupCollapsed:false,
       eliminated:[],
       history:[{id:'evt-'+now,type:'system',text:'Game started',ts:now}],
       updated:now
     };
   },
 
-  _freshStats(players){
-    return Object.fromEntries(players.map(p=>[p.id,{
-      kills:0,
-      lifeGain:0,
-      lifeLoss:0,
-      poisonGiven:0,
-      commanderGiven:0
-    }]));
-  },
-
   _normalizeState(saved){
     const base=this._fresh(saved?.players?.length||4);
     const state={...base,...saved};
-    state.matchId=saved?.matchId||base.matchId;
-    state.players=Array.isArray(saved?.players)&&saved.players.length>=this.MIN_PLAYERS?saved.players.map(p=>({
-      deck:'',
-      ...p
-    })):base.players;
-    state.damage=saved?.damage||{};
+    state.players=Array.isArray(saved?.players)&&saved.players.length>=this.MIN_PLAYERS?saved.players.map(p=>({deck:'',...p})):base.players;
     state.stats=saved?.stats&&typeof saved.stats==='object'?saved.stats:{};
-    state.players.forEach(p=>{
-      if(!state.stats[p.id])state.stats[p.id]={kills:0,lifeGain:0,lifeLoss:0,poisonGiven:0,commanderGiven:0};
-    });
+    state.players.forEach(p=>{state.stats[p.id]=state.stats[p.id]||this._emptyStats();});
+    state.damage=saved?.damage||{};
     state.active=state.players.some(p=>p.id===saved?.active)?saved.active:state.players[0].id;
     state.turnNumber=Number.isFinite(saved?.turnNumber)&&saved.turnNumber>0?saved.turnNumber:1;
     state.startedAt=Number.isFinite(saved?.startedAt)?saved.startedAt:Date.now();
@@ -79,6 +72,7 @@ const CommanderTracker={
     state.winnerId=saved?.winnerId||'';
     state.archived=!!saved?.archived;
     state.notes=typeof saved?.notes==='string'?saved.notes:'';
+    state.setupCollapsed=!!saved?.setupCollapsed;
     state.eliminated=Array.isArray(saved?.eliminated)?saved.eliminated:[];
     state.history=Array.isArray(saved?.history)?saved.history.slice(0,this.HISTORY_LIMIT):base.history;
     return state;
@@ -116,7 +110,6 @@ const CommanderTracker={
       if(!this.state)return;
       this.renderDashboard();
       this.renderSummary();
-      this.renderMatchHistory();
     },1000);
   },
 
@@ -124,8 +117,8 @@ const CommanderTracker={
     return this.state.players.find(p=>p.id===id);
   },
 
-  _playerStats(id){
-    this.state.stats[id]=this.state.stats[id]||{kills:0,lifeGain:0,lifeLoss:0,poisonGiven:0,commanderGiven:0};
+  _stats(id){
+    this.state.stats[id]=this.state.stats[id]||this._emptyStats();
     return this.state.stats[id];
   },
 
@@ -138,8 +131,8 @@ const CommanderTracker={
     this.state.damage[targetId][sourceId]=Math.max(0,Math.min(99,value));
   },
 
-  _isEliminated(playerId){
-    return (this.state.eliminated||[]).some(entry=>entry.id===playerId);
+  _isEliminated(id){
+    return this.state.eliminated.some(entry=>entry.id===id);
   },
 
   _isDefeatedNow(player){
@@ -171,18 +164,11 @@ const CommanderTracker={
   },
 
   _initials(name){
-    return String(name||'Player')
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0,2)
-      .map(part=>part[0]?.toUpperCase()||'')
-      .join('')||'P';
+    return String(name||'Player').trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]?.toUpperCase()||'').join('')||'P';
   },
 
   _elapsedMs(){
-    const end=this.state?.finishedAt||Date.now();
-    return Math.max(0,end-(this.state?.startedAt||Date.now()));
+    return Math.max(0,(this.state.finishedAt||Date.now())-(this.state.startedAt||Date.now()));
   },
 
   _formatElapsed(ms){
@@ -190,55 +176,47 @@ const CommanderTracker={
     const hours=Math.floor(total/3600);
     const minutes=Math.floor((total%3600)/60);
     const seconds=total%60;
-    if(hours>0)return`${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
-    return`${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+    return hours>0
+      ? `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`
+      : `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
   },
 
   _log(text,type='event'){
     const ts=Date.now();
-    this.state.history=[{id:'evt-'+ts+'-'+Math.random().toString(36).slice(2,6),type,text,ts},...(this.state.history||[])].slice(0,this.HISTORY_LIMIT);
-  },
-
-  _statusText(player){
-    if(this.state.finishedAt&&this.state.winnerId===player.id)return'Winner';
-    if(this._isOut(player))return'Eliminated';
-    if(player.id===this.state.active)return'In turn';
-    return'Ready';
+    const next={id:'evt-'+ts+'-'+Math.random().toString(36).slice(2,5),type,text,ts};
+    const current=this.state.history||[];
+    if(current[0]?.text===text&&current[0]?.type===type)return;
+    this.state.history=[next,...current].slice(0,this.HISTORY_LIMIT);
   },
 
   _recordElimination(player,reason,killerId=''){
     if(!player||this._isEliminated(player.id))return;
     const killer=this._player(killerId);
-    const entry={id:player.id,name:player.name,turn:this.state.turnNumber||1,ts:Date.now(),reason,killerId:killer?.id||'',killerName:killer?.name||''};
-    this.state.eliminated.push(entry);
-    if(killer?.id&&killer.id!==player.id)this._playerStats(killer.id).kills++;
+    this.state.eliminated.push({
+      id:player.id,
+      name:player.name,
+      turn:this.state.turnNumber||1,
+      ts:Date.now(),
+      reason,
+      killerId:killer?.id||'',
+      killerName:killer?.name||''
+    });
+    if(killer?.id&&killer.id!==player.id)this._stats(killer.id).kills++;
     this._log(killer?.id&&killer.id!==player.id?`${player.name} was eliminated by ${killer.name}`:`${player.name} was eliminated`,'out');
   },
 
   _ensureActiveAlive(){
     if(this.state.finishedAt)return;
     const alive=this._alivePlayers();
-    if(!alive.length)return;
-    if(!alive.some(p=>p.id===this.state.active))this.state.active=alive[0].id;
+    if(alive.length&&!alive.some(p=>p.id===this.state.active))this.state.active=alive[0].id;
   },
 
   _checkGameOver(){
     if(this.state.finishedAt)return;
     const alive=this._alivePlayers();
-    if(alive.length===1){
-      this.finishGame(alive[0].id,'Last player standing');
-    }else if(alive.length===0){
-      this.finishGame('','All players eliminated');
-    }else{
-      this._ensureActiveAlive();
-    }
-  },
-
-  _topStat(key){
-    return this.state.players.reduce((best,p)=>{
-      const value=this._playerStats(p.id)[key]||0;
-      return value>best.value?{player:p,value}:{...best};
-    },{player:null,value:0});
+    if(alive.length===1)return this.finishGame(alive[0].id,'Last player standing');
+    if(alive.length===0)return this.finishGame('','All players eliminated');
+    this._ensureActiveAlive();
   },
 
   _matchPayload(){
@@ -250,46 +228,47 @@ const CommanderTracker={
       finishedAt:this.state.finishedAt||Date.now(),
       durationMs:this._elapsedMs(),
       turnNumber:this.state.turnNumber||1,
-      winnerId:this.state.winnerId||'',
       winnerName:winner?.name||'',
       finishedReason:this.state.finishedReason||'',
       notes:this.state.notes||'',
       topKillerName:topKiller.player?.name||'',
       topKillerValue:topKiller.value||0,
-      players:this.state.players.map(p=>({
-        id:p.id,
-        name:p.name,
-        deck:p.deck||'',
-        life:p.life,
-        poison:p.poison,
-        eliminated:this._isEliminated(p.id),
-        stats:this._playerStats(p.id)
-      })),
-      eliminated:[...(this.state.eliminated||[])],
-      history:(this.state.history||[]).slice(0,12)
+      eliminated:[...this.state.eliminated]
     };
   },
 
   _persistFinishedMatch(){
     if(!this.state.finishedAt||this.state.archived)return;
-    const history=this._loadMatchHistory().filter(item=>item.id!==this.state.matchId);
-    history.unshift(this._matchPayload());
-    this._saveMatchHistory(history);
+    const next=[this._matchPayload(),...this._loadMatchHistory().filter(item=>item.id!==this.state.matchId)];
+    this._saveMatchHistory(next);
     this.state.archived=true;
   },
 
+  _topStat(key){
+    return this.state.players.reduce((best,p)=>{
+      const value=this._stats(p.id)[key]||0;
+      return value>best.value?{player:p,value}:best;
+    },{player:null,value:0});
+  },
+
+  toggleSetup(){
+    this.state.setupCollapsed=!this.state.setupCollapsed;
+    this._save();
+    this.renderSetup();
+  },
+
   addPlayer(){
-    if(this.state.players.length>=this.MAX_PLAYERS||this.state.finishedAt){if(typeof Notify!=='undefined')Notify.show(this.state.finishedAt?'Game already finished':'Maximum 6 players','inf');return;}
+    if(this.state.players.length>=this.MAX_PLAYERS||this.state.finishedAt)return;
     const next=this.state.players.length+1;
     const player={id:'p'+Date.now().toString(36),name:'Player '+next,deck:'',life:this.START_LIFE,poison:0,monarch:false,initiative:false};
     this.state.players.push(player);
-    this.state.stats[player.id]={kills:0,lifeGain:0,lifeLoss:0,poisonGiven:0,commanderGiven:0};
+    this.state.stats[player.id]=this._emptyStats();
     this._log(`${player.name} joined the pod`,'join');
     this._save();this.render();
   },
 
   removePlayer(){
-    if(this.state.players.length<=this.MIN_PLAYERS||this.state.finishedAt){if(typeof Notify!=='undefined')Notify.show(this.state.finishedAt?'Game already finished':'Minimum 2 players','inf');return;}
+    if(this.state.players.length<=this.MIN_PLAYERS||this.state.finishedAt)return;
     const removed=this.state.players.pop();
     delete this.state.damage[removed.id];
     Object.values(this.state.damage).forEach(row=>delete row[removed.id]);
@@ -301,22 +280,22 @@ const CommanderTracker={
   },
 
   resetGame(){
-    const count=this.state?.players?.length||4;
-    const savedPlayers=(this.state?.players||[]).map(p=>({name:p.name,deck:p.deck||''}));
-    this.state=this._fresh(count);
+    const preserved=this.state.players.map(p=>({name:p.name,deck:p.deck||''}));
+    this.state=this._fresh(this.state.players.length||4);
     this.state.players.forEach((p,i)=>{
-      if(savedPlayers[i]?.name)p.name=savedPlayers[i].name;
-      if(savedPlayers[i]?.deck)p.deck=savedPlayers[i].deck;
+      p.name=preserved[i]?.name||p.name;
+      p.deck=preserved[i]?.deck||'';
     });
     this._save();this.render();
-    if(typeof Notify!=='undefined')Notify.show('New Commander game ready','ok');
   },
 
   setPlayerName(id,value){
     const p=this._player(id);if(!p)return;
-    const old=p.name;
-    p.name=(value||'').trim().slice(0,24)||'Player';
-    if(old!==p.name)this._log(`${old} is now ${p.name}`,'rename');
+    const next=(value||'').trim().slice(0,24)||'Player';
+    if(p.name!==next){
+      this._log(`${p.name} is now ${next}`,'rename');
+      p.name=next;
+    }
     this._save();this.render();
   },
 
@@ -327,9 +306,8 @@ const CommanderTracker={
   },
 
   setStartingPlayer(id){
-    const p=this._player(id);if(!p||this.state.finishedAt)return;
+    if(this.state.finishedAt||!this._player(id))return;
     this.state.active=id;
-    this._log(`${p.name} was set as starting player`,'turn');
     this._save();this.render();
   },
 
@@ -337,12 +315,10 @@ const CommanderTracker={
     const p=this._player(id);if(!p||!delta||this.state.finishedAt||this._isEliminated(id))return;
     const before=p.life;
     p.life=Math.max(-99,Math.min(999,p.life+delta));
-    if(before!==p.life){
-      if(delta>0)this._playerStats(id).lifeGain+=delta;
-      else this._playerStats(id).lifeLoss+=Math.abs(delta);
-      this._log(`${p.name} ${delta>0?'gained':'lost'} ${Math.abs(delta)} life (${p.life})`,delta>0?'heal':'damage');
-      if(this._isDefeatedNow(p))this._recordElimination(p,'life',delta<0&&this.state.active!==id?this.state.active:'');
-    }
+    if(before===p.life)return;
+    if(delta>0)this._stats(id).lifeGain+=delta; else this._stats(id).lifeLoss+=Math.abs(delta);
+    this._log(`${p.name} ${delta>0?'gained':'lost'} ${Math.abs(delta)} life (${p.life})`,delta>0?'heal':'damage');
+    if(this._isDefeatedNow(p))this._recordElimination(p,'life',delta<0&&this.state.active!==id?this.state.active:'');
     this._checkGameOver();
     this._save();this.render();
   },
@@ -352,8 +328,7 @@ const CommanderTracker={
     this.state.players.forEach(p=>{
       if(this._isEliminated(p.id))return;
       p.life=Math.max(-99,Math.min(999,p.life+delta));
-      if(delta>0)this._playerStats(p.id).lifeGain+=delta;
-      else this._playerStats(p.id).lifeLoss+=Math.abs(delta);
+      if(delta>0)this._stats(p.id).lifeGain+=delta; else this._stats(p.id).lifeLoss+=Math.abs(delta);
       if(this._isDefeatedNow(p))this._recordElimination(p,'global');
     });
     this._log(`All active players ${delta>0?'gained':'lost'} ${Math.abs(delta)} life`,'global');
@@ -365,28 +340,24 @@ const CommanderTracker={
     const p=this._player(id);if(!p||!delta||this.state.finishedAt||this._isEliminated(id))return;
     const before=p.poison;
     p.poison=Math.max(0,Math.min(10,p.poison+delta));
-    if(before!==p.poison){
-      if(delta>0&&this.state.active&&this.state.active!==id)this._playerStats(this.state.active).poisonGiven+=delta;
-      this._log(`${p.name} ${delta>0?'gained':'lost'} ${Math.abs(delta)} poison (${p.poison})`,delta>0?'poison':'cleanse');
-      if(this._isDefeatedNow(p))this._recordElimination(p,'poison',delta>0&&this.state.active!==id?this.state.active:'');
-    }
+    if(before===p.poison)return;
+    if(delta>0&&this.state.active&&this.state.active!==id)this._stats(this.state.active).poisonGiven+=delta;
+    this._log(`${p.name} ${delta>0?'gained':'lost'} ${Math.abs(delta)} poison (${p.poison})`,delta>0?'poison':'cleanse');
+    if(this._isDefeatedNow(p))this._recordElimination(p,'poison',delta>0&&this.state.active!==id?this.state.active:'');
     this._checkGameOver();
     this._save();this.render();
   },
 
   adjustCommander(targetId,sourceId,delta){
-    if(!delta||this.state.finishedAt||this._isEliminated(targetId))return;
-    const target=this._player(targetId);
-    const source=this._player(sourceId);
-    if(!target||!source)return;
+    const target=this._player(targetId),source=this._player(sourceId);
+    if(!target||!source||!delta||this.state.finishedAt||this._isEliminated(targetId))return;
     const before=this._damage(targetId,sourceId);
     this._setDamage(targetId,sourceId,before+delta);
     const after=this._damage(targetId,sourceId);
-    if(before!==after){
-      if(delta>0)this._playerStats(sourceId).commanderGiven+=delta;
-      this._log(`${source.name} ${delta>0?'dealt':'reduced'} commander damage ${delta>0?'to':'on'} ${target.name} (${after})`,'commander');
-      if(after>=21)this._recordElimination(target,'commander',sourceId);
-    }
+    if(before===after)return;
+    if(delta>0)this._stats(sourceId).commanderGiven+=delta;
+    this._log(`${source.name} ${delta>0?'dealt':'reduced'} commander damage ${delta>0?'to':'on'} ${target.name} (${after})`,'commander');
+    if(after>=21)this._recordElimination(target,'commander',sourceId);
     this._checkGameOver();
     this._save();this.render();
   },
@@ -395,11 +366,10 @@ const CommanderTracker={
     if(this.state.finishedAt)return;
     const players=this._alivePlayers();
     if(!players.length)return;
-    const currentIndex=Math.max(0,players.findIndex(p=>p.id===this.state.active));
-    const nextIndex=(currentIndex+1)%players.length;
-    this.state.active=players[nextIndex].id;
+    const current=Math.max(0,players.findIndex(p=>p.id===this.state.active));
+    this.state.active=players[(current+1)%players.length].id;
     this.state.turnNumber=(this.state.turnNumber||1)+1;
-    this._log(`Turn ${this.state.turnNumber}: ${players[nextIndex].name} is up`,'turn');
+    this._log(`Turn ${this.state.turnNumber}: ${this._player(this.state.active)?.name||'Next player'} is up`,'turn');
     this._save();this.render();
   },
 
@@ -427,7 +397,7 @@ const CommanderTracker={
   },
 
   setNotes(value){
-    this.state.notes=String(value||'').slice(0,1500);
+    this.state.notes=String(value||'').slice(0,1200);
     this._save();
   },
 
@@ -440,13 +410,11 @@ const CommanderTracker={
     this.state.finishedReason=reason;
     this._log(winner?`${winner.name} won the game`:'Game finished','finish');
     this._persistFinishedMatch();
-    this._save();
-    this.render();
+    this._save();this.render();
   },
 
   exportHistory(){
-    const history=this._loadMatchHistory();
-    const blob=new Blob([JSON.stringify(history,null,2)],{type:'application/json'});
+    const blob=new Blob([JSON.stringify(this._loadMatchHistory(),null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
@@ -457,7 +425,6 @@ const CommanderTracker={
 
   render(){
     if(!document.getElementById('tracker-board'))return;
-    if(!this.state)this.state=this._load();
     this.renderSetup();
     this.renderDashboard();
     this.renderBoard();
@@ -470,8 +437,12 @@ const CommanderTracker={
   },
 
   renderSetup(){
+    const wrap=document.getElementById('tracker-setup-panel');
     const grid=document.getElementById('tracker-setup-grid');
-    if(!grid)return;
+    const toggle=document.getElementById('tracker-setup-toggle');
+    if(!wrap||!grid||!toggle)return;
+    wrap.classList.toggle('collapsed',this.state.setupCollapsed);
+    toggle.textContent=this.state.setupCollapsed?'Show setup':'Hide setup';
     grid.innerHTML=this.state.players.map((p,index)=>`
       <div class="tracker-setup-card ${this.state.active===p.id?'is-starting':''}">
         <div class="tracker-setup-seat">Seat ${index+1}</div>
@@ -483,32 +454,29 @@ const CommanderTracker={
   },
 
   renderDashboard(){
-    const active=this._player(this.state.active);
     const turn=document.getElementById('tracker-turn-chip');
-    const player=document.getElementById('tracker-active-chip');
+    const active=document.getElementById('tracker-active-chip');
     const elapsed=document.getElementById('tracker-elapsed-chip');
     const pod=document.getElementById('tracker-pod-chip');
-    if(turn)turn.textContent=this.state.finishedAt?'Final':'Turn '+(this.state.turnNumber||1);
-    if(player)player.textContent=this.state.finishedAt?(this._player(this.state.winnerId)?.name||'No winner'):(active?active.name:'-');
+    if(turn)turn.textContent=this.state.finishedAt?'Final':'Turn '+this.state.turnNumber;
+    if(active)active.textContent=this.state.finishedAt?(this._player(this.state.winnerId)?.name||'No winner'):(this._player(this.state.active)?.name||'-');
     if(elapsed)elapsed.textContent=this._formatElapsed(this._elapsedMs());
     if(pod)pod.textContent=this.state.players.length+' Players';
   },
 
   renderBoard(){
     const board=document.getElementById('tracker-board');if(!board)return;
-    const players=this.state.players;
-    board.className='tracker-board players-'+players.length;
-    board.innerHTML=players.map((p,i)=>this._playerCard(p,i)).join('');
+    board.className='tracker-board players-'+this.state.players.length;
+    board.innerHTML=this.state.players.map((p,i)=>this._playerCard(p,i)).join('');
   },
 
   _playerCard(p,i){
     const out=this._isOut(p);
-    const lifeState=this._lifeState(p);
     const maxCmd=Math.max(0,...this.state.players.filter(src=>src.id!==p.id).map(src=>this._damage(p.id,src.id)));
     const badges=[
-      !this.state.finishedAt&&this.state.active===p.id?'<button class="tracker-status-badge active" onclick="CommanderTracker.nextTurn()" title="Pass turn to the next player">Active Turn</button>':'',
-      p.monarch?`<button class="tracker-status-badge monarch" onclick="CommanderTracker.toggle('${p.id}','monarch')" title="Remove Monarch">Monarch</button>`:'',
-      p.initiative?`<button class="tracker-status-badge initiative" onclick="CommanderTracker.toggle('${p.id}','initiative')" title="Remove Initiative">Initiative</button>`:'',
+      !this.state.finishedAt&&this.state.active===p.id?'<button class="tracker-status-badge active" onclick="CommanderTracker.nextTurn()">Active Turn</button>':'',
+      p.monarch?`<button class="tracker-status-badge monarch" onclick="CommanderTracker.toggle('${p.id}','monarch')">Monarch</button>`:'',
+      p.initiative?`<button class="tracker-status-badge initiative" onclick="CommanderTracker.toggle('${p.id}','initiative')">Initiative</button>`:'',
       this.state.finishedAt&&this.state.winnerId===p.id?'<span class="tracker-status-badge winner">Winner</span>':'',
       out?'<span class="tracker-status-badge out">Knocked Out</span>':''
     ].filter(Boolean).join('');
@@ -517,12 +485,12 @@ const CommanderTracker={
       const state=this._damageState(value);
       return`
         <div class="tracker-inline-cmd ${state}">
-          <button class="tracker-inline-btn" onclick="CommanderTracker.adjustCommander('${p.id}','${src.id}',-1)" aria-label="Reduce commander damage from ${esc(src.name)} to ${esc(p.name)}">-</button>
-          <button class="tracker-inline-main" onclick="CommanderTracker.adjustCommander('${p.id}','${src.id}',1)" aria-label="Add commander damage from ${esc(src.name)} to ${esc(p.name)}">
+          <button class="tracker-inline-btn" onclick="CommanderTracker.adjustCommander('${p.id}','${src.id}',-1)">-</button>
+          <button class="tracker-inline-main" onclick="CommanderTracker.adjustCommander('${p.id}','${src.id}',1)">
             <span>${esc(src.name)}</span>
             <strong>${value}</strong>
           </button>
-          <button class="tracker-inline-btn" onclick="CommanderTracker.adjustCommander('${p.id}','${src.id}',1)" aria-label="Add commander damage from ${esc(src.name)} to ${esc(p.name)}">+</button>
+          <button class="tracker-inline-btn" onclick="CommanderTracker.adjustCommander('${p.id}','${src.id}',1)">+</button>
         </div>`;
     }).join('');
     return`
@@ -531,14 +499,14 @@ const CommanderTracker={
         <div class="tracker-card-status">${badges}</div>
         <div class="tracker-card-top">
           <div class="tracker-card-heading">
-            <input class="tracker-name" value="${esc(p.name)}" maxlength="24" onchange="CommanderTracker.setPlayerName('${p.id}',this.value)" onfocus="this.select()" aria-label="Player name">
+            <input class="tracker-name" value="${esc(p.name)}" maxlength="24" onchange="CommanderTracker.setPlayerName('${p.id}',this.value)" onfocus="this.select()">
             <div class="tracker-deck-name">${esc(p.deck||'No deck set')}</div>
           </div>
-          <button class="tracker-turn ${this.state.active===p.id&&!this.state.finishedAt?'active':''}" onclick="${this.state.finishedAt||out?'void(0)':this.state.active===p.id?'CommanderTracker.nextTurn()':`CommanderTracker.setActive('${p.id}')`}">${this.state.finishedAt?(this.state.winnerId===p.id?'Won':'Finished'):out?'Out':this.state.active===p.id?'Pass Turn':'Set Turn'}</button>
+          <button class="tracker-turn ${this.state.active===p.id&&!this.state.finishedAt?'active':''}" onclick="${this.state.finishedAt||out?'void(0)':this.state.active===p.id?'CommanderTracker.nextTurn()':`CommanderTracker.setStartingPlayer('${p.id}')`}">${this.state.finishedAt?(this.state.winnerId===p.id?'Won':'Done'):out?'Out':this.state.active===p.id?'Pass Turn':'Set Turn'}</button>
         </div>
         <div class="tracker-life-wrap">
           <div class="tracker-life-kicker">${this._statusText(p)}</div>
-          <div class="tracker-life ${lifeState}">${p.life}</div>
+          <div class="tracker-life ${this._lifeState(p)}">${p.life}</div>
         </div>
         <div class="tracker-life-controls">
           <button onclick="CommanderTracker.adjustLife('${p.id}',-10)">-10</button>
@@ -549,23 +517,10 @@ const CommanderTracker={
           <button onclick="CommanderTracker.adjustLife('${p.id}',10)">+10</button>
         </div>
         <div class="tracker-mini-row">
-          <div class="tracker-counter">
-            <span>Poison</span>
-            <div>
-              <button onclick="CommanderTracker.adjustPoison('${p.id}',-1)">-</button>
-              <b>${p.poison}</b>
-              <button onclick="CommanderTracker.adjustPoison('${p.id}',1)">+</button>
-            </div>
-          </div>
-          <div class="tracker-counter ${this._damageState(maxCmd)}">
-            <span>Cmdr max</span>
-            <strong class="${this._damageState(maxCmd)}">${maxCmd}</strong>
-          </div>
+          <div class="tracker-counter"><span>Poison</span><div><button onclick="CommanderTracker.adjustPoison('${p.id}',-1)">-</button><b>${p.poison}</b><button onclick="CommanderTracker.adjustPoison('${p.id}',1)">+</button></div></div>
+          <div class="tracker-counter ${this._damageState(maxCmd)}"><span>Cmdr max</span><strong class="${this._damageState(maxCmd)}">${maxCmd}</strong></div>
         </div>
-        <div class="tracker-inline-section">
-          <div class="tracker-inline-title">Commander damage taken</div>
-          <div class="tracker-inline-grid">${commanderRows}</div>
-        </div>
+        <div class="tracker-inline-section"><div class="tracker-inline-title">Commander damage taken</div><div class="tracker-inline-grid">${commanderRows}</div></div>
         <div class="tracker-tags">
           <button class="${p.monarch?'on':''}" onclick="CommanderTracker.toggle('${p.id}','monarch')">Monarch</button>
           <button class="${p.initiative?'on':''}" onclick="CommanderTracker.toggle('${p.id}','initiative')">Initiative</button>
@@ -575,116 +530,44 @@ const CommanderTracker={
 
   renderDamage(){
     const grid=document.getElementById('tracker-damage-grid');if(!grid)return;
-    const rows=[];
-    for(const target of this.state.players){
-      for(const source of this.state.players){
-        if(source.id===target.id)continue;
-        const value=this._damage(target.id,source.id);
-        const state=this._damageState(value);
-        rows.push(`
-          <div class="tracker-damage-row ${state}">
-            <div class="tracker-damage-label">
-              <b>${esc(source.name)}</b>
-              <span>to ${esc(target.name)}</span>
-            </div>
-            <div class="tracker-damage-controls">
-              <button onclick="CommanderTracker.adjustCommander('${target.id}','${source.id}',-1)">-</button>
-              <strong>${value}</strong>
-              <button onclick="CommanderTracker.adjustCommander('${target.id}','${source.id}',1)">+</button>
-            </div>
-          </div>`);
-      }
-    }
-    grid.innerHTML=rows.join('');
+    grid.innerHTML=this.state.players.flatMap(target=>this.state.players.filter(source=>source.id!==target.id).map(source=>{
+      const value=this._damage(target.id,source.id);
+      return`
+        <div class="tracker-damage-row ${this._damageState(value)}">
+          <div class="tracker-damage-label"><b>${esc(source.name)}</b><span>to ${esc(target.name)}</span></div>
+          <div class="tracker-damage-controls"><button onclick="CommanderTracker.adjustCommander('${target.id}','${source.id}',-1)">-</button><strong>${value}</strong><button onclick="CommanderTracker.adjustCommander('${target.id}','${source.id}',1)">+</button></div>
+        </div>`;
+    })).join('');
   },
 
   renderSummary(){
     const body=document.getElementById('tracker-summary-grid');
     const banner=document.getElementById('tracker-summary-banner');
-    const winnerChooser=document.getElementById('tracker-winner-chooser');
-    const order=document.getElementById('tracker-elimination-order');
-    if(!body||!banner||!winnerChooser||!order)return;
+    const chooser=document.getElementById('tracker-winner-chooser');
+    if(!body||!banner||!chooser)return;
     const alive=this._alivePlayers();
-    const leader=[...this.state.players].sort((a,b)=>b.life-a.life)[0];
     const winner=this._player(this.state.winnerId);
-    const monarch=this.state.players.find(p=>p.monarch);
+    const leader=[...this.state.players].sort((a,b)=>b.life-a.life)[0];
     const topKiller=this._topStat('kills');
-    const topCommander=this._topStat('commanderGiven');
     banner.className='tracker-summary-banner'+(this.state.finishedAt?' finished':'');
-    banner.innerHTML=this.state.finishedAt
-      ? `<strong>${winner?esc(winner.name):'No winner set'}</strong><span>${esc(this.state.finishedReason||'Game finished')}</span>`
-      : `<strong>Game live</strong><span>${alive.length} players still in the game</span>`;
+    banner.innerHTML=this.state.finishedAt?`<strong>${winner?esc(winner.name):'No winner set'}</strong><span>${esc(this.state.finishedReason||'Game finished')}</span>`:`<strong>Game live</strong><span>${alive.length} players still in the game</span>`;
     body.innerHTML=`
-      <div class="tracker-summary-stat">
-        <span>Players Alive</span>
-        <strong>${alive.length}</strong>
-        <small>${this.state.players.length-alive.length} eliminated</small>
-      </div>
-      <div class="tracker-summary-stat">
-        <span>Life Leader</span>
-        <strong>${leader?esc(leader.name):'-'}</strong>
-        <small>${leader?leader.life+' life':'No data'}</small>
-      </div>
-      <div class="tracker-summary-stat">
-        <span>Top Killer</span>
-        <strong>${topKiller.player?esc(topKiller.player.name):'Nobody yet'}</strong>
-        <small>${topKiller.value||0} kill${topKiller.value===1?'':'s'}</small>
-      </div>
-      <div class="tracker-summary-stat">
-        <span>Commander Pressure</span>
-        <strong>${topCommander.player?esc(topCommander.player.name):'Quiet board'}</strong>
-        <small>${topCommander.value||0} total commander damage</small>
-      </div>
-      <div class="tracker-summary-stat">
-        <span>Monarch</span>
-        <strong>${monarch?esc(monarch.name):'Unclaimed'}</strong>
-        <small>${winner?`Winner: ${esc(winner.name)}`:'Winner pending'}</small>
-      </div>
-      <div class="tracker-summary-stat">
-        <span>Duration</span>
-        <strong>${this._formatElapsed(this._elapsedMs())}</strong>
-        <small>Turn ${this.state.turnNumber||1}</small>
-      </div>`;
-    winnerChooser.innerHTML=this.state.finishedAt
-      ? ''
-      : `<div class="tracker-winner-title">Declare winner</div><div class="tracker-winner-buttons">${alive.map(p=>`<button class="tracker-winner-btn" onclick="CommanderTracker.finishGame('${p.id}','Winner declared manually')">${esc(p.name)}</button>`).join('')}<button class="tracker-winner-btn ghost" onclick="CommanderTracker.finishGame('','Stopped without winner')">No winner</button></div>`;
-    const eliminated=this.state.eliminated||[];
-    order.innerHTML=eliminated.length
-      ? eliminated.map((entry,index)=>`<div class="tracker-order-item"><span>#${index+1}</span><strong>${esc(entry.name)}</strong><small>${entry.killerName?`by ${esc(entry.killerName)}`:`Turn ${entry.turn}`}</small></div>`).join('')
-      : '<div class="tracker-log-empty">No eliminations yet.</div>';
+      <div class="tracker-summary-stat"><span>Players Alive</span><strong>${alive.length}</strong><small>${this.state.players.length-alive.length} eliminated</small></div>
+      <div class="tracker-summary-stat"><span>Life Leader</span><strong>${leader?esc(leader.name):'-'}</strong><small>${leader?leader.life+' life':'No data'}</small></div>
+      <div class="tracker-summary-stat"><span>Top Killer</span><strong>${topKiller.player?esc(topKiller.player.name):'Nobody yet'}</strong><small>${topKiller.value} kill${topKiller.value===1?'':'s'}</small></div>
+      <div class="tracker-summary-stat"><span>Duration</span><strong>${this._formatElapsed(this._elapsedMs())}</strong><small>Turn ${this.state.turnNumber}</small></div>`;
+    chooser.innerHTML=this.state.finishedAt?'':`<div class="tracker-winner-buttons">${alive.map(p=>`<button class="tracker-winner-btn" onclick="CommanderTracker.finishGame('${p.id}','Winner declared manually')">${esc(p.name)}</button>`).join('')}<button class="tracker-winner-btn ghost" onclick="CommanderTracker.finishGame('','Stopped without winner')">No winner</button></div>`;
   },
 
   renderHistory(){
-    const list=document.getElementById('tracker-log-list');
-    if(!list)return;
-    const items=this.state.history||[];
-    if(!items.length){
-      list.innerHTML='<div class="tracker-log-empty">No events yet. Start the game and the tracker will build a match log.</div>';
-      return;
-    }
-    list.innerHTML=items.map(item=>`
-      <div class="tracker-log-item ${item.type||'event'}">
-        <div class="tracker-log-time">${new Date(item.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
-        <div class="tracker-log-text">${esc(item.text)}</div>
-      </div>`).join('');
+    const list=document.getElementById('tracker-log-list');if(!list)return;
+    list.innerHTML=(this.state.history.length?this.state.history.map(item=>`<div class="tracker-log-item ${item.type||'event'}"><div class="tracker-log-time">${new Date(item.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div><div class="tracker-log-text">${esc(item.text)}</div></div>`).join(''):'<div class="tracker-log-empty">No events yet.</div>');
   },
 
   renderMatchHistory(){
-    const list=document.getElementById('tracker-match-history');
-    if(!list)return;
+    const list=document.getElementById('tracker-match-history');if(!list)return;
     const items=this._loadMatchHistory();
-    if(!items.length){
-      list.innerHTML='<div class="tracker-log-empty">Finished matches will appear here.</div>';
-      return;
-    }
-    list.innerHTML=items.map(item=>`
-      <div class="tracker-history-item">
-        <div>
-          <strong>${esc(item.winnerName||'No winner')}</strong>
-          <span>${new Date(item.finishedAt).toLocaleDateString()} · ${item.turnNumber} turns${item.topKillerName?` · MVP ${esc(item.topKillerName)}`:''}</span>
-        </div>
-        <small>${this._formatElapsed(item.durationMs||0)}</small>
-      </div>`).join('');
+    list.innerHTML=items.length?items.map(item=>`<div class="tracker-history-item"><div><strong>${esc(item.winnerName||'No winner')}</strong><span>${new Date(item.finishedAt).toLocaleDateString()} · ${item.turnNumber} turns</span></div><small>${this._formatElapsed(item.durationMs||0)}</small></div>`).join(''):'<div class="tracker-log-empty">Finished matches will appear here.</div>';
   }
 };
 

@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script>
-window.APP_VERSION = '202604232020';
+window.APP_VERSION = '202604232140';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
 </head>
@@ -114,6 +114,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
               <div class="tracker-kicker">Pod setup</div>
               <div class="tracker-panel-title">Choose names, decks and the starting seat before the game gets hectic.</div>
             </div>
+            <button class="tbtn sm" id="tracker-setup-toggle" onclick="CommanderTracker.toggleSetup()">Hide setup</button>
           </div>
           <div class="tracker-setup-grid" id="tracker-setup-grid"></div>
         </section>
@@ -142,7 +143,6 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <div class="tracker-summary-banner" id="tracker-summary-banner"></div>
             <div class="tracker-summary-grid" id="tracker-summary-grid"></div>
             <div id="tracker-winner-chooser"></div>
-            <div class="tracker-order-list" id="tracker-elimination-order"></div>
           </section>
 
           <section class="tracker-meta-panel">
