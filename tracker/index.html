@@ -3,170 +3,56 @@
 <head>
 <meta charset="UTF-8">
 <title>Tracker | MagicTheDrinkering</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#06090f">
-<meta name="description" content="MagicTheDrinkering Tracker - eigenstaendige Unterseite fuer den Commander Life Tracker">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="MagicTheDrinkering – Multiplayer Commander Tracker">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script>
-window.APP_VERSION = '202604240045';
-document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
+window.APP_VERSION = '202604300001';
 </script>
+<!-- Dein bestehendes CSS (falls noch gebraucht) -->
+<!-- <link rel="stylesheet" href="/css/main.css"> -->
+
+<!-- Neues Multiplayer CSS -->
+<link rel="stylesheet" href="/css/tracker-multiplayer.css">
+
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    background: #06090f;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+  }
+</style>
 </head>
-<body class="tracker-page" data-section="tracker">
-<div id="shell">
-  <header id="topbar" class="tracker-topbar">
-    <div class="tracker-topbar-brand">
-      <div class="logo">MagicThe<em> Drinkering</em></div>
-      <div class="tracker-topbar-copy">
-        <span class="tracker-topbar-kicker">Commander pod</span>
-        <strong>Tracker</strong>
-      </div>
+<body>
+
+<!-- Multiplayer Root – hier rendert der JS alles rein -->
+<div id="mp-root">
+  <!-- Ladescreen bis JS ready ist -->
+  <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#06090f;">
+    <div style="text-align:center;">
+      <div style="width:32px;height:32px;border:2px solid rgba(201,168,76,.2);border-top-color:#c9a84c;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem;"></div>
+      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+      <div style="color:rgba(232,224,208,.3);font-family:serif;font-size:.9rem;">Lade Tracker…</div>
     </div>
-    <div class="spacer"></div>
-    <div class="tracker-topbar-actions">
-      <a class="tbtn" href="/">Startseite</a>
-      <a class="tbtn gold" href="/tracker/">Tracker</a>
-    </div>
-  </header>
-
-  <main id="main">
-    <div id="section-tracker" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
-      <div class="tracker-shell">
-        <div class="tracker-toolbar">
-          <div class="tracker-toolbar-copy">
-            <div class="tracker-kicker">Live match</div>
-            <h1 class="tracker-title">Pod Control</h1>
-            <p class="tracker-toolbar-sub">Setup, turn flow and match state in one focused view.</p>
-          </div>
-          <div class="tracker-actions">
-            <div class="tracker-action-group">
-              <button class="tbtn" onclick="CommanderTracker.adjustAll(-1)">All -1</button>
-              <button class="tbtn" onclick="CommanderTracker.adjustAll(1)">All +1</button>
-            </div>
-            <div class="tracker-action-group">
-              <button class="tbtn" onclick="CommanderTracker.addPlayer()">Add Player</button>
-              <button class="tbtn" onclick="CommanderTracker.removePlayer()">Remove Player</button>
-              <button class="tbtn" id="tracker-start-btn" onclick="CommanderTracker.startGame()">Start Game</button>
-            </div>
-            <div class="tracker-action-group tracker-action-group-emphasis">
-              <button class="tbtn" id="tracker-finish-btn" onclick="CommanderTracker.finishGame('', 'Stopped manually')">Finish</button>
-              <button class="tbtn gold" id="tracker-reset-btn" onclick="CommanderTracker.resetGame()">New Game</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="tracker-dashboard">
-          <div class="tracker-chip">
-            <span>Turn</span>
-            <strong id="tracker-turn-chip">Turn 1</strong>
-          </div>
-          <div class="tracker-chip">
-            <span>Active</span>
-            <strong id="tracker-active-chip">Player 1</strong>
-          </div>
-          <div class="tracker-chip">
-            <span>Elapsed</span>
-            <strong id="tracker-elapsed-chip">00:00</strong>
-          </div>
-          <div class="tracker-chip">
-            <span>Pod</span>
-            <strong id="tracker-pod-chip">4 Players</strong>
-          </div>
-        </div>
-
-        <section class="tracker-setup-panel" id="tracker-setup-panel">
-          <div class="tracker-panel-head">
-            <div>
-              <div class="tracker-kicker">Pod setup</div>
-              <div class="tracker-panel-title">Seats, decks and starting player before turn one.</div>
-            </div>
-            <div class="tracker-setup-actions">
-              <div class="tracker-data-pill" id="tracker-data-pill">Loading deck data...</div>
-              <button class="tbtn sm" onclick="CommanderTracker.autoFillPod()">Auto Fill Pod</button>
-              <button class="tbtn sm" onclick="CommanderTracker.randomizeStarter()">Random Starter</button>
-              <button class="tbtn sm" id="tracker-setup-toggle" onclick="CommanderTracker.toggleSetup()">Hide setup</button>
-            </div>
-          </div>
-          <div class="tracker-setup-grid" id="tracker-setup-grid"></div>
-        </section>
-
-        <div class="tracker-board" id="tracker-board"></div>
-
-        <div class="tracker-damage-panel">
-          <div class="tracker-panel-head">
-            <div>
-              <div class="tracker-kicker">Commander damage</div>
-              <div class="tracker-panel-title">21 damage from one commander knocks a player out.</div>
-            </div>
-            <button class="tbtn sm" onclick="CommanderTracker.clearCommanderDamage()">Clear damage</button>
-          </div>
-          <div class="tracker-damage-grid" id="tracker-damage-grid"></div>
-        </div>
-
-        <div class="tracker-meta-grid">
-          <section class="tracker-meta-panel">
-            <div class="tracker-panel-head">
-              <div>
-                <div class="tracker-kicker">Match summary</div>
-                <div class="tracker-panel-title">Fast read on the current table.</div>
-              </div>
-            </div>
-            <div class="tracker-summary-banner" id="tracker-summary-banner"></div>
-            <div class="tracker-summary-grid" id="tracker-summary-grid"></div>
-            <div id="tracker-winner-chooser"></div>
-          </section>
-
-          <section class="tracker-meta-panel">
-            <div class="tracker-panel-head">
-              <div>
-                <div class="tracker-kicker">Event log</div>
-                <div class="tracker-panel-title">Important moments from the pod.</div>
-              </div>
-            </div>
-            <div class="tracker-log-list" id="tracker-log-list"></div>
-          </section>
-        </div>
-
-        <div class="tracker-meta-grid tracker-meta-grid-secondary">
-          <section class="tracker-meta-panel">
-            <div class="tracker-panel-head">
-              <div>
-                <div class="tracker-kicker">Match notes</div>
-                <div class="tracker-panel-title">Save the key moments of the pod.</div>
-              </div>
-            </div>
-            <textarea id="tracker-note-input" class="tracker-note-input" placeholder="Add notes about swings, politics, misplays or epic moments..." oninput="CommanderTracker.setNotes(this.value)"></textarea>
-          </section>
-
-          <section class="tracker-meta-panel">
-            <div class="tracker-panel-head">
-              <div>
-                <div class="tracker-kicker">Recent matches</div>
-                <div class="tracker-panel-title">Stored locally on this device.</div>
-              </div>
-              <button class="tbtn sm" onclick="CommanderTracker.exportHistory()">Export</button>
-            </div>
-            <div class="tracker-match-history" id="tracker-match-history"></div>
-          </section>
-        </div>
-      </div>
-    </div>
-  </main>
+  </div>
 </div>
 
-<script>
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-</script>
+<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script>
-document.write('<script src="/js/tracker.js?v='+window.APP_VERSION+'"><\/script>');
-</script>
+
+<!-- Multiplayer Tracker -->
+<script src="/js/tracker-multiplayer.js"></script>
+
 </body>
 </html>
