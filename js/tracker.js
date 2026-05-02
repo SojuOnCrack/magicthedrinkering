@@ -1,33 +1,34 @@
-/* MagicTheDrinkering – Multiplayer Commander Tracker
+﻿/* MagicTheDrinkering â€“ Multiplayer Commander Tracker
    Supabase Realtime Lobby System
-   ─────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-/* ── Hilfsfunktionen ── */
+/* â”€â”€ Hilfsfunktionen â”€â”€ */
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-/* ── Supabase Config (gleiche wie bisher) ── */
+/* â”€â”€ Supabase Config (gleiche wie bisher) â”€â”€ */
 const SUPABASE_URL = 'https://pwrpvtzocycnemgnsooz.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_doroVk7_Pblbapi7z9njyQ_zfVTZOmG';
 
-/* ══════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MULTIPLAYER TRACKER
-══════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const MPTracker = {
 
-  /* ── Konstanten ── */
+  /* â”€â”€ Konstanten â”€â”€ */
   START_LIFE: 40,
   MAX_PLAYERS: 6,
   SESSION_KEY: 'mtd_mp_session_v1',
   LOBBY_STATE_KEY: 'mtd_mp_lobby_state_v1',
   COLORS: ['gold','ice','green','crimson','purple','steel'],
 
-  /* ── State ── */
+  /* â”€â”€ State â”€â”€ */
   sb: null,
   sessionId: null,
   playerName: '',
   authUser: null,
   authReady: false,
   deckOptions: [],
+  combatLifelink: false,
   lobbyId: null,
   lobbyCode: null,
   myPlayerId: null,
@@ -36,7 +37,7 @@ const MPTracker = {
   subscription: null,
   phase: 'menu', // menu | creating | waiting | setup | live | finished
 
-  /* ── Init ── */
+  /* â”€â”€ Init â”€â”€ */
   async init() {
     this.sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: true, storage: window.localStorage, storageKey: 'cforge_sb_session', autoRefreshToken: true, detectSessionInUrl: false }
@@ -120,7 +121,7 @@ const MPTracker = {
     }
   },
 
-  /* ── Lobby erstellen ── */
+  /* â”€â”€ Lobby erstellen â”€â”€ */
   async _bootstrapIdentity() {
     try {
       const { data: { session } } = await this.sb.auth.getSession();
@@ -206,14 +207,14 @@ const MPTracker = {
     }
   },
 
-  /* ── Lobby beitreten ── */
+  /* â”€â”€ Lobby beitreten â”€â”€ */
   async joinLobby() {
     const nameInput = document.getElementById('mp-name-input');
     const codeInput = document.getElementById('mp-code-input');
     const name = (nameInput?.value || this.playerName || '').trim();
     const code = (codeInput?.value || '').trim().toUpperCase();
     if (!name) { this._showError('Bitte gib deinen Namen ein.'); return; }
-    if (!code || code.length !== 6) { this._showError('Bitte gib einen gültigen 6-stelligen Code ein.'); return; }
+    if (!code || code.length !== 6) { this._showError('Bitte gib einen gÃ¼ltigen 6-stelligen Code ein.'); return; }
     this.playerName = name;
     this.phase = 'creating';
     this._render();
@@ -221,7 +222,7 @@ const MPTracker = {
     try {
       const { data: lobby, error: le } = await this.sb.from('mp_lobbies').select('*').eq('code', code).single();
       if (le || !lobby) throw new Error('Lobby nicht gefunden.');
-      if (lobby.phase === 'live') throw new Error('Das Spiel läuft bereits.');
+      if (lobby.phase === 'live') throw new Error('Das Spiel lÃ¤uft bereits.');
       if (lobby.phase === 'finished') throw new Error('Diese Lobby ist beendet.');
 
       const { data: existing } = await this.sb.from('mp_players').select('id').eq('lobby_id', lobby.id).eq('session_id', this.sessionId).maybeSingle();
@@ -276,7 +277,7 @@ const MPTracker = {
     }
   },
 
-  /* ── Realtime Subscription ── */
+  /* â”€â”€ Realtime Subscription â”€â”€ */
   _subscribe() {
     this._destroySubscription();
     this.subscription = this.sb.channel('lobby:' + this.lobbyId)
@@ -319,10 +320,10 @@ const MPTracker = {
     this._render();
   },
 
-  /* ── Host: Spiel starten ── */
+  /* â”€â”€ Host: Spiel starten â”€â”€ */
   async startGame() {
     if (!this._isHost()) return;
-    if (this.players.length < 2) { this._showError('Mindestens 2 Spieler benötigt.'); return; }
+    if (this.players.length < 2) { this._showError('Mindestens 2 Spieler benÃ¶tigt.'); return; }
     const firstPlayer = this.players[0];
     try {
       await this.sb.from('mp_lobbies').update({
@@ -344,38 +345,54 @@ const MPTracker = {
     } catch(err) { this._showError('Fehler beim Starten: ' + err.message); }
   },
 
-  /* ── Life anpassen ── */
+  /* â”€â”€ Life anpassen â”€â”€ */
   async adjustLife(delta) {
     const me = this._me();
-    if (!me || me.eliminated || this.phase !== 'live') return;
-    const newLife = Math.max(-99, Math.min(999, me.life + delta));
-    await this.sb.from('mp_players').update({ life: newLife }).eq('id', this.myPlayerId);
-  },
-
-  /* ── Commander Damage ── */
-  async dealCommanderDamage(targetId, delta) {
-    const target = this.players.find(p => p.id === targetId);
-    if (!target || target.eliminated || this.phase !== 'live') return;
-    const cmdDamage = target.cmd_damage || {};
-    const current = cmdDamage[this.myPlayerId] || 0;
-    const newVal = Math.max(0, Math.min(99, current + delta));
-    cmdDamage[this.myPlayerId] = newVal;
-    let updates = { cmd_damage: cmdDamage };
-    if (newVal >= 21 && !target.eliminated) { updates.eliminated = true; }
-    await this.sb.from('mp_players').update(updates).eq('id', targetId);
-  },
-
-  /* ── Poison ── */
-  async adjustPoison(delta) {
-    const me = this._me();
-    if (!me || me.eliminated || this.phase !== 'live') return;
-    const newPoison = Math.max(0, Math.min(10, me.poison + delta));
-    let updates = { poison: newPoison };
-    if (newPoison >= 10) updates.eliminated = true;
+    if (!me || this.phase !== 'live') return;
+    const updates = this._buildPlayerUpdate(me, { life: (me.life || 0) + delta });
     await this.sb.from('mp_players').update(updates).eq('id', this.myPlayerId);
   },
 
-  /* ── Setup: Name/Deck ändern ── */
+  /* â”€â”€ Commander Damage â”€â”€ */
+  async dealCommanderDamage(targetId, delta) {
+    await this.dealCombatDamage(targetId, delta, { commander: true });
+  },
+
+  async dealCombatDamage(targetId, delta, { commander = false } = {}) {
+    const target = this.players.find(p => p.id === targetId);
+    const me = this._me();
+    if (!target || !me || me.eliminated || this.phase !== 'live') return;
+    const amount = Number(delta) || 0;
+    if (!amount || (target.eliminated && amount > 0)) return;
+
+    const nextCmdDamage = { ...(target.cmd_damage || {}) };
+    if (commander) {
+      const current = nextCmdDamage[this.myPlayerId] || 0;
+      nextCmdDamage[this.myPlayerId] = Math.max(0, Math.min(99, current + amount));
+      if (nextCmdDamage[this.myPlayerId] <= 0) delete nextCmdDamage[this.myPlayerId];
+    }
+
+    const targetUpdates = this._buildPlayerUpdate(target, {
+      life: (target.life || 0) - amount,
+      cmd_damage: commander ? nextCmdDamage : (target.cmd_damage || {})
+    });
+    await this.sb.from('mp_players').update(targetUpdates).eq('id', targetId);
+
+    if (this.combatLifelink && amount > 0) {
+      const meUpdates = this._buildPlayerUpdate(me, { life: (me.life || 0) + amount });
+      await this.sb.from('mp_players').update(meUpdates).eq('id', this.myPlayerId);
+    }
+  },
+
+  /* â”€â”€ Poison â”€â”€ */
+  async adjustPoison(delta) {
+    const me = this._me();
+    if (!me || this.phase !== 'live') return;
+    const updates = this._buildPlayerUpdate(me, { poison: (me.poison || 0) + delta });
+    await this.sb.from('mp_players').update(updates).eq('id', this.myPlayerId);
+  },
+
+  /* â”€â”€ Setup: Name/Deck Ã¤ndern â”€â”€ */
   async updateMyName(name) {
     const v = String(name || '').trim().slice(0, 24);
     if (!v) return;
@@ -392,7 +409,7 @@ const MPTracker = {
     await this.updateMyDeck(deck);
   },
 
-  /* ── Toggle Monarch/Initiative ── */
+  /* â”€â”€ Toggle Monarch/Initiative â”€â”€ */
   async toggleMonarch() {
     const me = this._me();
     if (!me || this.phase !== 'live') return;
@@ -409,7 +426,13 @@ const MPTracker = {
     await this.sb.from('mp_players').update({ initiative: next }).eq('id', this.myPlayerId);
   },
 
-  /* ── Turn weiterreichen ── */
+  toggleCombatLifelink() {
+    if (this.phase !== 'live') return;
+    this.combatLifelink = !this.combatLifelink;
+    this._render();
+  },
+
+  /* â”€â”€ Turn weiterreichen â”€â”€ */
   async nextTurn() {
     if (!this.lobby || this.lobby.active_player_id !== this.myPlayerId) return;
     const alive = this.players.filter(p => !p.eliminated);
@@ -420,13 +443,13 @@ const MPTracker = {
     await this.sb.from('mp_lobbies').update({ active_player_id: next.id, turn_number: newTurn }).eq('id', this.lobbyId);
   },
 
-  /* ── Spiel beenden ── */
+  /* â”€â”€ Spiel beenden â”€â”€ */
   async finishGame(winnerId = '') {
     if (!this._isHost()) return;
     await this.sb.from('mp_lobbies').update({ phase: 'finished', finished_at: new Date().toISOString(), winner_id: winnerId || null }).eq('id', this.lobbyId);
   },
 
-  /* ── Lobby verlassen ── */
+  /* â”€â”€ Lobby verlassen â”€â”€ */
   async leaveLobby() {
     this._destroySubscription();
     if (this.myPlayerId) { await this.sb.from('mp_players').delete().eq('id', this.myPlayerId); }
@@ -434,12 +457,33 @@ const MPTracker = {
     this._render();
   },
 
-  /* ── Helpers ── */
+  /* â”€â”€ Helpers â”€â”€ */
   _me() { return this.players.find(p => p.id === this.myPlayerId) || null; },
   _isHost() { return this.lobby?.host_session === this.sessionId; },
   _genCode() { return Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6).padEnd(6,'X'); },
   _initials(n) { return String(n||'P').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'P'; },
   _lifeClass(l) { if(l<=5)return'critical'; if(l<=10)return'low'; if(l<=20)return'warning'; if(l>=50)return'high'; return''; },
+  _clampLife(life) { return Math.max(-99, Math.min(999, Number(life) || 0)); },
+  _normalizeCmdDamage(cmdDamage = {}) {
+    const next = {};
+    Object.entries(cmdDamage || {}).forEach(([key, value]) => {
+      const safe = Math.max(0, Math.min(99, Number(value) || 0));
+      if (safe > 0) next[key] = safe;
+    });
+    return next;
+  },
+  _buildPlayerUpdate(player, overrides = {}) {
+    const nextLife = this._clampLife(overrides.life ?? player.life ?? this.START_LIFE);
+    const nextPoison = Math.max(0, Math.min(10, Number(overrides.poison ?? player.poison ?? 0) || 0));
+    const nextCmdDamage = this._normalizeCmdDamage(overrides.cmd_damage ?? player.cmd_damage ?? {});
+    const maxCmd = Math.max(0, ...Object.values(nextCmdDamage));
+    return {
+      life: nextLife,
+      poison: nextPoison,
+      cmd_damage: nextCmdDamage,
+      eliminated: nextLife <= 0 || nextPoison >= 10 || maxCmd >= 21
+    };
+  },
   _cmdMax(player) {
     const dmg = player.cmd_damage || {};
     return Math.max(0, ...Object.values(dmg));
@@ -459,9 +503,9 @@ const MPTracker = {
     if (el) { el.textContent = msg; el.style.display = 'block'; setTimeout(() => { el.style.display = 'none'; }, 4000); }
   },
 
-  /* ══════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      RENDER LAYER
-  ══════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   _resetLobbyState() {
     this._clearLobbyState();
     this.lobbyId = null;
@@ -492,7 +536,7 @@ const MPTracker = {
     }
   },
 
-  /* ── Menü ── */
+  /* â”€â”€ MenÃ¼ â”€â”€ */
   _renderMenu() {
     return `
     <div class="mp-screen mp-menu">
@@ -504,13 +548,13 @@ const MPTracker = {
         <div class="mp-auth-card">
           <div class="mp-auth-title">Angemeldet</div>
           <div class="mp-auth-name">${esc(this.playerName || this.authUser.email || 'User')}</div>
-          <div class="mp-auth-sub">${this.deckOptions.length} Deck${this.deckOptions.length===1?'':'s'} verfÃ¼gbar</div>
+          <div class="mp-auth-sub">${this.deckOptions.length} Deck${this.deckOptions.length===1?'':'s'} verfÃƒÂ¼gbar</div>
         </div>` : `
         <label class="mp-label">Dein Name</label>
         <input id="mp-name-input" class="mp-input" type="text" maxlength="24" placeholder="z.B. Felix" autocomplete="off">`}
 
         <button class="mp-btn mp-btn-gold" onclick="MPTracker.createLobby()">
-          <span class="mp-btn-icon">⚔</span> Lobby erstellen
+          <span class="mp-btn-icon">âš”</span> Lobby erstellen
         </button>
 
         <div class="mp-divider"><span>oder</span></div>
@@ -524,12 +568,12 @@ const MPTracker = {
     </div>`;
   },
 
-  /* ── Loading ── */
+  /* â”€â”€ Loading â”€â”€ */
   _renderLoading() {
     return `<div class="mp-screen mp-center"><div class="mp-spinner"></div><div class="mp-loading-text">Verbinde...</div></div>`;
   },
 
-  /* ── Wartezimmer ── */
+  /* â”€â”€ Wartezimmer â”€â”€ */
   _renderWaiting() {
     const isHost = this._isHost();
     const canStart = isHost && this.players.length >= 2;
@@ -538,7 +582,7 @@ const MPTracker = {
     return `
     <div class="mp-screen mp-waiting">
       <div class="mp-waiting-header">
-        <button class="mp-back-btn" onclick="MPTracker.leaveLobby()">← Verlassen</button>
+        <button class="mp-back-btn" onclick="MPTracker.leaveLobby()">â† Verlassen</button>
         <div class="mp-logo-sm">MagicThe<em>Drinkering</em></div>
       </div>
 
@@ -556,11 +600,11 @@ const MPTracker = {
             <div class="mp-player-info">
               <strong>${esc(p.name)}</strong>
               ${this._renderDeckMeta(p.deck)}
-              <span>${esc(p.deck || 'Kein Deck gewählt')}</span>
+              <span>${esc(p.deck || 'Kein Deck gewÃ¤hlt')}</span>
             </div>
             ${p.session_id === this.lobby?.host_session ? '<div class="mp-host-badge">Host</div>' : ''}
           </div>`).join('')}
-        ${this.players.length < 2 ? '<div class="mp-waiting-hint">Warte auf weitere Spieler…</div>' : ''}
+        ${this.players.length < 2 ? '<div class="mp-waiting-hint">Warte auf weitere Spielerâ€¦</div>' : ''}
       </div>
 
       <div class="mp-setup-section">
@@ -573,8 +617,8 @@ const MPTracker = {
         <label class="mp-label">Deck</label>
         ${this.deckOptions.length
           ? `<select class="mp-input mp-select" onchange="MPTracker.updateMyDeckChoice(this.value)">
-              <option value="">Deck auswÃ¤hlen</option>
-              ${this.deckOptions.map(deck=>`<option value="${esc(deck.name)}" ${deck.name===(me?.deck||'')?'selected':''}>${esc(deck.name)}${deck.commander?` â€“ ${esc(deck.commander)}${deck.partner?` + ${esc(deck.partner)}`:''}`:''}</option>`).join('')}
+              <option value="">Deck auswÃƒÂ¤hlen</option>
+              ${this.deckOptions.map(deck=>`<option value="${esc(deck.name)}" ${deck.name===(me?.deck||'')?'selected':''}>${esc(deck.name)}${deck.commander?` Ã¢â‚¬â€œ ${esc(deck.commander)}${deck.partner?` + ${esc(deck.partner)}`:''}`:''}</option>`).join('')}
             </select>`
           : `<input class="mp-input" type="text" value="${esc(me?.deck || '')}" maxlength="60" placeholder="Deck-Name" onchange="MPTracker.updateMyDeck(this.value)">`
         }
@@ -584,14 +628,14 @@ const MPTracker = {
       ${isHost ? `
       <div class="mp-host-actions">
         <button class="mp-btn ${canStart ? 'mp-btn-gold' : 'mp-btn-disabled'}" ${canStart ? '' : 'disabled'} onclick="MPTracker.startGame()">
-          ${canStart ? '⚔ Spiel starten' : `Warte auf Spieler (${this.players.length}/2+)`}
+          ${canStart ? 'âš” Spiel starten' : `Warte auf Spieler (${this.players.length}/2+)`}
         </button>
       </div>` : `
-      <div class="mp-waiting-for-host">Warte auf Host…</div>`}
+      <div class="mp-waiting-for-host">Warte auf Hostâ€¦</div>`}
     </div>`;
   },
 
-  /* ── Live Game ── */
+  /* â”€â”€ Live Game â”€â”€ */
   _renderLive() {
     const me = this._me();
     if (!me) return this._renderLoading();
@@ -602,89 +646,96 @@ const MPTracker = {
 
     return `
     <div class="mp-screen mp-live">
-
-      <!-- Top Bar: andere Spieler -->
       <div class="mp-top-strip">
         <div class="mp-strip-meta">
           <span class="mp-turn-badge ${isMyTurn ? 'active' : ''}">Turn ${this.lobby?.turn_number || 1}</span>
           <span class="mp-active-label">${esc(activePlayer?.name || '?')} ist dran</span>
+          <span class="mp-top-chip">${alive.length} alive</span>
+          ${isMyTurn ? '<button class="mp-pass-btn" onclick="MPTracker.nextTurn()">Turn abgeben</button>' : ''}
         </div>
         <div class="mp-other-players">
           ${others.map(p => this._renderOtherCard(p)).join('')}
         </div>
       </div>
 
-      <!-- Meine große Karte -->
       <div class="mp-my-card mp-color-bg-${me.color || 'gold'} ${me.eliminated ? 'is-eliminated' : ''} ${isMyTurn ? 'is-my-turn' : ''}">
         <div class="mp-my-card-inner">
-
-          <!-- Header -->
           <div class="mp-my-header">
             <div class="mp-my-name-row">
               <span class="mp-my-name">${esc(me.name)}</span>
               <span class="mp-my-deck">${esc(me.deck || 'Kein Deck')}</span>
+              ${this._renderDeckMeta(me.deck)}
             </div>
             <div class="mp-my-badges">
-              ${isMyTurn ? '<button class="mp-badge active-badge" onclick="MPTracker.nextTurn()">Am Zug · Weiter →</button>' : ''}
+              ${isMyTurn ? '<span class="mp-badge active-badge">Am Zug</span>' : ''}
               ${me.monarch ? '<button class="mp-badge monarch-badge" onclick="MPTracker.toggleMonarch()">Monarch</button>' : ''}
               ${me.initiative ? '<button class="mp-badge initiative-badge" onclick="MPTracker.toggleInitiative()">Initiative</button>' : ''}
               ${me.eliminated ? '<span class="mp-badge out-badge">Ausgeschieden</span>' : ''}
             </div>
           </div>
 
-          <!-- Leben -->
-          <div class="mp-life-section">
-            <div class="mp-life-number ${this._lifeClass(me.life)}">${me.life}</div>
-            <div class="mp-life-label">Lebenspunkte</div>
-          </div>
-
-          <!-- Life Controls -->
-          <div class="mp-life-controls">
-            <button class="mp-lbtn" onclick="MPTracker.adjustLife(-10)">-10</button>
-            <button class="mp-lbtn" onclick="MPTracker.adjustLife(-5)">-5</button>
-            <button class="mp-lbtn mp-lbtn-big" onclick="MPTracker.adjustLife(-1)">−</button>
-            <button class="mp-lbtn mp-lbtn-big mp-lbtn-plus" onclick="MPTracker.adjustLife(1)">+</button>
-            <button class="mp-lbtn" onclick="MPTracker.adjustLife(5)">+5</button>
-            <button class="mp-lbtn" onclick="MPTracker.adjustLife(10)">+10</button>
-          </div>
-
-          <!-- Poison + Status Toggle -->
-          <div class="mp-mini-row">
-            <div class="mp-poison-ctrl">
-              <button class="mp-mini-btn" onclick="MPTracker.adjustPoison(-1)">−</button>
-              <div class="mp-poison-display">
-                <span class="mp-poison-icon">☠</span>
-                <span class="mp-poison-val">${me.poison}</span>
-                <span class="mp-poison-max">/10</span>
+          <div class="mp-live-grid">
+            <section class="mp-surface mp-life-surface">
+              <div class="mp-life-section">
+                <div class="mp-life-number ${this._lifeClass(me.life)}">${me.life}</div>
+                <div class="mp-life-label">Lebenspunkte</div>
               </div>
-              <button class="mp-mini-btn" onclick="MPTracker.adjustPoison(1)">+</button>
-            </div>
-            <div class="mp-toggle-btns">
-              <button class="mp-toggle-btn ${me.monarch ? 'on' : ''}" onclick="MPTracker.toggleMonarch()">Monarch</button>
-              <button class="mp-toggle-btn ${me.initiative ? 'on' : ''}" onclick="MPTracker.toggleInitiative()">Initiative</button>
-            </div>
+
+              <div class="mp-life-control-groups">
+                <div class="mp-control-group">
+                  <div class="mp-cmd-title">Damage</div>
+                  <div class="mp-life-controls">
+                    <button class="mp-lbtn" onclick="MPTracker.adjustLife(-1)">-1</button>
+                    <button class="mp-lbtn" onclick="MPTracker.adjustLife(-3)">-3</button>
+                    <button class="mp-lbtn" onclick="MPTracker.adjustLife(-5)">-5</button>
+                    <button class="mp-lbtn" onclick="MPTracker.adjustLife(-10)">-10</button>
+                  </div>
+                </div>
+                <div class="mp-control-group">
+                  <div class="mp-cmd-title">Heal / Lifegain</div>
+                  <div class="mp-life-controls mp-life-controls-heal">
+                    <button class="mp-lbtn mp-lbtn-plus" onclick="MPTracker.adjustLife(1)">+1</button>
+                    <button class="mp-lbtn mp-lbtn-plus" onclick="MPTracker.adjustLife(3)">+3</button>
+                    <button class="mp-lbtn mp-lbtn-plus" onclick="MPTracker.adjustLife(5)">+5</button>
+                    <button class="mp-lbtn mp-lbtn-plus" onclick="MPTracker.adjustLife(10)">+10</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="mp-surface mp-utility-surface">
+              <div class="mp-cmd-title">Status & Basics</div>
+              <div class="mp-utility-grid">
+                <div class="mp-poison-card">
+                  <span class="mp-utility-label">Poison</span>
+                  <div class="mp-poison-ctrl">
+                    <button class="mp-mini-btn" onclick="MPTracker.adjustPoison(-1)">−</button>
+                    <div class="mp-poison-display">
+                      <span class="mp-poison-icon">☠</span>
+                      <span class="mp-poison-val">${me.poison}</span>
+                      <span class="mp-poison-max">/10</span>
+                    </div>
+                    <button class="mp-mini-btn" onclick="MPTracker.adjustPoison(1)">+</button>
+                  </div>
+                </div>
+                <div class="mp-toggle-stack">
+                  <button class="mp-toggle-btn ${me.monarch ? 'on' : ''}" onclick="MPTracker.toggleMonarch()">Monarch</button>
+                  <button class="mp-toggle-btn ${me.initiative ? 'on' : ''}" onclick="MPTracker.toggleInitiative()">Initiative</button>
+                  <button class="mp-toggle-btn ${this.combatLifelink ? 'on lifelink' : ''}" onclick="MPTracker.toggleCombatLifelink()">Lifelink</button>
+                </div>
+              </div>
+              <div class="mp-rules-hint">Commander Damage zieht direkt Leben ab. Mit aktivem Lifelink heilst du dich um denselben Schaden.</div>
+            </section>
           </div>
 
-          <!-- Commander Damage auf andere austeilen -->
           ${others.length > 0 ? `
-          <div class="mp-cmd-section">
-            <div class="mp-cmd-title">Commander Damage austeilen</div>
-            <div class="mp-cmd-targets">
-              ${others.map(t => {
-                const myDmgOnTarget = (t.cmd_damage || {})[this.myPlayerId] || 0;
-                return `<div class="mp-cmd-target">
-                  <div class="mp-cmd-target-name">${esc(t.name)}</div>
-                  <div class="mp-cmd-target-controls">
-                    <button class="mp-cmd-btn" onclick="MPTracker.dealCommanderDamage('${t.id}',-1)">−</button>
-                    <span class="mp-cmd-val ${myDmgOnTarget >= 21 ? 'danger' : myDmgOnTarget >= 14 ? 'warning' : ''}">${myDmgOnTarget}</span>
-                    <button class="mp-cmd-btn" onclick="MPTracker.dealCommanderDamage('${t.id}',1)">+</button>
-                  </div>
-                </div>`;
-              }).join('')}
+          <section class="mp-surface mp-arena-surface">
+            <div class="mp-cmd-title">Combat Arena</div>
+            <div class="mp-arena-grid">
+              ${others.map(p => this._renderCombatCard(p)).join('')}
             </div>
-          </div>` : ''}
+          </section>` : ''}
 
-          <!-- Host Aktionen -->
           ${this._isHost() && alive.length <= 2 ? `
           <div class="mp-finish-section">
             <div class="mp-cmd-title">Spiel beenden</div>
@@ -700,7 +751,7 @@ const MPTracker = {
     </div>`;
   },
 
-  /* ── Andere Spieler-Karte (klein, oben) ── */
+  /* Other player cards */
   _renderOtherCard(p) {
     const isActive = this.lobby?.active_player_id === p.id;
     const cmdReceived = this._cmdMax(p);
@@ -710,37 +761,83 @@ const MPTracker = {
       <div class="mp-other-info">
         <span class="mp-other-name">${esc(p.name)}</span>
         <span class="mp-other-life ${this._lifeClass(p.life)}">${p.life}</span>
-        ${p.poison > 0 ? `<span class="mp-other-poison">☠${p.poison}</span>` : ''}
-        ${cmdReceived >= 7 ? `<span class="mp-other-cmd ${cmdReceived >= 21 ? 'danger' : cmdReceived >= 14 ? 'warn' : ''}">⚔${cmdReceived}</span>` : ''}
+        ${p.poison > 0 ? `<span class="mp-other-poison">â˜ ${p.poison}</span>` : ''}
+        ${cmdReceived >= 7 ? `<span class="mp-other-cmd ${cmdReceived >= 21 ? 'danger' : cmdReceived >= 14 ? 'warn' : ''}">âš”${cmdReceived}</span>` : ''}
       </div>
       ${p.eliminated ? '<div class="mp-other-out">Out</div>' : ''}
-      ${isActive ? '<div class="mp-other-turn">▶</div>' : ''}
+      ${isActive ? '<div class="mp-other-turn">â–¶</div>' : ''}
     </div>`;
   },
+  _renderCombatCard(player) {
+    const myCmdOnTarget = (player.cmd_damage || {})[this.myPlayerId] || 0;
+    const cmdClass = myCmdOnTarget >= 21 ? 'danger' : myCmdOnTarget >= 14 ? 'warning' : '';
+    return `
+    <article class="mp-combat-card ${player.eliminated ? 'is-out' : ''}">
+      <div class="mp-combat-card-head">
+        <div class="mp-combat-title-wrap">
+          <div class="mp-player-orb mp-color-${player.color || 'gold'}">${this._initials(player.name)}</div>
+          <div class="mp-combat-title-copy">
+            <div class="mp-combat-name">${esc(player.name)}</div>
+            <div class="mp-combat-deck">${esc(player.deck || 'Kein Deck')}</div>
+          </div>
+        </div>
+        <div class="mp-combat-stats">
+          <span class="mp-combat-life ${this._lifeClass(player.life)}">${player.life} LP</span>
+          <span class="mp-combat-poison ${player.poison > 0 ? 'is-hot' : ''}">${player.poison} Poison</span>
+        </div>
+      </div>
+      <div class="mp-combat-clock">
+        <span>Commander von dir</span>
+        <strong class="${cmdClass}">${myCmdOnTarget} / 21</strong>
+      </div>
+      <div class="mp-combat-actions">
+        <div class="mp-combat-action-row">
+          <span class="mp-utility-label">Combat Damage</span>
+          <div class="mp-action-buttons">
+            <button class="mp-cmd-btn" onclick="MPTracker.dealCombatDamage('${player.id}',-1)">-1</button>
+            <button class="mp-cmd-btn" onclick="MPTracker.dealCombatDamage('${player.id}',1)">1</button>
+            <button class="mp-cmd-btn" onclick="MPTracker.dealCombatDamage('${player.id}',3)">3</button>
+            <button class="mp-cmd-btn" onclick="MPTracker.dealCombatDamage('${player.id}',5)">5</button>
+          </div>
+        </div>
+        <div class="mp-combat-action-row">
+          <span class="mp-utility-label">Commander Damage</span>
+          <div class="mp-action-buttons">
+            <button class="mp-cmd-btn" onclick="MPTracker.dealCommanderDamage('${player.id}',-1)">-1</button>
+            <button class="mp-cmd-btn commander" onclick="MPTracker.dealCommanderDamage('${player.id}',1)">1</button>
+            <button class="mp-cmd-btn commander" onclick="MPTracker.dealCommanderDamage('${player.id}',3)">3</button>
+            <button class="mp-cmd-btn commander" onclick="MPTracker.dealCommanderDamage('${player.id}',5)">5</button>
+          </div>
+        </div>
+      </div>
+      ${player.eliminated ? '<div class="mp-combat-overlay">Ausgeschieden</div>' : ''}
+    </article>`;
+  },
 
-  /* ── Fertig ── */
+  /* â”€â”€ Fertig â”€â”€ */
   _renderFinished() {
     const winner = this.players.find(p => p.id === this.lobby?.winner_id);
     return `
     <div class="mp-screen mp-finished">
       <div class="mp-finished-inner">
-        <div class="mp-finished-crown">♛</div>
+        <div class="mp-finished-crown">â™›</div>
         <div class="mp-finished-title">${winner ? esc(winner.name) + ' gewinnt!' : 'Spiel beendet'}</div>
-        <div class="mp-finished-sub">Turn ${this.lobby?.turn_number || '?'} · ${this.players.length} Spieler</div>
+        <div class="mp-finished-sub">Turn ${this.lobby?.turn_number || '?'} Â· ${this.players.length} Spieler</div>
         <div class="mp-finished-players">
           ${this.players.map(p => `
             <div class="mp-finished-row ${p.id === this.lobby?.winner_id ? 'winner' : ''}">
               <div class="mp-player-orb mp-color-${p.color || 'gold'}">${this._initials(p.name)}</div>
               <strong>${esc(p.name)}</strong>
-              <span>${p.life} LP · ${p.poison} Gift</span>
+              <span>${p.life} LP Â· ${p.poison} Gift</span>
               ${p.id === this.lobby?.winner_id ? '<span class="mp-winner-badge">Gewinner</span>' : ''}
             </div>`).join('')}
         </div>
-        <button class="mp-btn mp-btn-gold" onclick="MPTracker.leaveLobby()">Zurück zum Menü</button>
+        <button class="mp-btn mp-btn-gold" onclick="MPTracker.leaveLobby()">ZurÃ¼ck zum MenÃ¼</button>
       </div>
     </div>`;
   }
 };
 
-/* ── Start ── */
+/* â”€â”€ Start â”€â”€ */
 document.addEventListener('DOMContentLoaded', () => MPTracker.init());
+

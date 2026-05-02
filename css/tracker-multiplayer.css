@@ -596,3 +596,287 @@
   .mp-menu { padding-bottom: calc(2rem + env(safe-area-inset-bottom)); }
   .mp-waiting { padding-bottom: calc(2rem + env(safe-area-inset-bottom)); }
 }
+
+/* Live polish v2 */
+.mp-top-chip {
+  font-size: .72rem;
+  color: rgba(126,200,227,.9);
+  border: 1px solid rgba(126,200,227,.24);
+  background: rgba(126,200,227,.08);
+  border-radius: 999px;
+  padding: .18rem .55rem;
+}
+
+.mp-pass-btn {
+  margin-left: auto;
+  background: rgba(201,168,76,.14);
+  border: 1px solid rgba(201,168,76,.35);
+  color: #c9a84c;
+  border-radius: 999px;
+  padding: .42rem .8rem;
+  font-family: 'Cinzel', serif;
+  font-size: .72rem;
+  letter-spacing: .05em;
+  cursor: pointer;
+}
+
+.mp-live-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr);
+  gap: .9rem;
+  align-items: start;
+}
+
+.mp-surface {
+  background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.03));
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.22);
+}
+
+.mp-life-surface,
+.mp-utility-surface,
+.mp-arena-surface {
+  padding: 1rem;
+}
+
+.mp-life-control-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.mp-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+
+.mp-life-controls {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.mp-life-controls-heal .mp-lbtn-plus {
+  background: rgba(201,168,76,.08);
+}
+
+.mp-utility-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, .9fr);
+  gap: .8rem;
+  align-items: stretch;
+}
+
+.mp-poison-card {
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  padding: .9rem;
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+}
+
+.mp-utility-label {
+  font-size: .72rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(232,224,208,.4);
+  font-family: 'Cinzel', serif;
+}
+
+.mp-toggle-stack {
+  display: grid;
+  gap: .45rem;
+}
+
+.mp-toggle-btn.on.lifelink {
+  background: rgba(100,180,120,.18);
+  border-color: rgba(120,210,150,.45);
+  color: #8ff0b1;
+}
+
+.mp-rules-hint {
+  margin-top: .8rem;
+  color: rgba(232,224,208,.4);
+  font-size: .78rem;
+  line-height: 1.45;
+}
+
+.mp-cmd-btn.commander {
+  border-color: rgba(201,168,76,.28);
+  color: #f2d37e;
+}
+
+.mp-arena-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: .8rem;
+}
+
+.mp-combat-card {
+  position: relative;
+  background: rgba(7,11,18,.72);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  padding: .95rem;
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  overflow: hidden;
+}
+
+.mp-combat-card.is-out {
+  opacity: .48;
+}
+
+.mp-combat-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.mp-combat-title-wrap {
+  display: flex;
+  gap: .7rem;
+  min-width: 0;
+}
+
+.mp-combat-title-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mp-combat-name {
+  font-family: 'Cinzel', serif;
+  font-size: .95rem;
+  color: #f0e5cf;
+}
+
+.mp-combat-deck {
+  font-size: .77rem;
+  color: rgba(232,224,208,.44);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mp-combat-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .2rem;
+}
+
+.mp-combat-life {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  color: #e8e0d0;
+}
+
+.mp-combat-life.critical { color: #ff5757; }
+.mp-combat-life.low { color: #ff9447; }
+.mp-combat-life.warning { color: #ffcf5e; }
+.mp-combat-life.high { color: #9df0ac; }
+
+.mp-combat-poison {
+  font-size: .74rem;
+  color: rgba(232,224,208,.45);
+}
+
+.mp-combat-poison.is-hot {
+  color: #87df9f;
+}
+
+.mp-combat-clock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  padding: .65rem .8rem;
+  font-size: .78rem;
+  color: rgba(232,224,208,.52);
+}
+
+.mp-combat-clock strong {
+  font-family: 'Cinzel', serif;
+  font-size: .95rem;
+  color: #f1dfab;
+}
+
+.mp-combat-clock strong.warning { color: #ffcf5e; }
+.mp-combat-clock strong.danger { color: #ff5757; }
+
+.mp-combat-actions {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+
+.mp-combat-action-row {
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+}
+
+.mp-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .45rem;
+}
+
+.mp-combat-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.45);
+  color: rgba(232,224,208,.72);
+  font-family: 'Cinzel', serif;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 860px) {
+  .mp-live-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mp-utility-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .mp-strip-meta {
+    flex-wrap: wrap;
+  }
+
+  .mp-pass-btn {
+    margin-left: 0;
+  }
+
+  .mp-life-control-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .mp-my-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mp-my-badges {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .mp-action-buttons {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
