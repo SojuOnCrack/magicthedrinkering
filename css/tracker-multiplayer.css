@@ -955,8 +955,101 @@
 }
 
 @media (max-width: 640px) {
+  #mp-root,
+  .mp-screen,
+  .mp-live {
+    min-height: 100dvh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .mp-waiting {
+    padding: .75rem .85rem 1rem;
+    gap: .8rem;
+    overflow-y: auto;
+  }
+
+  .mp-waiting-inner {
+    gap: .8rem;
+  }
+
+  .mp-code-display,
+  .mp-waiting-players,
+  .mp-setup-section,
+  .mp-host-actions,
+  .mp-waiting-for-host {
+    max-width: none;
+  }
+
+  .mp-code-display {
+    padding: .85rem .8rem;
+  }
+
+  .mp-code-big {
+    font-size: 2.1rem;
+    letter-spacing: .16em;
+    margin-bottom: .45rem;
+  }
+
+  .mp-player-row {
+    padding: .55rem .7rem;
+  }
+
+  .mp-player-info strong {
+    font-size: .93rem;
+  }
+
+  .mp-player-info span {
+    font-size: .74rem;
+  }
+
   .mp-strip-meta {
     flex-wrap: wrap;
+    gap: .35rem;
+    margin-bottom: .35rem;
+  }
+
+  .mp-top-strip {
+    padding: .45rem .55rem;
+  }
+
+  .mp-top-chip,
+  .mp-pass-btn,
+  .mp-undo-btn {
+    font-size: .68rem;
+    padding: .34rem .58rem;
+  }
+
+  .mp-other-players {
+    gap: .4rem;
+    grid-auto-columns: minmax(112px, 1fr);
+  }
+
+  .mp-other-card {
+    min-width: 112px;
+    padding: .5rem .55rem;
+    border-radius: 12px;
+  }
+
+  .mp-other-life {
+    font-size: 1.12rem;
+  }
+
+  .mp-my-card {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .mp-my-card-inner {
+    padding: .65rem .75rem calc(.75rem + env(safe-area-inset-bottom));
+    gap: .65rem;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .mp-strip-meta {
+    align-items: center;
   }
 
   .mp-pass-btn {
@@ -967,22 +1060,196 @@
     order: 4;
   }
 
-  .mp-life-control-groups {
-    grid-template-columns: 1fr;
+  .mp-my-header {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: .5rem;
   }
 
-  .mp-my-header {
-    flex-direction: column;
-    align-items: flex-start;
+  .mp-my-name {
+    font-size: .96rem;
+  }
+
+  .mp-my-deck {
+    font-size: .72rem;
+    line-height: 1.2;
   }
 
   .mp-my-badges {
-    align-items: flex-start;
+    align-items: flex-end;
     flex-direction: row;
     flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: .22rem;
+    margin-left: auto;
+  }
+
+  .mp-badge {
+    font-size: .56rem;
+    padding: .16rem .5rem;
+  }
+
+  .mp-live-grid {
+    grid-template-columns: minmax(0, 1.08fr) minmax(132px, .92fr);
+    gap: .5rem;
+    flex-shrink: 0;
+  }
+
+  .mp-surface {
+    border-radius: 14px;
+  }
+
+  .mp-life-surface,
+  .mp-utility-surface,
+  .mp-arena-surface {
+    padding: .7rem;
+  }
+
+  .mp-life-section {
+    padding: .1rem 0 .3rem;
+  }
+
+  .mp-life-number {
+    font-size: clamp(2.7rem, 15vw, 4rem);
+  }
+
+  .mp-life-label,
+  .mp-cmd-title,
+  .mp-utility-label {
+    font-size: .58rem;
+    letter-spacing: .11em;
+  }
+
+  .mp-life-control-groups {
+    grid-template-columns: 1fr 1fr;
+    gap: .45rem;
+  }
+
+  .mp-control-group {
+    gap: .35rem;
+  }
+
+  .mp-life-controls {
+    gap: .32rem;
+  }
+
+  .mp-lbtn {
+    font-size: .7rem;
+    padding: .46rem .15rem;
+    border-radius: 7px;
+  }
+
+  .mp-utility-grid {
+    grid-template-columns: 1fr;
+    gap: .5rem;
+  }
+
+  .mp-poison-card {
+    padding: .65rem;
+    gap: .45rem;
+  }
+
+  .mp-poison-val {
+    font-size: 1.05rem;
+  }
+
+  .mp-mini-btn {
+    width: 28px;
+    height: 28px;
+    font-size: .92rem;
+  }
+
+  .mp-toggle-stack {
+    grid-template-columns: 1fr;
+    gap: .3rem;
+  }
+
+  .mp-toggle-btn {
+    font-size: .58rem;
+    padding: .26rem .5rem;
+  }
+
+  .mp-rules-hint {
+    display: none;
+  }
+
+  .mp-arena-surface {
+    display: flex;
+    flex-direction: column;
+    gap: .45rem;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .mp-arena-grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(168px, 1fr);
+    grid-template-columns: none;
+    gap: .5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: .1rem;
+    min-height: 0;
+  }
+
+  .mp-combat-card {
+    padding: .65rem;
+    gap: .5rem;
+    border-radius: 13px;
+  }
+
+  .mp-combat-card-head {
+    gap: .45rem;
+  }
+
+  .mp-combat-name {
+    font-size: .82rem;
+  }
+
+  .mp-combat-deck {
+    font-size: .66rem;
+  }
+
+  .mp-combat-life {
+    font-size: .92rem;
+  }
+
+  .mp-combat-poison {
+    font-size: .66rem;
+  }
+
+  .mp-combat-clock {
+    padding: .48rem .55rem;
+    font-size: .66rem;
+  }
+
+  .mp-combat-clock strong {
+    font-size: .78rem;
+  }
+
+  .mp-combat-actions {
+    gap: .45rem;
   }
 
   .mp-action-buttons {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .3rem;
+  }
+
+  .mp-cmd-btn {
+    width: 100%;
+    height: 28px;
+    font-size: .72rem;
+  }
+
+  .mp-finish-section {
+    flex-shrink: 0;
+    padding: .7rem;
+  }
+
+  .mp-finish-btns {
+    gap: .3rem;
   }
 }
