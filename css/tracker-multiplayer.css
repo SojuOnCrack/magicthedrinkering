@@ -382,6 +382,9 @@
 
 .mp-other-card {
   position: relative;
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: left;
   background: rgba(255,255,255,.04);
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 14px;
@@ -391,8 +394,13 @@
   gap: .5rem;
   min-width: 128px;
   transition: border-color .2s, transform .18s, background .18s, box-shadow .18s;
+  cursor: pointer;
 }
-.mp-other-card.is-active { border-color: rgba(201,168,76,.5); background: rgba(201,168,76,.06); }
+.mp-other-card.is-active {
+  border-color: rgba(201,168,76,.72);
+  background: rgba(201,168,76,.1);
+  box-shadow: 0 0 0 1px rgba(201,168,76,.22), 0 0 24px rgba(201,168,76,.12);
+}
 .mp-other-card.is-out { opacity: .4; }
 .mp-other-orb { width: 28px; height: 28px; border-radius: 50%; font-size: .6rem; font-weight: 700; font-family: 'Cinzel', serif; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 /* Orb farben erben von mp-color-* (gleiche Klasse, kleinere Größe) */
@@ -412,8 +420,21 @@
 .mp-other-cmd   { font-size: .65rem; color: rgba(200,200,100,.7); }
 .mp-other-cmd.danger { color: #ff4444; }
 .mp-other-cmd.warn   { color: #ffaa44; }
+.mp-other-active-pill {
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  border-radius: 999px;
+  padding: .12rem .4rem;
+  font-size: .52rem;
+  font-family: 'Cinzel', serif;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #1a1200;
+  background: #d5b457;
+}
 .mp-other-out  { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.5); border-radius: 10px; font-size: .65rem; color: rgba(232,224,208,.4); letter-spacing: .05em; }
-.mp-other-turn { position: absolute; top: 3px; right: 5px; font-size: .55rem; color: #c9a84c; }
+.mp-other-turn { position: absolute; top: 6px; right: 8px; font-size: .55rem; color: #c9a84c; }
 
 /* Meine Karte */
 .mp-my-card {
@@ -432,17 +453,15 @@
 .mp-color-bg-purple  { background: radial-gradient(ellipse at 50% 20%, #0e0018 0%, #06090f 65%); }
 .mp-color-bg-steel   { background: radial-gradient(ellipse at 50% 20%, #0a0c10 0%, #06090f 65%); }
 
-/* Goldener Rand wenn ich dran bin */
-.mp-my-card.is-my-turn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border: 2px solid rgba(201,168,76,.4);
-  pointer-events: none;
-  z-index: 1;
-  animation: mp-pulse-border 2s ease-in-out infinite;
+/* Klareres Turn Highlight */
+.mp-my-card.is-my-turn {
+  box-shadow: inset 0 0 0 2px rgba(201,168,76,.55), 0 0 0 1px rgba(201,168,76,.18), 0 0 34px rgba(201,168,76,.12);
+  animation: mp-pulse-board 1.8s ease-in-out infinite;
 }
-@keyframes mp-pulse-border { 0%,100%{opacity:.4} 50%{opacity:.9} }
+@keyframes mp-pulse-board {
+  0%,100% { box-shadow: inset 0 0 0 2px rgba(201,168,76,.42), 0 0 0 1px rgba(201,168,76,.14), 0 0 20px rgba(201,168,76,.08); }
+  50% { box-shadow: inset 0 0 0 2px rgba(201,168,76,.72), 0 0 0 1px rgba(201,168,76,.22), 0 0 40px rgba(201,168,76,.16); }
+}
 
 .mp-my-card.is-eliminated { opacity: .6; }
 .mp-my-card.pulse-damage .mp-life-number,
@@ -806,6 +825,18 @@
   color: #f2d37e;
 }
 
+.mp-arena-launcher {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.mp-combat-open-btn {
+  width: auto;
+  min-width: 180px;
+}
+
 .mp-arena-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -823,6 +854,10 @@
   gap: .75rem;
   overflow: hidden;
   transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.mp-combat-card.is-active {
+  border-color: rgba(201,168,76,.72);
+  box-shadow: 0 0 0 1px rgba(201,168,76,.22), 0 0 30px rgba(201,168,76,.12);
 }
 .mp-combat-card:hover {
   transform: translateY(-2px);
@@ -942,6 +977,89 @@
   font-family: 'Cinzel', serif;
   letter-spacing: .08em;
   text-transform: uppercase;
+}
+
+.mp-combat-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(2,4,10,.72);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.mp-combat-modal {
+  width: min(980px, 100%);
+  max-height: min(88dvh, 900px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+  background: linear-gradient(180deg, rgba(19,24,35,.98), rgba(8,11,18,.98));
+  border: 1px solid rgba(201,168,76,.18);
+  border-radius: 22px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.42);
+  padding: 1rem;
+}
+
+.mp-combat-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.mp-combat-modal-sub {
+  color: rgba(232,224,208,.48);
+  font-size: .88rem;
+  line-height: 1.4;
+}
+
+.mp-combat-target-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+}
+
+.mp-combat-target-pill {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  color: rgba(232,224,208,.7);
+  border-radius: 999px;
+  padding: .45rem .8rem;
+  font-family: 'Cinzel', serif;
+  font-size: .72rem;
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+
+.mp-combat-target-pill.is-selected {
+  background: rgba(201,168,76,.16);
+  border-color: rgba(201,168,76,.42);
+  color: #e9cb75;
+}
+
+.mp-combat-modal-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: .8rem;
+  overflow-y: auto;
+  padding-right: .15rem;
+}
+
+.mp-combat-empty {
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(232,224,208,.42);
+  border: 1px dashed rgba(255,255,255,.12);
+  border-radius: 16px;
 }
 
 @media (max-width: 860px) {
@@ -1095,6 +1213,17 @@
     flex-shrink: 0;
   }
 
+  .mp-arena-launcher {
+    flex-direction: column;
+    align-items: stretch;
+    gap: .55rem;
+  }
+
+  .mp-combat-open-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
   .mp-surface {
     border-radius: 14px;
   }
@@ -1192,6 +1321,41 @@
     overflow-y: hidden;
     padding-bottom: .1rem;
     min-height: 0;
+  }
+
+  .mp-combat-modal-backdrop {
+    padding: .55rem;
+    align-items: flex-end;
+  }
+
+  .mp-combat-modal {
+    width: 100%;
+    max-height: 84dvh;
+    border-radius: 18px;
+    padding: .8rem;
+    gap: .7rem;
+  }
+
+  .mp-combat-modal-head {
+    gap: .6rem;
+  }
+
+  .mp-combat-modal-sub {
+    font-size: .76rem;
+  }
+
+  .mp-combat-target-picker {
+    gap: .35rem;
+  }
+
+  .mp-combat-target-pill {
+    font-size: .62rem;
+    padding: .38rem .6rem;
+  }
+
+  .mp-combat-modal-body {
+    grid-template-columns: 1fr;
+    gap: .55rem;
   }
 
   .mp-combat-card {

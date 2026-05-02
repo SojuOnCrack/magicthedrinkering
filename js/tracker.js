@@ -29,6 +29,8 @@ const MPTracker = {
   authReady: false,
   deckOptions: [],
   combatLifelink: false,
+  combatModalOpen: false,
+  combatTargetIds: [],
   pendingWrites: 0,
   lastUndo: null,
   uiPulseByPlayerId: {},
@@ -466,6 +468,34 @@ const MPTracker = {
     this._render();
   },
 
+  openCombatModal(initialTargetId = '') {
+    if (this.phase !== 'live') return;
+    const targets = this.players.filter(p => p.id !== this.myPlayerId && !p.eliminated);
+    if (!targets.length) return;
+    const validIds = new Set(targets.map(p => p.id));
+    const selected = [];
+    if (initialTargetId && validIds.has(initialTargetId)) selected.push(initialTargetId);
+    this.combatTargetIds.forEach(id => {
+      if (validIds.has(id) && !selected.includes(id)) selected.push(id);
+    });
+    this.combatModalOpen = true;
+    this.combatTargetIds = selected.length ? selected : [targets[0].id];
+    this._render();
+  },
+
+  closeCombatModal() {
+    this.combatModalOpen = false;
+    this._render();
+  },
+
+  toggleCombatTarget(targetId) {
+    if (!this.combatModalOpen) return;
+    const next = new Set(this.combatTargetIds);
+    if (next.has(targetId)) next.delete(targetId); else next.add(targetId);
+    this.combatTargetIds = Array.from(next);
+    this._render();
+  },
+
   /* â”€â”€ Turn weiterreichen â”€â”€ */
   async nextTurn() {
     if (!this.lobby || this.lobby.active_player_id !== this.myPlayerId) return;
@@ -885,11 +915,12 @@ const MPTracker = {
           </div>
 
           ${others.length > 0 ? `
-          <section class="mp-surface mp-arena-surface">
-            <div class="mp-cmd-title">Combat Arena</div>
-            <div class="mp-arena-grid">
-              ${others.map(p => this._renderCombatCard(p)).join('')}
+          <section class="mp-surface mp-arena-surface mp-arena-launcher">
+            <div>
+              <div class="mp-cmd-title">Combat</div>
+              <div class="mp-rules-hint">Tippe oben auf einen Gegner, um das Combat-Overlay zu öffnen und Schaden auf mehrere Ziele zu verteilen.</div>
             </div>
+            <button class="mp-btn mp-btn-outline mp-combat-open-btn" onclick="MPTracker.openCombatModal()">Combat öffnen</button>
           </section>` : ''}
 
           ${this._isHost() && alive.length <= 2 ? `
@@ -904,6 +935,8 @@ const MPTracker = {
         </div>
       </div>
 
+      ${this.combatModalOpen ? this._renderCombatModal() : ''}
+
     </div>`;
   },
 
@@ -913,7 +946,7 @@ const MPTracker = {
     const cmdReceived = this._cmdMax(p);
     const pulse = this.uiPulseByPlayerId[p.id];
     return `
-    <div class="mp-other-card mp-color-${p.color || 'gold'} ${p.eliminated ? 'is-out' : ''} ${isActive ? 'is-active' : ''} ${pulse ? `pulse-${pulse}` : ''}">
+    <button class="mp-other-card mp-color-${p.color || 'gold'} ${p.eliminated ? 'is-out' : ''} ${isActive ? 'is-active' : ''} ${pulse ? `pulse-${pulse}` : ''}" ${p.eliminated ? 'disabled' : ''} onclick="MPTracker.openCombatModal('${p.id}')">
       <div class="mp-other-orb">${this._initials(p.name)}</div>
       <div class="mp-other-info">
         <span class="mp-other-name">${esc(p.name)}</span>
@@ -921,16 +954,18 @@ const MPTracker = {
         ${p.poison > 0 ? `<span class="mp-other-poison">P ${p.poison}</span>` : ''}
         ${cmdReceived >= 7 ? `<span class="mp-other-cmd ${cmdReceived >= 21 ? 'danger' : cmdReceived >= 14 ? 'warn' : ''}">CMD ${cmdReceived}</span>` : ''}
       </div>
+      ${isActive ? '<span class="mp-other-active-pill">Active</span>' : ''}
       ${p.eliminated ? '<div class="mp-other-out">Out</div>' : ''}
       ${isActive ? '<div class="mp-other-turn">TURN</div>' : ''}
-    </div>`;
+    </button>`;
   },
-  _renderCombatCard(player) {
+  _renderCombatTargetRow(player) {
+    const isActive = this.lobby?.active_player_id === player.id;
     const myCmdOnTarget = (player.cmd_damage || {})[this.myPlayerId] || 0;
     const cmdClass = myCmdOnTarget >= 21 ? 'danger' : myCmdOnTarget >= 14 ? 'warning' : '';
     const pulse = this.uiPulseByPlayerId[player.id];
     return `
-    <article class="mp-combat-card ${player.eliminated ? 'is-out' : ''} ${pulse ? `pulse-${pulse}` : ''}">
+    <article class="mp-combat-card ${player.eliminated ? 'is-out' : ''} ${isActive ? 'is-active' : ''} ${pulse ? `pulse-${pulse}` : ''}">
       <div class="mp-combat-card-head">
         <div class="mp-combat-title-wrap">
           <div class="mp-player-orb mp-color-${player.color || 'gold'}">${this._initials(player.name)}</div>
@@ -970,6 +1005,36 @@ const MPTracker = {
       </div>
       ${player.eliminated ? '<div class="mp-combat-overlay">Ausgeschieden</div>' : ''}
     </article>`;
+  },
+
+  _renderCombatModal() {
+    const targets = this.players.filter(p => p.id !== this.myPlayerId && !p.eliminated);
+    const selectedTargets = targets.filter(p => this.combatTargetIds.includes(p.id));
+    return `
+    <div class="mp-combat-modal-backdrop" onclick="MPTracker.closeCombatModal()">
+      <div class="mp-combat-modal" onclick="event.stopPropagation()">
+        <div class="mp-combat-modal-head">
+          <div>
+            <div class="mp-cmd-title">Combat Overlay</div>
+            <div class="mp-combat-modal-sub">Wähle ein oder mehrere Ziele und verteile den Schaden individuell.</div>
+          </div>
+          <button class="mp-back-btn" onclick="MPTracker.closeCombatModal()">Schließen</button>
+        </div>
+
+        <div class="mp-combat-target-picker">
+          ${targets.map(player => {
+            const selected = this.combatTargetIds.includes(player.id);
+            return `<button class="mp-combat-target-pill ${selected ? 'is-selected' : ''}" onclick="MPTracker.toggleCombatTarget('${player.id}')">${esc(player.name)}</button>`;
+          }).join('')}
+        </div>
+
+        <div class="mp-combat-modal-body">
+          ${selectedTargets.length
+            ? selectedTargets.map(player => this._renderCombatTargetRow(player)).join('')
+            : '<div class="mp-combat-empty">Wähle mindestens ein Ziel aus.</div>'}
+        </div>
+      </div>
+    </div>`;
   },
 
   /* â”€â”€ Fertig â”€â”€ */
