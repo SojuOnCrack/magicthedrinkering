@@ -18,12 +18,16 @@ const MPTracker = {
   START_LIFE: 40,
   MAX_PLAYERS: 6,
   SESSION_KEY: 'mtd_mp_session_v1',
+  LOBBY_STATE_KEY: 'mtd_mp_lobby_state_v1',
   COLORS: ['gold','ice','green','crimson','purple','steel'],
 
   /* ── State ── */
   sb: null,
   sessionId: null,
   playerName: '',
+  authUser: null,
+  authReady: false,
+  deckOptions: [],
   lobbyId: null,
   lobbyCode: null,
   myPlayerId: null,
@@ -38,7 +42,15 @@ const MPTracker = {
       auth: { persistSession: true, storage: window.localStorage, storageKey: 'cforge_sb_session', autoRefreshToken: true, detectSessionInUrl: false }
     });
     this.sessionId = this._getOrCreateSession();
+    this._bindLifecycle();
+    this.phase = 'creating';
     this._render();
+    await this._bootstrapIdentity();
+    const restored = await this._restoreLobby();
+    if (!restored) {
+      this.phase = 'menu';
+      this._render();
+    }
   },
 
   _getOrCreateSession() {
@@ -47,10 +59,103 @@ const MPTracker = {
     return s;
   },
 
+  _bindLifecycle() {
+    window.addEventListener('beforeunload', () => {
+      this._destroySubscription();
+    });
+  },
+
+  _destroySubscription() {
+    if (!this.subscription || !this.sb) return;
+    try { this.sb.removeChannel(this.subscription); } catch {}
+    this.subscription = null;
+  },
+
+  _persistLobbyState() {
+    if (!this.lobbyId || !this.myPlayerId) { this._clearLobbyState(); return; }
+    localStorage.setItem(this.LOBBY_STATE_KEY, JSON.stringify({
+      lobbyId: this.lobbyId,
+      lobbyCode: this.lobbyCode,
+      myPlayerId: this.myPlayerId,
+      playerName: this.playerName
+    }));
+  },
+
+  _clearLobbyState() {
+    localStorage.removeItem(this.LOBBY_STATE_KEY);
+  },
+
+  _savedLobbyState() {
+    try { return JSON.parse(localStorage.getItem(this.LOBBY_STATE_KEY) || 'null'); } catch { return null; }
+  },
+
+  async _restoreLobby() {
+    const saved = this._savedLobbyState();
+    if (!saved?.lobbyId || !saved?.myPlayerId) return false;
+    try {
+      const [{ data: lobby }, { data: me }, { data: players }] = await Promise.all([
+        this.sb.from('mp_lobbies').select('*').eq('id', saved.lobbyId).maybeSingle(),
+        this.sb.from('mp_players').select('*').eq('id', saved.myPlayerId).maybeSingle(),
+        this.sb.from('mp_players').select('*').eq('lobby_id', saved.lobbyId).order('seat')
+      ]);
+      if (!lobby || !me) {
+        this._clearLobbyState();
+        return false;
+      }
+      this.lobbyId = lobby.id;
+      this.lobbyCode = lobby.code || saved.lobbyCode || '';
+      this.myPlayerId = me.id;
+      this.playerName = me.name || saved.playerName || '';
+      this.lobby = lobby;
+      this.players = players || [];
+      this.phase = lobby.phase === 'finished' ? 'finished' : lobby.phase === 'live' ? 'live' : 'waiting';
+      this._subscribe();
+      this._persistLobbyState();
+      this._render();
+      return true;
+    } catch (err) {
+      console.warn('[MPTracker._restoreLobby]', err);
+      this._clearLobbyState();
+      return false;
+    }
+  },
+
   /* ── Lobby erstellen ── */
+  async _bootstrapIdentity() {
+    try {
+      const { data: { session } } = await this.sb.auth.getSession();
+      const user = session?.user || null;
+      if (!user) {
+        this.authUser = null;
+        this.authReady = true;
+        return;
+      }
+      this.authUser = user;
+      const [profileRes, decksRes] = await Promise.all([
+        this.sb.from('profiles').select('username,email').eq('id', user.id).maybeSingle(),
+        this.sb.from('decks').select('id,name,commander,partner').eq('user_id', user.id).order('name')
+      ]);
+      const profile = profileRes.data || null;
+      const displayName = profile?.username || user.user_metadata?.username || user.email?.split('@')[0] || 'Player';
+      this.playerName = this.playerName || displayName;
+      this.deckOptions = (decksRes.data || []).map(deck => ({
+        id: deck.id,
+        name: deck.name || 'Untitled Deck',
+        commander: deck.commander || '',
+        partner: deck.partner || ''
+      }));
+    } catch (err) {
+      console.warn('[MPTracker._bootstrapIdentity]', err);
+      this.authUser = null;
+      this.deckOptions = [];
+    } finally {
+      this.authReady = true;
+    }
+  },
+
   async createLobby() {
     const nameInput = document.getElementById('mp-name-input');
-    const name = (nameInput?.value || '').trim();
+    const name = (nameInput?.value || this.playerName || '').trim();
     if (!name) { this._showError('Bitte gib deinen Namen ein.'); return; }
     this.playerName = name;
     this.phase = 'creating';
@@ -91,6 +196,7 @@ const MPTracker = {
       this.players = [player];
       this.phase = 'waiting';
       this._subscribe();
+      this._persistLobbyState();
       this._render();
     } catch(err) {
       console.error(err);
@@ -104,7 +210,7 @@ const MPTracker = {
   async joinLobby() {
     const nameInput = document.getElementById('mp-name-input');
     const codeInput = document.getElementById('mp-code-input');
-    const name = (nameInput?.value || '').trim();
+    const name = (nameInput?.value || this.playerName || '').trim();
     const code = (codeInput?.value || '').trim().toUpperCase();
     if (!name) { this._showError('Bitte gib deinen Namen ein.'); return; }
     if (!code || code.length !== 6) { this._showError('Bitte gib einen gültigen 6-stelligen Code ein.'); return; }
@@ -128,6 +234,7 @@ const MPTracker = {
         this.players = players || [];
         this.phase = lobby.phase === 'waiting' ? 'waiting' : 'live';
         this._subscribe();
+        this._persistLobbyState();
         this._render();
         return;
       }
@@ -159,6 +266,7 @@ const MPTracker = {
       this.players = players || [];
       this.phase = 'waiting';
       this._subscribe();
+      this._persistLobbyState();
       this._render();
     } catch(err) {
       console.error(err);
@@ -170,7 +278,7 @@ const MPTracker = {
 
   /* ── Realtime Subscription ── */
   _subscribe() {
-    if (this.subscription) { this.sb.removeChannel(this.subscription); }
+    this._destroySubscription();
     this.subscription = this.sb.channel('lobby:' + this.lobbyId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mp_players', filter: 'lobby_id=eq.' + this.lobbyId }, (payload) => {
         this._handlePlayerChange(payload);
@@ -190,8 +298,15 @@ const MPTracker = {
       if (idx >= 0) this.players[idx] = newRow; else this.players.push(newRow);
       this.players.sort((a,b) => a.seat - b.seat);
     } else if (eventType === 'DELETE') {
+      if (oldRow?.id === this.myPlayerId) {
+        this._showError('Du wurdest aus der Lobby entfernt.');
+        this._resetLobbyState();
+        this._render();
+        return;
+      }
       this.players = this.players.filter(p => p.id !== oldRow.id);
     }
+    this._checkAutoFinish();
     this._render();
   },
 
@@ -200,6 +315,7 @@ const MPTracker = {
     this.lobby = payload.new;
     if (this.lobby.phase === 'live' && this.phase !== 'live') { this.phase = 'live'; }
     if (this.lobby.phase === 'finished' && this.phase !== 'finished') { this.phase = 'finished'; }
+    this._persistLobbyState();
     this._render();
   },
 
@@ -213,9 +329,18 @@ const MPTracker = {
         phase: 'live',
         active_player_id: firstPlayer.id,
         started_at: new Date().toISOString(),
+        finished_at: null,
+        winner_id: null,
         turn_number: 1
       }).eq('id', this.lobbyId);
-      await this.sb.from('mp_players').update({ life: this.START_LIFE, poison: 0, monarch: false, initiative: false, eliminated: false }).eq('lobby_id', this.lobbyId);
+      await this.sb.from('mp_players').update({
+        life: this.START_LIFE,
+        poison: 0,
+        monarch: false,
+        initiative: false,
+        eliminated: false,
+        cmd_damage: {}
+      }).eq('lobby_id', this.lobbyId);
     } catch(err) { this._showError('Fehler beim Starten: ' + err.message); }
   },
 
@@ -231,7 +356,6 @@ const MPTracker = {
   async dealCommanderDamage(targetId, delta) {
     const target = this.players.find(p => p.id === targetId);
     if (!target || target.eliminated || this.phase !== 'live') return;
-    const key = 'cmd_from_' + this.myPlayerId.replace(/-/g,'_').slice(-8);
     const cmdDamage = target.cmd_damage || {};
     const current = cmdDamage[this.myPlayerId] || 0;
     const newVal = Math.max(0, Math.min(99, current + delta));
@@ -262,6 +386,10 @@ const MPTracker = {
   async updateMyDeck(deck) {
     const v = String(deck || '').trim().slice(0, 60);
     if (this.myPlayerId) await this.sb.from('mp_players').update({ deck: v }).eq('id', this.myPlayerId);
+  },
+
+  async updateMyDeckChoice(deck) {
+    await this.updateMyDeck(deck);
   },
 
   /* ── Toggle Monarch/Initiative ── */
@@ -300,9 +428,9 @@ const MPTracker = {
 
   /* ── Lobby verlassen ── */
   async leaveLobby() {
-    if (this.subscription) { this.sb.removeChannel(this.subscription); this.subscription = null; }
+    this._destroySubscription();
     if (this.myPlayerId) { await this.sb.from('mp_players').delete().eq('id', this.myPlayerId); }
-    this.lobbyId = null; this.lobbyCode = null; this.myPlayerId = null; this.lobby = null; this.players = []; this.phase = 'menu';
+    this._resetLobbyState();
     this._render();
   },
 
@@ -316,6 +444,16 @@ const MPTracker = {
     const dmg = player.cmd_damage || {};
     return Math.max(0, ...Object.values(dmg));
   },
+  _deckMetaByName(name) {
+    const deckName = String(name || '').trim().toLowerCase();
+    if (!deckName) return null;
+    return this.deckOptions.find(deck => deck.name.toLowerCase() === deckName) || null;
+  },
+  _renderDeckMeta(deckName) {
+    const meta = this._deckMetaByName(deckName);
+    if (!meta || (!meta.commander && !meta.partner)) return '';
+    return `<div class="mp-deck-meta">${meta.commander ? `<span class="mp-deck-commander">${esc(meta.commander)}</span>` : ''}${meta.partner ? `<span class="mp-deck-partner">+ ${esc(meta.partner)}</span>` : ''}</div>`;
+  },
   _showError(msg) {
     const el = document.getElementById('mp-error');
     if (el) { el.textContent = msg; el.style.display = 'block'; setTimeout(() => { el.style.display = 'none'; }, 4000); }
@@ -324,6 +462,23 @@ const MPTracker = {
   /* ══════════════════════════════════════════
      RENDER LAYER
   ══════════════════════════════════════════ */
+  _resetLobbyState() {
+    this._clearLobbyState();
+    this.lobbyId = null;
+    this.lobbyCode = null;
+    this.myPlayerId = null;
+    this.lobby = null;
+    this.players = [];
+    this.phase = 'menu';
+  },
+
+  _checkAutoFinish() {
+    if (!this._isHost() || this.lobby?.phase !== 'live') return;
+    const alive = this.players.filter(p => !p.eliminated);
+    if (alive.length === 1) this.finishGame(alive[0].id);
+    else if (alive.length === 0) this.finishGame('');
+  },
+
   _render() {
     const root = document.getElementById('mp-root');
     if (!root) return;
@@ -345,8 +500,14 @@ const MPTracker = {
       <div class="mp-logo-sub">Commander Tracker</div>
       <div id="mp-error" class="mp-error" style="display:none;"></div>
       <div class="mp-menu-card">
+        ${this.authUser ? `
+        <div class="mp-auth-card">
+          <div class="mp-auth-title">Angemeldet</div>
+          <div class="mp-auth-name">${esc(this.playerName || this.authUser.email || 'User')}</div>
+          <div class="mp-auth-sub">${this.deckOptions.length} Deck${this.deckOptions.length===1?'':'s'} verfÃ¼gbar</div>
+        </div>` : `
         <label class="mp-label">Dein Name</label>
-        <input id="mp-name-input" class="mp-input" type="text" maxlength="24" placeholder="z.B. Felix" autocomplete="off">
+        <input id="mp-name-input" class="mp-input" type="text" maxlength="24" placeholder="z.B. Felix" autocomplete="off">`}
 
         <button class="mp-btn mp-btn-gold" onclick="MPTracker.createLobby()">
           <span class="mp-btn-icon">⚔</span> Lobby erstellen
@@ -394,6 +555,7 @@ const MPTracker = {
             <div class="mp-player-orb mp-color-${p.color || 'gold'}">${this._initials(p.name)}</div>
             <div class="mp-player-info">
               <strong>${esc(p.name)}</strong>
+              ${this._renderDeckMeta(p.deck)}
               <span>${esc(p.deck || 'Kein Deck gewählt')}</span>
             </div>
             ${p.session_id === this.lobby?.host_session ? '<div class="mp-host-badge">Host</div>' : ''}
@@ -404,9 +566,19 @@ const MPTracker = {
       <div class="mp-setup-section">
         <div class="mp-section-label">Dein Setup</div>
         <label class="mp-label">Name</label>
-        <input class="mp-input" type="text" value="${esc(me?.name || this.playerName)}" maxlength="24" onchange="MPTracker.updateMyName(this.value)">
+        ${this.authUser
+          ? `<input class="mp-input is-readonly" type="text" value="${esc(me?.name || this.playerName)}" readonly>`
+          : `<input class="mp-input" type="text" value="${esc(me?.name || this.playerName)}" maxlength="24" onchange="MPTracker.updateMyName(this.value)">`
+        }
         <label class="mp-label">Deck</label>
-        <input class="mp-input" type="text" value="${esc(me?.deck || '')}" maxlength="60" placeholder="Deck-Name" onchange="MPTracker.updateMyDeck(this.value)">
+        ${this.deckOptions.length
+          ? `<select class="mp-input mp-select" onchange="MPTracker.updateMyDeckChoice(this.value)">
+              <option value="">Deck auswÃ¤hlen</option>
+              ${this.deckOptions.map(deck=>`<option value="${esc(deck.name)}" ${deck.name===(me?.deck||'')?'selected':''}>${esc(deck.name)}${deck.commander?` â€“ ${esc(deck.commander)}${deck.partner?` + ${esc(deck.partner)}`:''}`:''}</option>`).join('')}
+            </select>`
+          : `<input class="mp-input" type="text" value="${esc(me?.deck || '')}" maxlength="60" placeholder="Deck-Name" onchange="MPTracker.updateMyDeck(this.value)">`
+        }
+        ${this._renderDeckMeta(me?.deck || '')}
       </div>
 
       ${isHost ? `
