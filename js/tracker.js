@@ -217,7 +217,7 @@ const MPTracker = {
     const name = (nameInput?.value || this.playerName || '').trim();
     const code = (codeInput?.value || '').trim().toUpperCase();
     if (!name) { this._showError('Bitte gib deinen Namen ein.'); return; }
-    if (!code || code.length !== 6) { this._showError('Bitte gib einen gÃ¼ltigen 6-stelligen Code ein.'); return; }
+    if (!code || code.length !== 6) { this._showError('Bitte gib einen gueltigen 6-stelligen Code ein.'); return; }
     this.playerName = name;
     this.phase = 'creating';
     this._render();
@@ -225,7 +225,7 @@ const MPTracker = {
     try {
       const { data: lobby, error: le } = await this.sb.from('mp_lobbies').select('*').eq('code', code).single();
       if (le || !lobby) throw new Error('Lobby nicht gefunden.');
-      if (lobby.phase === 'live') throw new Error('Das Spiel lÃ¤uft bereits.');
+      if (lobby.phase === 'live') throw new Error('Das Spiel laeuft bereits.');
       if (lobby.phase === 'finished') throw new Error('Diese Lobby ist beendet.');
 
       const { data: existing } = await this.sb.from('mp_players').select('id').eq('lobby_id', lobby.id).eq('session_id', this.sessionId).maybeSingle();
@@ -327,7 +327,7 @@ const MPTracker = {
   /* â”€â”€ Host: Spiel starten â”€â”€ */
   async startGame() {
     if (!this._isHost()) return;
-    if (this.players.length < 2) { this._showError('Mindestens 2 Spieler benÃ¶tigt.'); return; }
+    if (this.players.length < 2) { this._showError('Mindestens 2 Spieler benoetigt.'); return; }
     const firstPlayer = this.players[0];
     try {
       await this.sb.from('mp_lobbies').update({
@@ -699,13 +699,13 @@ const MPTracker = {
         <div class="mp-auth-card">
           <div class="mp-auth-title">Angemeldet</div>
           <div class="mp-auth-name">${esc(this.playerName || this.authUser.email || 'User')}</div>
-          <div class="mp-auth-sub">${this.deckOptions.length} Deck${this.deckOptions.length===1?'':'s'} verfÃƒÂ¼gbar</div>
+          <div class="mp-auth-sub">${this.deckOptions.length} Deck${this.deckOptions.length===1?'':'s'} verfuegbar</div>
         </div>` : `
         <label class="mp-label">Dein Name</label>
         <input id="mp-name-input" class="mp-input" type="text" maxlength="24" placeholder="z.B. Felix" autocomplete="off">`}
 
         <button class="mp-btn mp-btn-gold" onclick="MPTracker.createLobby()">
-          <span class="mp-btn-icon">âš”</span> Lobby erstellen
+          <span class="mp-btn-icon">+</span> Lobby erstellen
         </button>
 
         <div class="mp-divider"><span>oder</span></div>
@@ -732,8 +732,9 @@ const MPTracker = {
 
     return `
     <div class="mp-screen mp-waiting">
+      <div class="mp-waiting-inner">
       <div class="mp-waiting-header">
-        <button class="mp-back-btn" onclick="MPTracker.leaveLobby()">â† Verlassen</button>
+        <button class="mp-back-btn" onclick="MPTracker.leaveLobby()">Zurueck</button>
         <div class="mp-logo-sm">MagicThe<em>Drinkering</em></div>
       </div>
 
@@ -751,11 +752,11 @@ const MPTracker = {
             <div class="mp-player-info">
               <strong>${esc(p.name)}</strong>
               ${this._renderDeckMeta(p.deck)}
-              <span>${esc(p.deck || 'Kein Deck gewÃ¤hlt')}</span>
+              <span>${esc(p.deck || 'Kein Deck gewaehlt')}</span>
             </div>
             ${p.session_id === this.lobby?.host_session ? '<div class="mp-host-badge">Host</div>' : ''}
           </div>`).join('')}
-        ${this.players.length < 2 ? '<div class="mp-waiting-hint">Warte auf weitere Spielerâ€¦</div>' : ''}
+        ${this.players.length < 2 ? '<div class="mp-waiting-hint">Warte auf weitere Spieler...</div>' : ''}
       </div>
 
       <div class="mp-setup-section">
@@ -768,8 +769,8 @@ const MPTracker = {
         <label class="mp-label">Deck</label>
         ${this.deckOptions.length
           ? `<select class="mp-input mp-select" onchange="MPTracker.updateMyDeckChoice(this.value)">
-              <option value="">Deck auswÃƒÂ¤hlen</option>
-              ${this.deckOptions.map(deck=>`<option value="${esc(deck.name)}" ${deck.name===(me?.deck||'')?'selected':''}>${esc(deck.name)}${deck.commander?` Ã¢â‚¬â€œ ${esc(deck.commander)}${deck.partner?` + ${esc(deck.partner)}`:''}`:''}</option>`).join('')}
+              <option value="">Deck auswaehlen</option>
+              ${this.deckOptions.map(deck=>`<option value="${esc(deck.name)}" ${deck.name===(me?.deck||'')?'selected':''}>${esc(deck.name)}${deck.commander?` - ${esc(deck.commander)}${deck.partner?` + ${esc(deck.partner)}`:''}`:''}</option>`).join('')}
             </select>`
           : `<input class="mp-input" type="text" value="${esc(me?.deck || '')}" maxlength="60" placeholder="Deck-Name" onchange="MPTracker.updateMyDeck(this.value)">`
         }
@@ -779,10 +780,11 @@ const MPTracker = {
       ${isHost ? `
       <div class="mp-host-actions">
         <button class="mp-btn ${canStart ? 'mp-btn-gold' : 'mp-btn-disabled'}" ${canStart ? '' : 'disabled'} onclick="MPTracker.startGame()">
-          ${canStart ? 'âš” Spiel starten' : `Warte auf Spieler (${this.players.length}/2+)`}
+          ${canStart ? 'Spiel starten' : `Warte auf Spieler (${this.players.length}/2+)`}
         </button>
       </div>` : `
-      <div class="mp-waiting-for-host">Warte auf Hostâ€¦</div>`}
+      <div class="mp-waiting-for-host">Warte auf Host...</div>`}
+      </div>
     </div>`;
   },
 
@@ -916,11 +918,11 @@ const MPTracker = {
       <div class="mp-other-info">
         <span class="mp-other-name">${esc(p.name)}</span>
         <span class="mp-other-life ${this._lifeClass(p.life)}">${p.life}</span>
-        ${p.poison > 0 ? `<span class="mp-other-poison">â˜ ${p.poison}</span>` : ''}
-        ${cmdReceived >= 7 ? `<span class="mp-other-cmd ${cmdReceived >= 21 ? 'danger' : cmdReceived >= 14 ? 'warn' : ''}">âš”${cmdReceived}</span>` : ''}
+        ${p.poison > 0 ? `<span class="mp-other-poison">P ${p.poison}</span>` : ''}
+        ${cmdReceived >= 7 ? `<span class="mp-other-cmd ${cmdReceived >= 21 ? 'danger' : cmdReceived >= 14 ? 'warn' : ''}">CMD ${cmdReceived}</span>` : ''}
       </div>
       ${p.eliminated ? '<div class="mp-other-out">Out</div>' : ''}
-      ${isActive ? '<div class="mp-other-turn">â–¶</div>' : ''}
+      ${isActive ? '<div class="mp-other-turn">TURN</div>' : ''}
     </div>`;
   },
   _renderCombatCard(player) {
@@ -977,7 +979,7 @@ const MPTracker = {
     return `
     <div class="mp-screen mp-finished">
       <div class="mp-finished-inner">
-        <div class="mp-finished-crown">â™›</div>
+        <div class="mp-finished-crown">WIN</div>
         <div class="mp-finished-title">${winner ? esc(winner.name) + ' gewinnt!' : 'Spiel beendet'}</div>
         <div class="mp-finished-sub">Turn ${this.lobby?.turn_number || '?'} Â· ${this.players.length} Spieler</div>
         <div class="mp-finished-players">
@@ -995,7 +997,7 @@ const MPTracker = {
           <button class="mp-btn mp-btn-outline" onclick="MPTracker.returnToWaitingRoom()">Zurück in den Waiting Room</button>
         </div>` : `
         <div class="mp-finished-note">Der Host kann jetzt ein Rematch starten oder den Waiting Room für neue Decks öffnen.</div>`}
-        <button class="mp-btn mp-btn-gold" onclick="MPTracker.leaveLobby()">ZurÃ¼ck zum MenÃ¼</button>
+        <button class="mp-btn mp-btn-gold" onclick="MPTracker.leaveLobby()">Zurueck zum Menue</button>
       </div>
     </div>`;
   }

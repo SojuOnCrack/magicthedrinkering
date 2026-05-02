@@ -209,6 +209,14 @@
   min-height: 100%;
   background: radial-gradient(ellipse at 50% 0%, #1a0a2e 0%, #06090f 60%);
 }
+.mp-waiting-inner {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
 
 .mp-waiting-header {
   display: flex;
@@ -234,6 +242,9 @@
   border: 1px solid rgba(201,168,76,.2);
   border-radius: 14px;
   padding: 1.25rem 1rem;
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
 }
 .mp-code-label { font-size: .7rem; letter-spacing: .2em; text-transform: uppercase; color: rgba(201,168,76,.6); margin-bottom: .4rem; font-family: 'Cinzel', serif; }
 .mp-code-big { font-family: 'JetBrains Mono', monospace; font-size: 2.8rem; font-weight: 700; color: #c9a84c; letter-spacing: .25em; line-height: 1; margin-bottom: .75rem; }
@@ -243,6 +254,14 @@
 .mp-section-label { font-family: 'Cinzel', serif; font-size: .7rem; letter-spacing: .15em; text-transform: uppercase; color: rgba(232,224,208,.35); margin-bottom: .5rem; }
 
 .mp-waiting-players { display: flex; flex-direction: column; gap: .5rem; }
+.mp-waiting-players,
+.mp-setup-section,
+.mp-host-actions,
+.mp-waiting-for-host {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
 .mp-player-row {
   display: flex;
   align-items: center;
