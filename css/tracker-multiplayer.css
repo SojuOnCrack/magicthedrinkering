@@ -804,6 +804,15 @@
   flex-direction: column;
   gap: .7rem;
 }
+.mp-generic-counter-card {
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  padding: .8rem;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
 
 .mp-utility-label {
   font-size: .72rem;
@@ -865,6 +874,46 @@
   justify-content: space-between;
   gap: 1rem;
   padding: .72rem .95rem;
+}
+.mp-combat-launch-copy {
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+  min-width: 0;
+}
+.mp-combat-launch-actions {
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+  align-items: flex-end;
+}
+.mp-combat-launch-meta {
+  font-size: .72rem;
+  color: rgba(232,224,208,.45);
+  text-align: right;
+}
+.mp-combat-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+}
+.mp-combat-shortcut {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  color: rgba(232,224,208,.76);
+  border-radius: 999px;
+  padding: .38rem .7rem;
+  font-family: 'Cinzel', serif;
+  font-size: .68rem;
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+.mp-combat-shortcut:hover,
+.mp-counter-toggle:hover {
+  background: rgba(201,168,76,.12);
+  border-color: rgba(201,168,76,.3);
 }
 
 .mp-combat-open-btn {
@@ -1262,6 +1311,14 @@
     flex-direction: column;
     align-items: stretch;
     gap: .55rem;
+  }
+
+  .mp-combat-launch-actions {
+    align-items: stretch;
+  }
+
+  .mp-combat-launch-meta {
+    text-align: left;
   }
 
   .mp-combat-open-btn {

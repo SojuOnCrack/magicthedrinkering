@@ -33,6 +33,7 @@ const MPTracker = {
   combatTargetIds: [],
   countersOpen: false,
   extraTurnQueued: false,
+  miscCounters: { energy: 0, experience: 0, rad: 0 },
   combatHoldTimeout: null,
   combatHoldInterval: null,
   combatHoldTriggered: false,
@@ -511,6 +512,14 @@ const MPTracker = {
     this._render();
   },
 
+  adjustMiscCounter(counterKey, delta) {
+    const allowed = ['energy', 'experience', 'rad'];
+    if (!allowed.includes(counterKey)) return;
+    const current = Number(this.miscCounters[counterKey] || 0);
+    this.miscCounters[counterKey] = Math.max(0, Math.min(999, current + delta));
+    this._render();
+  },
+
   startCombatAdjust(mode, targetId, direction) {
     this.stopCombatAdjust();
     this.combatHoldTriggered = false;
@@ -954,6 +963,7 @@ const MPTracker = {
                 <div class="mp-toggle-stack">
                   <button class="mp-toggle-btn ${me.monarch ? 'on' : ''}" onclick="MPTracker.toggleMonarch()">Monarch</button>
                   <button class="mp-toggle-btn ${me.initiative ? 'on' : ''}" onclick="MPTracker.toggleInitiative()">Initiative</button>
+                  <button class="mp-toggle-btn ${this.combatLifelink ? 'on lifelink' : ''}" onclick="MPTracker.toggleCombatLifelink()">Lifelink</button>
                   <button class="mp-toggle-btn ${this.extraTurnQueued ? 'on' : ''}" onclick="MPTracker.toggleExtraTurn()">Extra Turn</button>
                   ${isMyTurn ? '<button class="mp-pass-btn mp-pass-btn-inline" onclick="MPTracker.nextTurn()">Turn abgeben</button>' : ''}
                 </div>
@@ -961,6 +971,36 @@ const MPTracker = {
                   <button class="mp-counter-toggle" onclick="MPTracker.toggleCountersPanel()">${this.countersOpen ? 'Counter schließen' : 'Counter öffnen'}</button>
                   ${this.countersOpen ? `
                   <div class="mp-counter-drawer">
+                    <div class="mp-generic-counter-card">
+                      <span class="mp-utility-label">Energy</span>
+                      <div class="mp-poison-ctrl">
+                        <button class="mp-mini-btn" onclick="MPTracker.adjustMiscCounter('energy',-1)">−</button>
+                        <div class="mp-poison-display">
+                          <span class="mp-poison-val">${this.miscCounters.energy || 0}</span>
+                        </div>
+                        <button class="mp-mini-btn" onclick="MPTracker.adjustMiscCounter('energy',1)">+</button>
+                      </div>
+                    </div>
+                    <div class="mp-generic-counter-card">
+                      <span class="mp-utility-label">Experience</span>
+                      <div class="mp-poison-ctrl">
+                        <button class="mp-mini-btn" onclick="MPTracker.adjustMiscCounter('experience',-1)">−</button>
+                        <div class="mp-poison-display">
+                          <span class="mp-poison-val">${this.miscCounters.experience || 0}</span>
+                        </div>
+                        <button class="mp-mini-btn" onclick="MPTracker.adjustMiscCounter('experience',1)">+</button>
+                      </div>
+                    </div>
+                    <div class="mp-generic-counter-card">
+                      <span class="mp-utility-label">Rad</span>
+                      <div class="mp-poison-ctrl">
+                        <button class="mp-mini-btn" onclick="MPTracker.adjustMiscCounter('rad',-1)">−</button>
+                        <div class="mp-poison-display">
+                          <span class="mp-poison-val">${this.miscCounters.rad || 0}</span>
+                        </div>
+                        <button class="mp-mini-btn" onclick="MPTracker.adjustMiscCounter('rad',1)">+</button>
+                      </div>
+                    </div>
                     <div class="mp-poison-card">
                       <span class="mp-utility-label">Poison</span>
                       <div class="mp-poison-ctrl">
@@ -973,7 +1013,6 @@ const MPTracker = {
                         <button class="mp-mini-btn" onclick="MPTracker.adjustPoison(1)">+</button>
                       </div>
                     </div>
-                    <button class="mp-toggle-btn ${this.combatLifelink ? 'on lifelink' : ''}" onclick="MPTracker.toggleCombatLifelink()">Lifelink</button>
                   </div>` : ''}
                 </div>
               </div>
@@ -983,11 +1022,17 @@ const MPTracker = {
 
           ${others.length > 0 ? `
           <section class="mp-surface mp-arena-surface mp-arena-launcher">
-            <div>
+            <div class="mp-combat-launch-copy">
               <div class="mp-cmd-title">Combat</div>
-              <div class="mp-rules-hint">Tippe oben auf einen Gegner für Combat und mehrere Ziele.</div>
+              <div class="mp-rules-hint">Tippe auf Gegner-Shortcuts oder öffne das Overlay für mehrere Ziele und Splits.</div>
+              <div class="mp-combat-shortcuts">
+                ${others.filter(p => !p.eliminated).map(p => `<button class="mp-combat-shortcut" onclick="MPTracker.openCombatModal('${p.id}')">${esc(p.name)}</button>`).join('')}
+              </div>
             </div>
-            <button class="mp-btn mp-btn-outline mp-combat-open-btn" onclick="MPTracker.openCombatModal()">Combat öffnen</button>
+            <div class="mp-combat-launch-actions">
+              <div class="mp-combat-launch-meta">${this.combatTargetIds.length} Ziel${this.combatTargetIds.length===1?'':'e'} vorgemerkt</div>
+              <button class="mp-btn mp-btn-outline mp-combat-open-btn" onclick="MPTracker.openCombatModal()">Combat öffnen</button>
+            </div>
           </section>` : ''}
 
           ${this._isHost() && alive.length <= 2 ? `
