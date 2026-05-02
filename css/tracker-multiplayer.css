@@ -732,6 +732,10 @@
   letter-spacing: .05em;
   cursor: pointer;
 }
+.mp-pass-btn-inline {
+  margin-left: 0;
+  width: 100%;
+}
 .mp-pass-btn:hover,
 .mp-undo-btn:hover {
   transform: translateY(-1px);
@@ -770,11 +774,15 @@
 }
 
 .mp-life-controls {
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
 }
 
 .mp-life-controls-heal .mp-lbtn-plus {
   background: rgba(201,168,76,.08);
+}
+.mp-lbtn {
+  font-size: .92rem;
+  padding: .72rem .2rem;
 }
 
 .mp-utility-grid {
@@ -782,6 +790,9 @@
   grid-template-columns: minmax(0, 1fr) minmax(180px, .9fr);
   gap: .8rem;
   align-items: stretch;
+}
+.mp-utility-grid-tight {
+  grid-template-columns: minmax(0, 1fr) minmax(190px, .9fr);
 }
 
 .mp-poison-card {
@@ -804,6 +815,29 @@
 
 .mp-toggle-stack {
   display: grid;
+  gap: .45rem;
+}
+.mp-counter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+}
+.mp-counter-toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  color: rgba(232,224,208,.76);
+  border-radius: 12px;
+  padding: .62rem .8rem;
+  font-family: 'Cinzel', serif;
+  font-size: .72rem;
+  letter-spacing: .05em;
+  cursor: pointer;
+}
+.mp-counter-drawer {
+  display: flex;
+  flex-direction: column;
   gap: .45rem;
 }
 
@@ -830,11 +864,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  padding: .72rem .95rem;
 }
 
 .mp-combat-open-btn {
   width: auto;
-  min-width: 180px;
+  min-width: 150px;
+  padding: .62rem .85rem;
 }
 
 .mp-arena-grid {
@@ -964,6 +1000,15 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: .45rem;
+}
+.mp-action-buttons-stepper {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.mp-cmd-btn-stepper {
+  width: 100%;
+  min-height: 42px;
+  font-size: 1.15rem;
+  font-family: 'Cinzel', serif;
 }
 
 .mp-combat-overlay {
@@ -1259,12 +1304,12 @@
   }
 
   .mp-life-controls {
-    gap: .32rem;
+    gap: .28rem;
   }
 
   .mp-lbtn {
-    font-size: .7rem;
-    padding: .46rem .15rem;
+    font-size: .78rem;
+    padding: .52rem .1rem;
     border-radius: 7px;
   }
 
@@ -1291,6 +1336,11 @@
   .mp-toggle-stack {
     grid-template-columns: 1fr;
     gap: .3rem;
+  }
+
+  .mp-counter-toggle {
+    font-size: .6rem;
+    padding: .46rem .55rem;
   }
 
   .mp-toggle-btn {

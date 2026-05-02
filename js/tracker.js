@@ -31,6 +31,11 @@ const MPTracker = {
   combatLifelink: false,
   combatModalOpen: false,
   combatTargetIds: [],
+  countersOpen: false,
+  extraTurnQueued: false,
+  combatHoldTimeout: null,
+  combatHoldInterval: null,
+  combatHoldTriggered: false,
   pendingWrites: 0,
   lastUndo: null,
   uiPulseByPlayerId: {},
@@ -496,11 +501,64 @@ const MPTracker = {
     this._render();
   },
 
+  toggleCountersPanel() {
+    this.countersOpen = !this.countersOpen;
+    this._render();
+  },
+
+  toggleExtraTurn() {
+    this.extraTurnQueued = !this.extraTurnQueued;
+    this._render();
+  },
+
+  startCombatAdjust(mode, targetId, direction) {
+    this.stopCombatAdjust();
+    this.combatHoldTriggered = false;
+    this.combatHoldTimeout = setTimeout(() => {
+      this.combatHoldTriggered = true;
+      const step = direction * 10;
+      this._runCombatAdjust(mode, targetId, step);
+      this.combatHoldInterval = setInterval(() => {
+        this._runCombatAdjust(mode, targetId, step);
+      }, 180);
+    }, 320);
+  },
+
+  stopCombatAdjust(mode = '', targetId = '', direction = 0) {
+    if (this.combatHoldTimeout) {
+      clearTimeout(this.combatHoldTimeout);
+      this.combatHoldTimeout = null;
+    }
+    if (this.combatHoldInterval) {
+      clearInterval(this.combatHoldInterval);
+      this.combatHoldInterval = null;
+    }
+    if (!this.combatHoldTriggered && mode && targetId && direction) {
+      this._runCombatAdjust(mode, targetId, direction);
+    }
+    this.combatHoldTriggered = false;
+  },
+
+  _runCombatAdjust(mode, targetId, amount) {
+    if (mode === 'commander') return this.dealCommanderDamage(targetId, amount);
+    return this.dealCombatDamage(targetId, amount);
+  },
+
   /* â”€â”€ Turn weiterreichen â”€â”€ */
   async nextTurn() {
     if (!this.lobby || this.lobby.active_player_id !== this.myPlayerId) return;
     const alive = this.players.filter(p => !p.eliminated);
     if (!alive.length) return;
+    if (this.extraTurnQueued) {
+      this.extraTurnQueued = false;
+      const newTurn = (this.lobby.turn_number || 1) + 1;
+      await this._runOptimistic({
+        lobbyUpdates: { active_player_id: this.myPlayerId, turn_number: newTurn },
+        undoLabel: 'Extra Turn genommen',
+        pulses: [{ id: this.myPlayerId, kind: 'turn' }]
+      });
+      return;
+    }
     const cur = Math.max(0, alive.findIndex(p => p.id === this.myPlayerId));
     const next = alive[(cur + 1) % alive.length];
     const newTurn = (this.lobby.turn_number || 1) + 1;
@@ -837,7 +895,6 @@ const MPTracker = {
           <span class="mp-top-chip">${alive.length} alive</span>
           <span class="mp-top-chip ${this.pendingWrites ? 'is-syncing' : ''}">${this.pendingWrites ? 'Syncing…' : 'Live Sync'}</span>
           ${this.lastUndo ? `<button class="mp-undo-btn" onclick="MPTracker.undoLastAction()">Undo${this.lastUndo.label ? ` · ${esc(this.lastUndo.label)}` : ''}</button>` : ''}
-          ${isMyTurn ? '<button class="mp-pass-btn" onclick="MPTracker.nextTurn()">Turn abgeben</button>' : ''}
         </div>
         <div class="mp-other-players">
           ${others.map(p => this._renderOtherCard(p)).join('')}
@@ -872,6 +929,7 @@ const MPTracker = {
                   <div class="mp-cmd-title">Damage</div>
                   <div class="mp-life-controls">
                     <button class="mp-lbtn" onclick="MPTracker.adjustLife(-1)">-1</button>
+                    <button class="mp-lbtn" onclick="MPTracker.adjustLife(-2)">-2</button>
                     <button class="mp-lbtn" onclick="MPTracker.adjustLife(-3)">-3</button>
                     <button class="mp-lbtn" onclick="MPTracker.adjustLife(-5)">-5</button>
                     <button class="mp-lbtn" onclick="MPTracker.adjustLife(-10)">-10</button>
@@ -881,6 +939,7 @@ const MPTracker = {
                   <div class="mp-cmd-title">Heal / Lifegain</div>
                   <div class="mp-life-controls mp-life-controls-heal">
                     <button class="mp-lbtn mp-lbtn-plus" onclick="MPTracker.adjustLife(1)">+1</button>
+                    <button class="mp-lbtn mp-lbtn-plus" onclick="MPTracker.adjustLife(2)">+2</button>
                     <button class="mp-lbtn mp-lbtn-plus" onclick="MPTracker.adjustLife(3)">+3</button>
                     <button class="mp-lbtn mp-lbtn-plus" onclick="MPTracker.adjustLife(5)">+5</button>
                     <button class="mp-lbtn mp-lbtn-plus" onclick="MPTracker.adjustLife(10)">+10</button>
@@ -891,23 +950,31 @@ const MPTracker = {
 
             <section class="mp-surface mp-utility-surface">
               <div class="mp-cmd-title">Status & Basics</div>
-              <div class="mp-utility-grid">
-                <div class="mp-poison-card">
-                  <span class="mp-utility-label">Poison</span>
-                  <div class="mp-poison-ctrl">
-                    <button class="mp-mini-btn" onclick="MPTracker.adjustPoison(-1)">−</button>
-                    <div class="mp-poison-display">
-                      <span class="mp-poison-icon">☠</span>
-                      <span class="mp-poison-val">${me.poison}</span>
-                      <span class="mp-poison-max">/10</span>
-                    </div>
-                    <button class="mp-mini-btn" onclick="MPTracker.adjustPoison(1)">+</button>
-                  </div>
-                </div>
+              <div class="mp-utility-grid mp-utility-grid-tight">
                 <div class="mp-toggle-stack">
                   <button class="mp-toggle-btn ${me.monarch ? 'on' : ''}" onclick="MPTracker.toggleMonarch()">Monarch</button>
                   <button class="mp-toggle-btn ${me.initiative ? 'on' : ''}" onclick="MPTracker.toggleInitiative()">Initiative</button>
-                  <button class="mp-toggle-btn ${this.combatLifelink ? 'on lifelink' : ''}" onclick="MPTracker.toggleCombatLifelink()">Lifelink</button>
+                  <button class="mp-toggle-btn ${this.extraTurnQueued ? 'on' : ''}" onclick="MPTracker.toggleExtraTurn()">Extra Turn</button>
+                  ${isMyTurn ? '<button class="mp-pass-btn mp-pass-btn-inline" onclick="MPTracker.nextTurn()">Turn abgeben</button>' : ''}
+                </div>
+                <div class="mp-counter-panel">
+                  <button class="mp-counter-toggle" onclick="MPTracker.toggleCountersPanel()">${this.countersOpen ? 'Counter schließen' : 'Counter öffnen'}</button>
+                  ${this.countersOpen ? `
+                  <div class="mp-counter-drawer">
+                    <div class="mp-poison-card">
+                      <span class="mp-utility-label">Poison</span>
+                      <div class="mp-poison-ctrl">
+                        <button class="mp-mini-btn" onclick="MPTracker.adjustPoison(-1)">−</button>
+                        <div class="mp-poison-display">
+                          <span class="mp-poison-icon">☠</span>
+                          <span class="mp-poison-val">${me.poison}</span>
+                          <span class="mp-poison-max">/10</span>
+                        </div>
+                        <button class="mp-mini-btn" onclick="MPTracker.adjustPoison(1)">+</button>
+                      </div>
+                    </div>
+                    <button class="mp-toggle-btn ${this.combatLifelink ? 'on lifelink' : ''}" onclick="MPTracker.toggleCombatLifelink()">Lifelink</button>
+                  </div>` : ''}
                 </div>
               </div>
               <div class="mp-rules-hint">Commander Damage zieht direkt Leben ab. Mit aktivem Lifelink heilst du dich um denselben Schaden.</div>
@@ -918,7 +985,7 @@ const MPTracker = {
           <section class="mp-surface mp-arena-surface mp-arena-launcher">
             <div>
               <div class="mp-cmd-title">Combat</div>
-              <div class="mp-rules-hint">Tippe oben auf einen Gegner, um das Combat-Overlay zu öffnen und Schaden auf mehrere Ziele zu verteilen.</div>
+              <div class="mp-rules-hint">Tippe oben auf einen Gegner für Combat und mehrere Ziele.</div>
             </div>
             <button class="mp-btn mp-btn-outline mp-combat-open-btn" onclick="MPTracker.openCombatModal()">Combat öffnen</button>
           </section>` : ''}
@@ -986,20 +1053,16 @@ const MPTracker = {
       <div class="mp-combat-actions">
         <div class="mp-combat-action-row">
           <span class="mp-utility-label">Combat Damage</span>
-          <div class="mp-action-buttons">
-            <button class="mp-cmd-btn" onclick="MPTracker.dealCombatDamage('${player.id}',-1)">-1</button>
-            <button class="mp-cmd-btn" onclick="MPTracker.dealCombatDamage('${player.id}',1)">1</button>
-            <button class="mp-cmd-btn" onclick="MPTracker.dealCombatDamage('${player.id}',3)">3</button>
-            <button class="mp-cmd-btn" onclick="MPTracker.dealCombatDamage('${player.id}',5)">5</button>
+          <div class="mp-action-buttons mp-action-buttons-stepper">
+            <button class="mp-cmd-btn mp-cmd-btn-stepper" onpointerdown="MPTracker.startCombatAdjust('combat','${player.id}',-1)" onpointerup="MPTracker.stopCombatAdjust('combat','${player.id}',-1)" onpointerleave="MPTracker.stopCombatAdjust()" onpointercancel="MPTracker.stopCombatAdjust()">-</button>
+            <button class="mp-cmd-btn mp-cmd-btn-stepper" onpointerdown="MPTracker.startCombatAdjust('combat','${player.id}',1)" onpointerup="MPTracker.stopCombatAdjust('combat','${player.id}',1)" onpointerleave="MPTracker.stopCombatAdjust()" onpointercancel="MPTracker.stopCombatAdjust()">+</button>
           </div>
         </div>
         <div class="mp-combat-action-row">
           <span class="mp-utility-label">Commander Damage</span>
-          <div class="mp-action-buttons">
-            <button class="mp-cmd-btn" onclick="MPTracker.dealCommanderDamage('${player.id}',-1)">-1</button>
-            <button class="mp-cmd-btn commander" onclick="MPTracker.dealCommanderDamage('${player.id}',1)">1</button>
-            <button class="mp-cmd-btn commander" onclick="MPTracker.dealCommanderDamage('${player.id}',3)">3</button>
-            <button class="mp-cmd-btn commander" onclick="MPTracker.dealCommanderDamage('${player.id}',5)">5</button>
+          <div class="mp-action-buttons mp-action-buttons-stepper">
+            <button class="mp-cmd-btn mp-cmd-btn-stepper" onpointerdown="MPTracker.startCombatAdjust('commander','${player.id}',-1)" onpointerup="MPTracker.stopCombatAdjust('commander','${player.id}',-1)" onpointerleave="MPTracker.stopCombatAdjust()" onpointercancel="MPTracker.stopCombatAdjust()">-</button>
+            <button class="mp-cmd-btn mp-cmd-btn commander mp-cmd-btn-stepper" onpointerdown="MPTracker.startCombatAdjust('commander','${player.id}',1)" onpointerup="MPTracker.stopCombatAdjust('commander','${player.id}',1)" onpointerleave="MPTracker.stopCombatAdjust()" onpointercancel="MPTracker.stopCombatAdjust()">+</button>
           </div>
         </div>
       </div>
