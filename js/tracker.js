@@ -29,6 +29,9 @@ const MPTracker = {
   authReady: false,
   deckOptions: [],
   combatLifelink: false,
+  pendingWrites: 0,
+  lastUndo: null,
+  uiPulseByPlayerId: {},
   lobbyId: null,
   lobbyCode: null,
   myPlayerId: null,
@@ -314,6 +317,7 @@ const MPTracker = {
   _handleLobbyChange(payload) {
     if (!payload.new) return;
     this.lobby = payload.new;
+    if (this.lobby.phase === 'waiting' && this.phase !== 'waiting') { this.phase = 'waiting'; }
     if (this.lobby.phase === 'live' && this.phase !== 'live') { this.phase = 'live'; }
     if (this.lobby.phase === 'finished' && this.phase !== 'finished') { this.phase = 'finished'; }
     this._persistLobbyState();
@@ -350,7 +354,11 @@ const MPTracker = {
     const me = this._me();
     if (!me || this.phase !== 'live') return;
     const updates = this._buildPlayerUpdate(me, { life: (me.life || 0) + delta });
-    await this.sb.from('mp_players').update(updates).eq('id', this.myPlayerId);
+    await this._runOptimistic({
+      playerUpdates: [{ id: this.myPlayerId, updates }],
+      undoLabel: delta >= 0 ? `Heal ${delta}` : `Damage ${Math.abs(delta)}`,
+      pulses: [{ id: this.myPlayerId, kind: delta >= 0 ? 'heal' : 'damage' }]
+    });
   },
 
   /* â”€â”€ Commander Damage â”€â”€ */
@@ -372,16 +380,26 @@ const MPTracker = {
       if (nextCmdDamage[this.myPlayerId] <= 0) delete nextCmdDamage[this.myPlayerId];
     }
 
+    const playerUpdates = [];
     const targetUpdates = this._buildPlayerUpdate(target, {
       life: (target.life || 0) - amount,
       cmd_damage: commander ? nextCmdDamage : (target.cmd_damage || {})
     });
-    await this.sb.from('mp_players').update(targetUpdates).eq('id', targetId);
+    playerUpdates.push({ id: targetId, updates: targetUpdates });
 
     if (this.combatLifelink && amount > 0) {
       const meUpdates = this._buildPlayerUpdate(me, { life: (me.life || 0) + amount });
-      await this.sb.from('mp_players').update(meUpdates).eq('id', this.myPlayerId);
+      playerUpdates.push({ id: this.myPlayerId, updates: meUpdates });
     }
+
+    await this._runOptimistic({
+      playerUpdates,
+      undoLabel: commander ? `Commander ${amount}` : `Combat ${amount}`,
+      pulses: [
+        { id: targetId, kind: amount > 0 ? 'damage' : 'heal' },
+        ...(this.combatLifelink && amount > 0 ? [{ id: this.myPlayerId, kind: 'heal' }] : [])
+      ]
+    });
   },
 
   /* â”€â”€ Poison â”€â”€ */
@@ -389,7 +407,11 @@ const MPTracker = {
     const me = this._me();
     if (!me || this.phase !== 'live') return;
     const updates = this._buildPlayerUpdate(me, { poison: (me.poison || 0) + delta });
-    await this.sb.from('mp_players').update(updates).eq('id', this.myPlayerId);
+    await this._runOptimistic({
+      playerUpdates: [{ id: this.myPlayerId, updates }],
+      undoLabel: delta >= 0 ? `Poison +${delta}` : `Poison ${delta}`,
+      pulses: [{ id: this.myPlayerId, kind: delta >= 0 ? 'damage' : 'heal' }]
+    });
   },
 
   /* â”€â”€ Setup: Name/Deck Ã¤ndern â”€â”€ */
@@ -414,16 +436,28 @@ const MPTracker = {
     const me = this._me();
     if (!me || this.phase !== 'live') return;
     const next = !me.monarch;
-    if (next) await this.sb.from('mp_players').update({ monarch: false }).eq('lobby_id', this.lobbyId);
-    await this.sb.from('mp_players').update({ monarch: next }).eq('id', this.myPlayerId);
+    const playerUpdates = [];
+    if (next) {
+      this.players.forEach(player => {
+        if (player.monarch) playerUpdates.push({ id: player.id, updates: { monarch: false } });
+      });
+    }
+    playerUpdates.push({ id: this.myPlayerId, updates: { monarch: next } });
+    await this._runOptimistic({ playerUpdates, undoLabel: next ? 'Monarch genommen' : 'Monarch abgelegt', recordUndo: false });
   },
 
   async toggleInitiative() {
     const me = this._me();
     if (!me || this.phase !== 'live') return;
     const next = !me.initiative;
-    if (next) await this.sb.from('mp_players').update({ initiative: false }).eq('lobby_id', this.lobbyId);
-    await this.sb.from('mp_players').update({ initiative: next }).eq('id', this.myPlayerId);
+    const playerUpdates = [];
+    if (next) {
+      this.players.forEach(player => {
+        if (player.initiative) playerUpdates.push({ id: player.id, updates: { initiative: false } });
+      });
+    }
+    playerUpdates.push({ id: this.myPlayerId, updates: { initiative: next } });
+    await this._runOptimistic({ playerUpdates, undoLabel: next ? 'Initiative genommen' : 'Initiative abgelegt', recordUndo: false });
   },
 
   toggleCombatLifelink() {
@@ -440,13 +474,59 @@ const MPTracker = {
     const cur = Math.max(0, alive.findIndex(p => p.id === this.myPlayerId));
     const next = alive[(cur + 1) % alive.length];
     const newTurn = (this.lobby.turn_number || 1) + 1;
-    await this.sb.from('mp_lobbies').update({ active_player_id: next.id, turn_number: newTurn }).eq('id', this.lobbyId);
+    await this._runOptimistic({
+      lobbyUpdates: { active_player_id: next.id, turn_number: newTurn },
+      undoLabel: 'Turn weitergegeben',
+      pulses: [{ id: next.id, kind: 'turn' }]
+    });
   },
 
   /* â”€â”€ Spiel beenden â”€â”€ */
   async finishGame(winnerId = '') {
     if (!this._isHost()) return;
     await this.sb.from('mp_lobbies').update({ phase: 'finished', finished_at: new Date().toISOString(), winner_id: winnerId || null }).eq('id', this.lobbyId);
+  },
+
+  async rematchSamePlayers() {
+    if (!this._isHost()) return;
+    await this.startGame();
+  },
+
+  async returnToWaitingRoom() {
+    if (!this._isHost()) return;
+    try {
+      await this.sb.from('mp_lobbies').update({
+        phase: 'waiting',
+        active_player_id: null,
+        started_at: null,
+        finished_at: null,
+        winner_id: null,
+        turn_number: 1
+      }).eq('id', this.lobbyId);
+      await this.sb.from('mp_players').update({
+        life: this.START_LIFE,
+        poison: 0,
+        monarch: false,
+        initiative: false,
+        eliminated: false,
+        cmd_damage: {}
+      }).eq('lobby_id', this.lobbyId);
+    } catch (err) {
+      this._showError('Waiting Room konnte nicht geöffnet werden: ' + (err.message || err));
+    }
+  },
+
+  async undoLastAction() {
+    if (!this.lastUndo) return;
+    const undo = this.lastUndo;
+    this.lastUndo = null;
+    await this._runOptimistic({
+      playerUpdates: undo.playerUpdates || [],
+      lobbyUpdates: undo.lobbyUpdates || null,
+      undoLabel: '',
+      recordUndo: false,
+      pulses: undo.pulses || []
+    });
   },
 
   /* â”€â”€ Lobby verlassen â”€â”€ */
@@ -463,6 +543,7 @@ const MPTracker = {
   _genCode() { return Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6).padEnd(6,'X'); },
   _initials(n) { return String(n||'P').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'P'; },
   _lifeClass(l) { if(l<=5)return'critical'; if(l<=10)return'low'; if(l<=20)return'warning'; if(l>=50)return'high'; return''; },
+  _clone(v) { return v == null ? v : JSON.parse(JSON.stringify(v)); },
   _clampLife(life) { return Math.max(-99, Math.min(999, Number(life) || 0)); },
   _normalizeCmdDamage(cmdDamage = {}) {
     const next = {};
@@ -483,6 +564,76 @@ const MPTracker = {
       cmd_damage: nextCmdDamage,
       eliminated: nextLife <= 0 || nextPoison >= 10 || maxCmd >= 21
     };
+  },
+  _applyLocalPlayerUpdate(id, updates) {
+    const idx = this.players.findIndex(p => p.id === id);
+    if (idx < 0) return;
+    this.players[idx] = { ...this.players[idx], ...this._clone(updates) };
+    this.players.sort((a, b) => a.seat - b.seat);
+  },
+  _applyLocalLobbyUpdate(updates) {
+    if (!this.lobby) return;
+    this.lobby = { ...this.lobby, ...this._clone(updates) };
+  },
+  _flashPlayers(pulses = []) {
+    if (!pulses.length) return;
+    pulses.forEach(({ id, kind }) => {
+      if (!id || !kind) return;
+      this.uiPulseByPlayerId[id] = kind;
+      setTimeout(() => {
+        if (this.uiPulseByPlayerId[id] === kind) {
+          delete this.uiPulseByPlayerId[id];
+          this._render();
+        }
+      }, kind === 'turn' ? 1200 : 650);
+    });
+  },
+  async _runOptimistic({ playerUpdates = [], lobbyUpdates = null, undoLabel = '', pulses = [], recordUndo = true }) {
+    const prevUndoState = this.lastUndo;
+    const prevPlayers = playerUpdates.map(({ id, updates }) => {
+      const current = this.players.find(p => p.id === id);
+      if (!current) return null;
+      const prev = {};
+      Object.keys(updates || {}).forEach(key => { prev[key] = this._clone(current[key]); });
+      return { id, updates: prev };
+    }).filter(Boolean);
+    const prevLobby = lobbyUpdates ? Object.fromEntries(Object.keys(lobbyUpdates).map(key => [key, this._clone(this.lobby?.[key])])) : null;
+
+    playerUpdates.forEach(({ id, updates }) => this._applyLocalPlayerUpdate(id, updates));
+    if (lobbyUpdates) this._applyLocalLobbyUpdate(lobbyUpdates);
+    if (recordUndo && (prevPlayers.length || prevLobby)) {
+      this.lastUndo = {
+        label: undoLabel,
+        playerUpdates: prevPlayers,
+        lobbyUpdates: prevLobby,
+        pulses: prevPlayers.map(p => ({ id: p.id, kind: 'heal' }))
+      };
+    }
+    this.pendingWrites += 1;
+    this._flashPlayers(pulses);
+    this._render();
+
+    try {
+      const jobs = [];
+      playerUpdates.forEach(({ id, updates }) => {
+        jobs.push(this.sb.from('mp_players').update(updates).eq('id', id));
+      });
+      if (lobbyUpdates) {
+        jobs.push(this.sb.from('mp_lobbies').update(lobbyUpdates).eq('id', this.lobbyId));
+      }
+      const results = await Promise.all(jobs);
+      const failed = results.find(result => result?.error);
+      if (failed?.error) throw failed.error;
+    } catch (err) {
+      prevPlayers.forEach(({ id, updates }) => this._applyLocalPlayerUpdate(id, updates));
+      if (prevLobby) this._applyLocalLobbyUpdate(prevLobby);
+      this.lastUndo = prevUndoState;
+      this._render();
+      this._showError(err.message || 'Aktion konnte nicht gespeichert werden.');
+    } finally {
+      this.pendingWrites = Math.max(0, this.pendingWrites - 1);
+      this._render();
+    }
   },
   _cmdMax(player) {
     const dmg = player.cmd_damage || {};
@@ -643,6 +794,7 @@ const MPTracker = {
     const isMyTurn = this.lobby?.active_player_id === this.myPlayerId;
     const activePlayer = this.players.find(p => p.id === this.lobby?.active_player_id);
     const alive = this.players.filter(p => !p.eliminated);
+    const myPulse = this.uiPulseByPlayerId[this.myPlayerId];
 
     return `
     <div class="mp-screen mp-live">
@@ -651,6 +803,8 @@ const MPTracker = {
           <span class="mp-turn-badge ${isMyTurn ? 'active' : ''}">Turn ${this.lobby?.turn_number || 1}</span>
           <span class="mp-active-label">${esc(activePlayer?.name || '?')} ist dran</span>
           <span class="mp-top-chip">${alive.length} alive</span>
+          <span class="mp-top-chip ${this.pendingWrites ? 'is-syncing' : ''}">${this.pendingWrites ? 'Syncing…' : 'Live Sync'}</span>
+          ${this.lastUndo ? `<button class="mp-undo-btn" onclick="MPTracker.undoLastAction()">Undo${this.lastUndo.label ? ` · ${esc(this.lastUndo.label)}` : ''}</button>` : ''}
           ${isMyTurn ? '<button class="mp-pass-btn" onclick="MPTracker.nextTurn()">Turn abgeben</button>' : ''}
         </div>
         <div class="mp-other-players">
@@ -658,7 +812,7 @@ const MPTracker = {
         </div>
       </div>
 
-      <div class="mp-my-card mp-color-bg-${me.color || 'gold'} ${me.eliminated ? 'is-eliminated' : ''} ${isMyTurn ? 'is-my-turn' : ''}">
+      <div class="mp-my-card mp-color-bg-${me.color || 'gold'} ${me.eliminated ? 'is-eliminated' : ''} ${isMyTurn ? 'is-my-turn' : ''} ${myPulse ? `pulse-${myPulse}` : ''}">
         <div class="mp-my-card-inner">
           <div class="mp-my-header">
             <div class="mp-my-name-row">
@@ -755,8 +909,9 @@ const MPTracker = {
   _renderOtherCard(p) {
     const isActive = this.lobby?.active_player_id === p.id;
     const cmdReceived = this._cmdMax(p);
+    const pulse = this.uiPulseByPlayerId[p.id];
     return `
-    <div class="mp-other-card mp-color-${p.color || 'gold'} ${p.eliminated ? 'is-out' : ''} ${isActive ? 'is-active' : ''}">
+    <div class="mp-other-card mp-color-${p.color || 'gold'} ${p.eliminated ? 'is-out' : ''} ${isActive ? 'is-active' : ''} ${pulse ? `pulse-${pulse}` : ''}">
       <div class="mp-other-orb">${this._initials(p.name)}</div>
       <div class="mp-other-info">
         <span class="mp-other-name">${esc(p.name)}</span>
@@ -771,8 +926,9 @@ const MPTracker = {
   _renderCombatCard(player) {
     const myCmdOnTarget = (player.cmd_damage || {})[this.myPlayerId] || 0;
     const cmdClass = myCmdOnTarget >= 21 ? 'danger' : myCmdOnTarget >= 14 ? 'warning' : '';
+    const pulse = this.uiPulseByPlayerId[player.id];
     return `
-    <article class="mp-combat-card ${player.eliminated ? 'is-out' : ''}">
+    <article class="mp-combat-card ${player.eliminated ? 'is-out' : ''} ${pulse ? `pulse-${pulse}` : ''}">
       <div class="mp-combat-card-head">
         <div class="mp-combat-title-wrap">
           <div class="mp-player-orb mp-color-${player.color || 'gold'}">${this._initials(player.name)}</div>
@@ -817,6 +973,7 @@ const MPTracker = {
   /* â”€â”€ Fertig â”€â”€ */
   _renderFinished() {
     const winner = this.players.find(p => p.id === this.lobby?.winner_id);
+    const isHost = this._isHost();
     return `
     <div class="mp-screen mp-finished">
       <div class="mp-finished-inner">
@@ -832,6 +989,12 @@ const MPTracker = {
               ${p.id === this.lobby?.winner_id ? '<span class="mp-winner-badge">Gewinner</span>' : ''}
             </div>`).join('')}
         </div>
+        ${isHost ? `
+        <div class="mp-finished-actions">
+          <button class="mp-btn mp-btn-gold" onclick="MPTracker.rematchSamePlayers()">Neues Spiel, gleiches Pod</button>
+          <button class="mp-btn mp-btn-outline" onclick="MPTracker.returnToWaitingRoom()">Zurück in den Waiting Room</button>
+        </div>` : `
+        <div class="mp-finished-note">Der Host kann jetzt ein Rematch starten oder den Waiting Room für neue Decks öffnen.</div>`}
         <button class="mp-btn mp-btn-gold" onclick="MPTracker.leaveLobby()">ZurÃ¼ck zum MenÃ¼</button>
       </div>
     </div>`;

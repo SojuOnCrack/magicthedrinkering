@@ -318,6 +318,10 @@
   border-bottom: 1px solid rgba(201,168,76,.15);
   flex-shrink: 0;
   padding: .5rem .75rem;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  backdrop-filter: blur(14px);
 }
 .mp-strip-meta {
   display: flex;
@@ -341,7 +345,9 @@
 .mp-active-label { font-size: .8rem; color: rgba(232,224,208,.5); }
 
 .mp-other-players {
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(128px, 1fr);
   gap: .5rem;
   overflow-x: auto;
   scrollbar-width: none;
@@ -351,16 +357,15 @@
 
 .mp-other-card {
   position: relative;
-  flex-shrink: 0;
   background: rgba(255,255,255,.04);
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 10px;
-  padding: .5rem .65rem;
+  border-radius: 14px;
+  padding: .65rem .75rem;
   display: flex;
   align-items: center;
   gap: .5rem;
-  min-width: 90px;
-  transition: border-color .2s;
+  min-width: 128px;
+  transition: border-color .2s, transform .18s, background .18s, box-shadow .18s;
 }
 .mp-other-card.is-active { border-color: rgba(201,168,76,.5); background: rgba(201,168,76,.06); }
 .mp-other-card.is-out { opacity: .4; }
@@ -373,8 +378,8 @@
 .mp-other-card.mp-color-purple .mp-other-orb { background: rgba(120,80,180,.2); color: #b090e0; border: 1px solid rgba(120,80,180,.35); }
 .mp-other-card.mp-color-steel .mp-other-orb  { background: rgba(120,130,145,.2);color: #a0aab8; border: 1px solid rgba(120,130,145,.35); }
 .mp-other-info { display: flex; flex-direction: column; }
-.mp-other-name { font-size: .7rem; color: rgba(232,224,208,.7); white-space: nowrap; max-width: 70px; overflow: hidden; text-overflow: ellipsis; }
-.mp-other-life { font-size: 1.1rem; font-weight: 700; color: #e8e0d0; line-height: 1; }
+.mp-other-name { font-size: .72rem; color: rgba(232,224,208,.7); white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+.mp-other-life { font-size: 1.35rem; font-weight: 700; color: #e8e0d0; line-height: 1; font-family: 'Cinzel', serif; }
 .mp-other-life.critical { color: #ff4444; }
 .mp-other-life.low      { color: #ff8844; }
 .mp-other-life.warning  { color: #ffcc44; }
@@ -414,6 +419,39 @@
 @keyframes mp-pulse-border { 0%,100%{opacity:.4} 50%{opacity:.9} }
 
 .mp-my-card.is-eliminated { opacity: .6; }
+.mp-my-card.pulse-damage .mp-life-number,
+.mp-other-card.pulse-damage .mp-other-life,
+.mp-combat-card.pulse-damage .mp-combat-life {
+  animation: mp-hit-flash .58s ease;
+}
+.mp-my-card.pulse-heal .mp-life-number,
+.mp-other-card.pulse-heal .mp-other-life,
+.mp-combat-card.pulse-heal .mp-combat-life {
+  animation: mp-heal-flash .7s ease;
+}
+.mp-combat-card.pulse-damage,
+.mp-other-card.pulse-damage {
+  box-shadow: 0 0 0 1px rgba(255,90,90,.28), 0 0 30px rgba(255,60,60,.12);
+}
+.mp-combat-card.pulse-heal,
+.mp-other-card.pulse-heal {
+  box-shadow: 0 0 0 1px rgba(120,220,150,.22), 0 0 28px rgba(90,220,130,.12);
+}
+.mp-combat-card.pulse-turn,
+.mp-other-card.pulse-turn {
+  transform: translateY(-2px);
+  border-color: rgba(201,168,76,.5);
+}
+@keyframes mp-hit-flash {
+  0% { transform: scale(1); filter: brightness(1); }
+  35% { transform: scale(1.06); filter: brightness(1.3); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+@keyframes mp-heal-flash {
+  0% { transform: scale(1); filter: brightness(1); }
+  35% { transform: scale(1.05); filter: brightness(1.2); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
 
 .mp-my-card-inner {
   padding: 1rem 1.25rem 2rem;
@@ -587,6 +625,18 @@
 .mp-finished-row strong { flex: 1; font-size: .95rem; }
 .mp-finished-row span { font-size: .8rem; color: rgba(232,224,208,.4); }
 .mp-winner-badge { background: rgba(201,168,76,.2); border: 1px solid rgba(201,168,76,.4); color: #c9a84c; border-radius: 20px; padding: .15rem .6rem; font-size: .7rem; font-family: 'Cinzel', serif; white-space: nowrap; }
+.mp-finished-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+}
+.mp-finished-note {
+  text-align: center;
+  color: rgba(232,224,208,.45);
+  font-size: .86rem;
+  line-height: 1.45;
+}
 
 /* ══════════════════════════════════════
    SAFE AREA (iPhone Notch etc.)
@@ -606,6 +656,22 @@
   border-radius: 999px;
   padding: .18rem .55rem;
 }
+.mp-top-chip.is-syncing {
+  color: #9df0ac;
+  border-color: rgba(157,240,172,.24);
+  background: rgba(157,240,172,.08);
+}
+
+.mp-undo-btn {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.14);
+  color: rgba(232,224,208,.82);
+  border-radius: 999px;
+  padding: .42rem .8rem;
+  font-family: 'Crimson Text', serif;
+  font-size: .82rem;
+  cursor: pointer;
+}
 
 .mp-pass-btn {
   margin-left: auto;
@@ -618,6 +684,10 @@
   font-size: .72rem;
   letter-spacing: .05em;
   cursor: pointer;
+}
+.mp-pass-btn:hover,
+.mp-undo-btn:hover {
+  transform: translateY(-1px);
 }
 
 .mp-live-grid {
@@ -724,6 +794,10 @@
   flex-direction: column;
   gap: .75rem;
   overflow: hidden;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.mp-combat-card:hover {
+  transform: translateY(-2px);
 }
 
 .mp-combat-card.is-out {
@@ -859,6 +933,10 @@
 
   .mp-pass-btn {
     margin-left: 0;
+  }
+
+  .mp-undo-btn {
+    order: 4;
   }
 
   .mp-life-control-groups {
