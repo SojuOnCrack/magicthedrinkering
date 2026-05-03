@@ -1358,7 +1358,7 @@ textarea.ia:focus{border-color:var(--gold3);}
   .tracker-damage-grid{grid-template-columns:1fr;}
   .tracker-meta-grid{grid-template-columns:1fr;}
   .tracker-summary-grid{grid-template-columns:1fr;}
-  #forge-builder-kpis{display:none!important;}
+  #forge-builder-kpis{display:flex;}
   #forge-builder-shell{display:block;overflow:visible;}
   #forge-insights{position:static;width:auto;flex:0 0 auto;padding:10px 12px;border-left:none;border-top:1px solid var(--border);box-shadow:none;background:linear-gradient(180deg,rgba(255,255,255,.02),transparent),var(--bg2);}
   #forge-insights.collapsed{width:auto;flex-basis:auto;padding:10px 12px;}
