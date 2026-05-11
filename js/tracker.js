@@ -952,7 +952,21 @@ const MPTracker = {
 
   /* â”€â”€ Loading â”€â”€ */
   _renderLoading() {
-    return `<div class="mp-screen mp-center"><div class="mp-spinner"></div><div class="mp-loading-text">Verbinde...</div></div>`;
+    return this._renderSplash('Verbinde mit deinem Pod...');
+  },
+
+  _renderSplash(status = 'Lade Commander Tracker...') {
+    return `
+    <div class="mp-splash" role="status" aria-live="polite">
+      <div class="mp-splash-inner">
+        <div class="mp-splash-mark" aria-hidden="true">
+          <img class="mp-splash-logo" src="/favicon.svg" alt="">
+        </div>
+        <div class="mp-splash-title">MagicThe<em>Drinkering</em></div>
+        <div class="mp-splash-status">${esc(status)}</div>
+        <div class="mp-splash-bar" aria-hidden="true"></div>
+      </div>
+    </div>`;
   },
 
   /* â”€â”€ Wartezimmer â”€â”€ */
