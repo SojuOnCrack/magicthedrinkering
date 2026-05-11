@@ -598,15 +598,18 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <div class="chart-bottom-labels" id="dash-curve-labels"></div></div>
           </div>
         </div>
-        <div class="chart-card"><div class="chart-title">Engine Status</div>
-          <div style="display:flex;gap:20px;flex-wrap:wrap">
-            <div><div class="engine-status"><div class="engine-dot"></div>Scryfall API - Connected</div></div>
-            <div><div class="engine-status"><div class="engine-dot warn"></div>MTGStocks - No key</div></div>
-            <div><div class="engine-status"><div class="engine-dot err"></div>MKM - Not configured</div></div>
-            <div><div class="engine-status"><div class="engine-dot"></div>TCGPlayer - Simulated</div></div>
-            <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)" id="dash-engine-cache">Cache: 0</div>
+        <details class="dash-advanced">
+          <summary>Advanced Tools</summary>
+          <div class="chart-card"><div class="chart-title">Engine Status</div>
+            <div style="display:flex;gap:20px;flex-wrap:wrap">
+              <div><div class="engine-status"><div class="engine-dot"></div>Scryfall API - Connected</div></div>
+              <div><div class="engine-status"><div class="engine-dot warn"></div>MTGStocks - No key</div></div>
+              <div><div class="engine-status"><div class="engine-dot err"></div>MKM - Not configured</div></div>
+              <div><div class="engine-status"><div class="engine-dot"></div>TCGPlayer - Simulated</div></div>
+              <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)" id="dash-engine-cache">Cache: 0</div>
+            </div>
           </div>
-        </div>
+        </details>
       </div>
 
       <!-- Collection -->
@@ -650,6 +653,13 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <div class="ana-stat"><div class="ana-stat-val" id="ana-s-colors">0</div><div class="ana-stat-lbl">Colors</div></div>
             <div class="ana-stat"><div class="ana-stat-val" id="ana-s-value">&euro;0</div><div class="ana-stat-lbl">Value</div></div>
             <div class="ana-stat"><div class="ana-stat-val" id="ana-s-unique">0</div><div class="ana-stat-lbl">Unique</div></div>
+          </div>
+
+          <div class="analysis-meter-grid">
+            <div class="analysis-meter"><div class="analysis-meter-label">Land Consistency</div><div class="analysis-meter-value" id="ana-land-meter-val">0%</div><div class="analysis-meter-track"><div class="analysis-meter-fill" id="ana-land-meter"></div></div><div class="analysis-meter-note" id="ana-land-meter-note">Opening hand stability</div></div>
+            <div class="analysis-meter"><div class="analysis-meter-label">Avg Hand Simulator</div><div class="analysis-meter-value" id="ana-hand-meter-val">0 lands</div><div class="analysis-meter-track"><div class="analysis-meter-fill" id="ana-hand-meter"></div></div><div class="analysis-meter-note">Expected lands in first 7</div></div>
+            <div class="analysis-meter"><div class="analysis-meter-label">Salt Score</div><div class="analysis-meter-value" id="ana-salt-meter-val">Low</div><div class="analysis-meter-track"><div class="analysis-meter-fill" id="ana-salt-meter"></div></div><div class="analysis-meter-note">Tutors, extra turns, prison and fast mana</div></div>
+            <div class="analysis-meter"><div class="analysis-meter-label">Casual / cEDH</div><div class="analysis-meter-value" id="ana-power-meter-val">Casual</div><div class="analysis-meter-track"><div class="analysis-meter-fill" id="ana-power-meter"></div></div><div class="analysis-meter-note">Speed and density estimate</div></div>
           </div>
 
           <div class="dash-grid three">
@@ -1052,6 +1062,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
           <button class="tbtn gold" onclick="CardSearch2.search()" title="Search cards and open details faster">Search Cards</button>
         </div>
         <div class="cs-status" id="cs2-status"></div>
+        <div class="search-recent-row" id="cs2-recent"></div>
         <div class="cs-grid" id="cs2-results"></div>
         <button class="cs-load-more" id="cs2-load-more" onclick="CardSearch2.loadMore()" style="display:none">Show More Cards</button>
       </div>
@@ -1092,6 +1103,7 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         </div>
         <div id="coll2-card-area"></div>
       </div>
+      <button class="mobile-add-fab" id="collection-add-fab" onclick="CollSection.addCard()">+ Add Card</button>
     </div>
 
     <!-- â•â• WISHLIST SECTION â•â• -->

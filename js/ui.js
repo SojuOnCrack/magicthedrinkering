@@ -40,6 +40,30 @@ function attachCardTilt(el,intensity=10){
   el.dataset.cardTiltBound='1';
 }
 
+const SearchHistory={
+  KEY:'cforge_recent_searches',
+  add(q){
+    q=(q||'').trim();
+    if(!q)return;
+    let list=[];
+    try{list=JSON.parse(localStorage.getItem(this.KEY)||'[]');}catch{}
+    list=[q,...list.filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,6);
+    try{localStorage.setItem(this.KEY,JSON.stringify(list));}catch{}
+  }
+};
+
+function normalizeSearchQuery(q){
+  q=(q||'').trim();
+  if(!q)return q;
+  const shortcuts={ramp:'(oracle:ramp or oracle:add mana)',draw:'oracle:"draw a card"',removal:'(oracle:destroy or oracle:exile)',wipe:'oracle:"destroy all"',lands:'type:land',commander:'is:commander'};
+  if(shortcuts[q.toLowerCase()])return shortcuts[q.toLowerCase()];
+  return q
+    .replace(/\{([wubrgc])\}/gi,'mana:$1')
+    .replace(/\bci[:=]([wubrgc]+)\b/gi,'color<=$1')
+    .replace(/\bmv[:=](\d+)\b/gi,'cmc:$1')
+    .replace(/\btype[:=]([a-z]+)/gi,'t:$1');
+}
+
 const SearchSuggest={
   _states:{},
   _state(key){
@@ -244,7 +268,7 @@ const CardSearch={
   },
 
   _buildQuery(){
-    const q=(document.getElementById('cs-query')?.value||'').trim();
+    const q=normalizeSearchQuery(document.getElementById('cs-query')?.value||'');
     const color=document.getElementById('cs-color')?.value||'';
     const type=document.getElementById('cs-type')?.value||'';
     const rarity=document.getElementById('cs-rarity')?.value||'';
@@ -266,6 +290,7 @@ const CardSearch={
 
   async search(){
     SearchSuggest.hide('cs-suggest');
+    SearchHistory.add(document.getElementById('cs-query')?.value||'');
     this._query=this._buildQuery();
     this._page=null;
     const el=document.getElementById('cs-results');

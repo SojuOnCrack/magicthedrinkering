@@ -61,6 +61,30 @@ const AnalysisView={
     if(G('ana-s-value'))G('ana-s-value').textContent='€'+totalVal.toFixed(0);
     if(G('ana-s-unique'))G('ana-s-unique').textContent=cards.length;
 
+    const setMeter=(id,valId,noteId,pct,label,note)=>{
+      const fill=G(id),val=G(valId),noteEl=G(noteId);
+      if(fill)fill.style.width=Math.max(0,Math.min(100,pct))+'%';
+      if(val)val.textContent=label;
+      if(noteEl&&note)noteEl.textContent=note;
+    };
+    const landPct=totalQty?landQty/totalQty:0;
+    const landConsistency=Math.max(0,100-Math.abs(landPct-.37)*260);
+    const expectedLands=(landPct*7).toFixed(1);
+    const names=allCd.map(({entry:c})=>c.name.toLowerCase());
+    const contains=words=>names.filter(n=>words.some(w=>n.includes(w))).length;
+    const saltSignals=contains(['rhystic study','smothering tithe','cyclonic rift','winter orb','stasis','armageddon','expropriate','extra turn','demonic tutor','vampiric tutor','dockside extortionist','thassa']);
+    const fastMana=contains(['sol ring','mana crypt','mana vault','mox','lotus petal','grim monolith']);
+    const tutorCount=allCd.filter(({data:cd})=>(cd.oracle_text||'').toLowerCase().includes('search your library')).reduce((s,{entry:c})=>s+c.qty,0);
+    const lowCurveCount=nonLands.reduce((s,{entry:c,data:cd})=>s+((cd.cmc||0)<=2?c.qty:0),0);
+    const saltPct=Math.min(100,(saltSignals*12)+(tutorCount*6)+(fastMana*10));
+    const powerPct=Math.min(100,(lowCurveCount/Math.max(1,totalQty-landQty))*55+(fastMana*9)+(tutorCount*5)+(parseFloat(avgCmc)<2.6?14:0));
+    const powerLabel=powerPct>76?'cEDH':powerPct>55?'High Power':powerPct>35?'Focused':'Casual';
+    const saltLabel=saltPct>70?'Spicy':saltPct>40?'Medium':'Low';
+    setMeter('ana-land-meter','ana-land-meter-val','ana-land-meter-note',landConsistency,Math.round(landConsistency)+'%',landPct<.32?'Low land count':landPct>.43?'High land count':'Healthy opening hand odds');
+    setMeter('ana-hand-meter','ana-hand-meter-val',null,Math.min(100,landPct*180),expectedLands+' lands');
+    setMeter('ana-salt-meter','ana-salt-meter-val',null,saltPct,saltLabel);
+    setMeter('ana-power-meter','ana-power-meter-val',null,powerPct,powerLabel);
+
     // Mana curve (non-lands)
     const curve={};
     for(const{entry:c,data:cd}of allCd){
@@ -593,6 +617,42 @@ const MyCollection={
     /* ── LIST VIEW: Virtual Scrolling ──────────────────────────────
        Only renders the rows visible in the viewport + a buffer.
        Handles 20k+ rows with no lag. */
+    if(window.matchMedia?.('(max-width: 768px)')?.matches){
+      wrap.innerHTML='<div class="mobile-collection-list"></div>';
+      const list=wrap.querySelector('.mobile-collection-list');
+      const uid=DB._user?.id;
+      const tradingSet=new Set((TradeMgr._data||[]).filter(t=>t.user_id===uid).map(t=>t.card_name));
+      const wantedSet=new Set((WishlistMgr._data||[]).map(w=>w.card_name));
+      rows.forEach(r=>{
+        const cd=this._cardData(r);
+        const img=cd.img?.crop||cd.img?.normal||'';
+        const price=parseFloat(cd.prices?.eur||0);
+        const type=cd.type_line?shortType(cd.type_line):'Card';
+        const el=document.createElement('div');
+        el.className='mobile-collection-card';
+        el.innerHTML=`
+          ${img?`<img src="${esc(img)}" loading="lazy" alt="${esc(r.name)}">`:'<div class="mobile-collection-thumb"></div>'}
+          <div class="mobile-collection-main">
+            <div class="mobile-collection-name">${esc(r.name)}</div>
+            <div class="mobile-collection-meta">
+              <span class="mobile-collection-pill">${esc(type)}</span>
+              <span class="mobile-collection-pill">CMC ${cd.cmc??0}</span>
+              <span class="mobile-collection-pill">Qty ${r.qty}</span>
+              ${price?`<span class="mobile-collection-pill price">&euro;${price.toFixed(2)}</span>`:''}
+              ${tradingSet.has(r.name)?'<span class="mobile-collection-pill">Trade</span>':''}
+              ${wantedSet.has(r.name)?'<span class="mobile-collection-pill">Wanted</span>':''}
+            </div>
+            <div class="mobile-collection-actions">
+              <button class="mobile-collection-action gold" type="button">Details</button>
+              <button class="mobile-collection-action" type="button">${esc((r.decks||[])[0]||'Loose')}</button>
+            </div>
+          </div>`;
+        el.onclick=()=>M.open({name:r.name,qty:r.qty||1},null);
+        list.appendChild(el);
+      });
+      return;
+    }
+
     const ROW_H=52;   // px per row
     const BUFFER=8;   // extra rows above+below visible area
     const THEAD=`<table class="coll-tbl" style="table-layout:fixed;width:100%">

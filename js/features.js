@@ -1179,6 +1179,7 @@ const CardSearch2={
 
   init(){
     this._populateDeckSel();
+    this._renderRecent();
   },
 
   _populateDeckSel(){
@@ -1192,6 +1193,25 @@ const CardSearch2={
       sel.appendChild(o);
     });
     if(prev)sel.value=prev;
+  },
+  _renderRecent(){
+    const host=document.getElementById('cs2-recent');
+    if(!host)return;
+    let list=[];
+    try{list=JSON.parse(localStorage.getItem(SearchHistory.KEY)||'[]');}catch{}
+    host.innerHTML='';
+    list.forEach(q=>{
+      const btn=document.createElement('button');
+      btn.className='search-recent-chip';
+      btn.type='button';
+      btn.textContent=q;
+      btn.onclick=()=>{
+        const input=document.getElementById('cs2-query');
+        if(input)input.value=q;
+        this.search();
+      };
+      host.appendChild(btn);
+    });
   },
 
   onType(val){
@@ -1219,7 +1239,7 @@ const CardSearch2={
   },
 
   _buildQuery(){
-    const q=(document.getElementById('cs2-query')?.value||'').trim();
+    const q=normalizeSearchQuery(document.getElementById('cs2-query')?.value||'');
     const color=document.getElementById('cs2-color')?.value||'';
     const type=document.getElementById('cs2-type')?.value||'';
     const rarity=document.getElementById('cs2-rarity')?.value||'';
@@ -1235,6 +1255,8 @@ const CardSearch2={
 
   async search(){
     SearchSuggest.hide('cs2-suggest');
+    SearchHistory.add(document.getElementById('cs2-query')?.value||'');
+    this._renderRecent();
     const query=this._buildQuery();
     if(!query)return;
     this._query=query;this._page=null;
@@ -1495,6 +1517,36 @@ const CollSection={
       });
       area.appendChild(grid);
     } else {
+      if(window.matchMedia?.('(max-width: 768px)')?.matches){
+        area.innerHTML='<div class="mobile-collection-list"></div>';
+        const list=area.querySelector('.mobile-collection-list');
+        data.forEach(r=>{
+          const cd=MyCollection._cardData(r)||{};
+          const img=cd.img?.crop||cd.img?.normal||'';
+          const type=(cd.type_line||'').split('—')[0]?.trim()||(cd.type_line||'').split('-')[0]?.trim()||'Card';
+          const price=parseFloat(cd.prices?.eur||0);
+          const el=document.createElement('div');
+          el.className='mobile-collection-card';
+          el.innerHTML=`
+            ${img?`<img src="${esc(img)}" loading="lazy" alt="${esc(r.name)}">`:'<div class="mobile-collection-thumb"></div>'}
+            <div class="mobile-collection-main">
+              <div class="mobile-collection-name">${esc(r.name)}</div>
+              <div class="mobile-collection-meta">
+                <span class="mobile-collection-pill">${esc(type)}</span>
+                <span class="mobile-collection-pill">CMC ${cd.cmc??0}</span>
+                <span class="mobile-collection-pill">Qty ${r.qty||1}</span>
+                ${price?`<span class="mobile-collection-pill price">&euro;${price.toFixed(2)}</span>`:''}
+              </div>
+              <div class="mobile-collection-actions">
+                <button class="mobile-collection-action gold" type="button">Details</button>
+                <button class="mobile-collection-action" type="button">${esc(r.folder||'No folder')}</button>
+              </div>
+            </div>`;
+          el.onclick=()=>M.open({name:r.name,qty:r.qty||1},null);
+          list.appendChild(el);
+        });
+        return;
+      }
       // List view
       area.innerHTML='';
       const tbl=document.createElement('table');
