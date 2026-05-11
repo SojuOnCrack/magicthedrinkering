@@ -972,8 +972,7 @@ const MPTracker = {
   _renderLogo(className = 'mp-logo') {
     return `
       <div class="${className}">
-        <img class="mp-logo-icon" src="/favicon.svg" alt="" aria-hidden="true">
-        <span>MagicThe<em>Drinkering</em></span>
+        <img class="mp-logo-icon" src="/favicon.svg" alt="MagicTheDrinkering">
       </div>`;
   },
 
