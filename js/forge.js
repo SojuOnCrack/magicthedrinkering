@@ -594,7 +594,7 @@ const App={
       this._renderAdvice(null,[]);
       return;
     }
-    if(wrap)wrap.style.display='grid';
+    if(wrap)wrap.style.display='flex';
     const insights=document.getElementById('forge-insights');
     if(insightsState&&insights)insightsState.textContent=insights.classList.contains('collapsed')?'Show':'Hide';
     const metrics=this._deckMetrics(deck);

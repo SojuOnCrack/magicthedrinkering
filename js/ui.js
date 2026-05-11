@@ -334,7 +334,6 @@ const CardSearch={
     const rarityClass={common:'cs-rarity-c',uncommon:'cs-rarity-u',rare:'cs-rarity-r',mythic:'cs-rarity-m'}[rarity]||'';
     const setInfo=`${(card.set||'').toUpperCase()} #${card.collector_number||'?'}`;
     const inWish=WishlistMgr._data?.some(w=>w.card_name===card.name);
-    const safeNameJs=JSON.stringify(card.name);
 
     const tile=document.createElement('div');
     tile.className='cs-card';
@@ -348,23 +347,47 @@ const CardSearch={
         </div>
       </div>
       <div class="cs-actions">
-        <button class="cs-action-btn gold" data-cs-deck onclick='CardSearch._addToDeck(${safeNameJs},this)'>
+        <button class="cs-action-btn gold" type="button" data-cs-deck>
           Add to Deck
         </button>
-        <button class="cs-action-btn" onclick='CardSearch._openFromSuggest(${safeNameJs})'>
+        <button class="cs-action-btn" type="button" data-cs-open>
           Open Details
         </button>
-        <button class="cs-action-btn purple${inWish?' on':''}" data-cs-name="${esc(card.name)}" onclick='CardSearch._addWish(this,${safeNameJs})'>
+        <button class="cs-action-btn purple${inWish?' on':''}" type="button" data-cs-wish>
           ${inWish?'Saved':'Save'}
         </button>
-        <button class="cs-action-btn" onclick='CardSearch._addTrade(${safeNameJs},this)'>
+        <button class="cs-action-btn" type="button" data-cs-trade>
           List Trade
         </button>
       </div>`;
 
     attachTapPop(tile);
     attachCardTilt(tile);
+
     tile.querySelectorAll('.cs-action-btn').forEach(btn=>btn.addEventListener('click',e=>e.stopPropagation()));
+
+    const btnDeck=tile.querySelector('[data-cs-deck]');
+    const btnOpen=tile.querySelector('[data-cs-open]');
+    const btnWish=tile.querySelector('[data-cs-wish]');
+    const btnTrade=tile.querySelector('[data-cs-trade]');
+
+    btnDeck?.addEventListener('click',e=>{
+      e.stopPropagation();
+      CardSearch._addToDeck(card.name,btnDeck);
+    });
+    btnOpen?.addEventListener('click',e=>{
+      e.stopPropagation();
+      CardSearch._openFromSuggest(card.name);
+    });
+    btnWish?.addEventListener('click',e=>{
+      e.stopPropagation();
+      CardSearch._addWish(btnWish,card.name);
+    });
+    btnTrade?.addEventListener('click',e=>{
+      e.stopPropagation();
+      CardSearch._addTrade(card.name,btnTrade);
+    });
+
     tile.addEventListener('click',()=>{
       const slim=SF._slim(card);
       if(slim)Store.cache[slim.name]=slim;
@@ -465,9 +488,22 @@ const VaultNav={
 
 /* --- MODAL ------------------------------------------------ */
 const M={
+  _lastFocusEl:null,
+  _keyHandler:null,
+
   open(cardEntry,deckId){
     const cd=Store.card(cardEntry.name)||{};
     const G=id=>document.getElementById(id);
+
+    const modalEl=G('card-modal');
+    if(modalEl){
+      modalEl.setAttribute('role','dialog');
+      modalEl.setAttribute('aria-modal','true');
+      if(G('mc-name')) modalEl.setAttribute('aria-labelledby','mc-name');
+    }
+
+    this._lastFocusEl=document.activeElement;
+
     const imgEl=G('mc-img-el');imgEl.src=cd.img?.normal||'';
     G('mc-img').onclick=()=>{if(!cd.img?.normal)return;const zo=document.getElementById('art-zoom-overlay');const zi=document.getElementById('art-zoom-img');zi.src=cd.img.normal;zo.classList.add('open');};
     G('mc-name').textContent=cd.name||cardEntry.name;
@@ -532,9 +568,67 @@ const M={
       }
     }
     PrintPicker.init(cardEntry,deckId);
+
     G('mo').classList.add('open');
+
+    // Accessibility: Escape + simple focus trap
+    if(!this._keyHandler){
+      this._keyHandler=(e)=>{
+        if(!document.getElementById('mo')?.classList.contains('open')) return;
+
+        if(e.key==='Escape'){
+          e.preventDefault();
+          this.close();
+          return;
+        }
+        if(e.key!=='Tab') return;
+
+        const modal=G('card-modal');
+        if(!modal) return;
+
+        const focusables=modal.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');
+        const list=[...focusables].filter(el=>!el.disabled && el.offsetParent!==null);
+        if(!list.length) return;
+
+        const first=list[0];
+        const last=list[list.length-1];
+        const active=document.activeElement;
+
+        if(e.shiftKey){
+          if(active===first || !modal.contains(active)){
+            e.preventDefault();
+            last.focus();
+          }
+        }else{
+          if(active===last){
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      };
+      document.addEventListener('keydown',this._keyHandler,true);
+    }
+
+    setTimeout(()=>{
+      if(!document.getElementById('mo')?.classList.contains('open')) return;
+      const modal=G('card-modal');
+      const focusTarget=modal?.querySelector('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');
+      if(focusTarget && typeof focusTarget.focus==='function') focusTarget.focus();
+    },0);
   },
-  close(){document.getElementById('mo').classList.remove('open');},
+
+  close(){
+    document.getElementById('mo')?.classList.remove('open');
+    if(this._keyHandler){
+      document.removeEventListener('keydown',this._keyHandler,true);
+      this._keyHandler=null;
+    }
+    if(this._lastFocusEl && typeof this._lastFocusEl.focus==='function'){
+      this._lastFocusEl.focus();
+    }
+    this._lastFocusEl=null;
+  },
+
   bgClose(e){if(e.target===document.getElementById('mo'))this.close();}
 };
 
@@ -1616,5 +1710,3 @@ const TileImgObserver=(()=>{
   },{rootMargin:'100px'});
   return{observe:(img)=>obs.observe(img),disconnect:()=>obs.disconnect()};
 })();
-
-
