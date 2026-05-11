@@ -32,6 +32,195 @@ window.APP_VERSION = '202605020500';
     min-height: 100%;
     width: 100%;
   }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  button, input, select {
+    font: inherit;
+  }
+
+  button {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #mp-root {
+    min-height: 100dvh;
+  }
+
+  .mp-live {
+    min-height: 100dvh;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .mp-strip-meta {
+    min-width: 0;
+  }
+
+  .mp-active-label,
+  .mp-my-name,
+  .mp-my-deck,
+  .mp-combat-name,
+  .mp-combat-deck {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mp-lbtn,
+  .mp-mini-btn,
+  .mp-cmd-btn,
+  .mp-toggle-btn,
+  .mp-counter-toggle,
+  .mp-combat-shortcut,
+  .mp-combat-target-pill,
+  .mp-pass-btn,
+  .mp-undo-btn,
+  .mp-back-btn,
+  .mp-copy-btn {
+    min-height: 44px;
+  }
+
+  .mp-life-number {
+    letter-spacing: 0;
+  }
+
+  .mp-combat-modal-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  @media (max-width: 760px) {
+    #mp-root,
+    .mp-screen,
+    .mp-live {
+      height: auto;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    .mp-top-strip {
+      padding: calc(.45rem + env(safe-area-inset-top)) .65rem .55rem;
+    }
+
+    .mp-strip-meta {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: .4rem;
+    }
+
+    .mp-undo-btn {
+      grid-column: 1 / -1;
+      width: 100%;
+    }
+
+    .mp-other-players {
+      grid-auto-columns: minmax(136px, 42vw);
+      gap: .45rem;
+      scroll-snap-type: x proximity;
+    }
+
+    .mp-other-card {
+      min-width: 0;
+      min-height: 72px;
+      scroll-snap-align: start;
+    }
+
+    .mp-my-card {
+      overflow: visible;
+    }
+
+    .mp-my-card-inner {
+      height: auto;
+      overflow: visible;
+      padding: .85rem .75rem calc(1rem + env(safe-area-inset-bottom));
+      gap: .75rem;
+    }
+
+    .mp-my-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .mp-my-badges {
+      justify-content: flex-start;
+      margin-left: 0;
+    }
+
+    .mp-live-grid {
+      grid-template-columns: 1fr;
+      gap: .65rem;
+    }
+
+    .mp-life-control-groups,
+    .mp-utility-grid,
+    .mp-utility-grid-tight {
+      grid-template-columns: 1fr;
+    }
+
+    .mp-life-controls {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: .35rem;
+    }
+
+    .mp-life-number {
+      font-size: clamp(4rem, 28vw, 6rem);
+    }
+
+    .mp-toggle-stack {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .mp-pass-btn-inline {
+      grid-column: 1 / -1;
+    }
+
+    .mp-counter-drawer {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .mp-arena-launcher {
+      align-items: stretch;
+    }
+
+    .mp-combat-shortcuts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .mp-combat-modal-backdrop {
+      align-items: flex-end;
+      padding: .55rem;
+    }
+
+    .mp-combat-modal {
+      width: 100%;
+      max-height: min(88dvh, 720px);
+      border-radius: 16px 16px 0 0;
+      padding: .8rem;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .mp-strip-meta,
+    .mp-counter-drawer,
+    .mp-combat-shortcuts,
+    .mp-toggle-stack {
+      grid-template-columns: 1fr;
+    }
+
+    .mp-life-controls {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .mp-life-number {
+      font-size: clamp(3.5rem, 30vw, 5rem);
+    }
+  }
 </style>
 </head>
 <body>

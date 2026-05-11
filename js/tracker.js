@@ -34,10 +34,12 @@ const MPTracker = {
   countersOpen: false,
   extraTurnQueued: false,
   miscCounters: { energy: 0, experience: 0, rad: 0 },
+  errorMessage: '',
   combatHoldTimeout: null,
   combatHoldInterval: null,
   combatHoldTriggered: false,
   pendingWrites: 0,
+  lastRenderedMarkup: '',
   lastUndo: null,
   uiPulseByPlayerId: {},
   lobbyId: null,
@@ -75,6 +77,72 @@ const MPTracker = {
     window.addEventListener('beforeunload', () => {
       this._destroySubscription();
     });
+    const root = document.getElementById('mp-root');
+    if (!root || root.dataset.bound === '1') return;
+    root.dataset.bound = '1';
+    root.addEventListener('click', (event) => this._handleRootClick(event));
+    root.addEventListener('change', (event) => this._handleRootChange(event));
+    root.addEventListener('input', (event) => this._handleRootInput(event));
+    root.addEventListener('pointerdown', (event) => this._handleRootPointerDown(event));
+    root.addEventListener('pointerup', (event) => this._handleRootPointerEnd(event));
+    root.addEventListener('pointerleave', (event) => this._handleRootPointerEnd(event), true);
+    root.addEventListener('pointercancel', (event) => this._handleRootPointerEnd(event), true);
+  },
+
+  _handleRootClick(event) {
+    const el = event.target.closest('[data-action]');
+    if (!el) return;
+    const { action, targetId = '', counter = '', value = '', deck = '' } = el.dataset;
+    if (action === 'close-combat' && el.classList.contains('mp-combat-modal-backdrop') && event.target !== el) return;
+    const delta = Number(el.dataset.delta || 0);
+    if (action === 'create-lobby') return this.createLobby();
+    if (action === 'join-lobby') return this.joinLobby();
+    if (action === 'leave-lobby') return this.leaveLobby();
+    if (action === 'start-game') return this.startGame();
+    if (action === 'copy-code') return this.copyLobbyCode(el);
+    if (action === 'adjust-life') return this.adjustLife(delta);
+    if (action === 'adjust-poison') return this.adjustPoison(delta);
+    if (action === 'adjust-counter') return this.adjustMiscCounter(counter, delta);
+    if (action === 'toggle-monarch') return this.toggleMonarch();
+    if (action === 'toggle-initiative') return this.toggleInitiative();
+    if (action === 'toggle-lifelink') return this.toggleCombatLifelink();
+    if (action === 'toggle-extra-turn') return this.toggleExtraTurn();
+    if (action === 'toggle-counters') return this.toggleCountersPanel();
+    if (action === 'next-turn') return this.nextTurn();
+    if (action === 'undo') return this.undoLastAction();
+    if (action === 'open-combat') return this.openCombatModal(targetId);
+    if (action === 'close-combat') return this.closeCombatModal();
+    if (action === 'toggle-combat-target') return this.toggleCombatTarget(targetId);
+    if (action === 'finish-game') return this.finishGame(value);
+    if (action === 'rematch') return this.rematchSamePlayers();
+    if (action === 'waiting-room') return this.returnToWaitingRoom();
+    if (action === 'select-deck') return this.updateMyDeckChoice(deck);
+  },
+
+  _handleRootChange(event) {
+    const el = event.target;
+    if (el.matches('[data-field="name"]')) return this.updateMyName(el.value);
+    if (el.matches('[data-field="deck"]')) return this.updateMyDeck(el.value);
+    if (el.matches('[data-field="deck-choice"]')) return this.updateMyDeckChoice(el.value);
+  },
+
+  _handleRootInput(event) {
+    const el = event.target;
+    if (!el.matches('[data-field="code"]')) return;
+    el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  },
+
+  _handleRootPointerDown(event) {
+    const el = event.target.closest('[data-hold-mode]');
+    if (!el) return;
+    el.setPointerCapture?.(event.pointerId);
+    this.startCombatAdjust(el.dataset.holdMode, el.dataset.targetId, Number(el.dataset.direction || 0));
+  },
+
+  _handleRootPointerEnd(event) {
+    const el = event.target.closest('[data-hold-mode]');
+    if (!el) return this.stopCombatAdjust();
+    this.stopCombatAdjust(el.dataset.holdMode, el.dataset.targetId, Number(el.dataset.direction || 0));
   },
 
   _destroySubscription() {
@@ -304,11 +372,11 @@ const MPTracker = {
   _handlePlayerChange(payload) {
     const { eventType, new: newRow, old: oldRow } = payload;
     if (eventType === 'INSERT') {
-      if (!this.players.find(p => p.id === newRow.id)) { this.players.push(newRow); this.players.sort((a,b) => a.seat - b.seat); }
+      if (!this.players.find(p => p.id === newRow.id)) this.players = this._sortedPlayers([...this.players, newRow]);
     } else if (eventType === 'UPDATE') {
       const idx = this.players.findIndex(p => p.id === newRow.id);
       if (idx >= 0) this.players[idx] = newRow; else this.players.push(newRow);
-      this.players.sort((a,b) => a.seat - b.seat);
+      this.players = this._sortedPlayers();
     } else if (eventType === 'DELETE') {
       if (oldRow?.id === this.myPlayerId) {
         this._showError('Du wurdest aus der Lobby entfernt.');
@@ -634,12 +702,26 @@ const MPTracker = {
     this._render();
   },
 
+  async copyLobbyCode(button) {
+    const code = this.lobbyCode || '';
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      const prev = button.textContent;
+      button.textContent = 'Kopiert!';
+      setTimeout(() => { button.textContent = prev || 'Code kopieren'; }, 1500);
+    } catch {
+      this._showError('Code konnte nicht kopiert werden.');
+    }
+  },
+
   /* â”€â”€ Helpers â”€â”€ */
   _me() { return this.players.find(p => p.id === this.myPlayerId) || null; },
   _isHost() { return this.lobby?.host_session === this.sessionId; },
   _genCode() { return Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6).padEnd(6,'X'); },
   _initials(n) { return String(n||'P').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'P'; },
   _lifeClass(l) { if(l<=5)return'critical'; if(l<=10)return'low'; if(l<=20)return'warning'; if(l>=50)return'high'; return''; },
+  _sortedPlayers(players = this.players) { return [...players].sort((a, b) => a.seat - b.seat); },
   _clone(v) { return v == null ? v : JSON.parse(JSON.stringify(v)); },
   _clampLife(life) { return Math.max(-99, Math.min(999, Number(life) || 0)); },
   _normalizeCmdDamage(cmdDamage = {}) {
@@ -666,7 +748,7 @@ const MPTracker = {
     const idx = this.players.findIndex(p => p.id === id);
     if (idx < 0) return;
     this.players[idx] = { ...this.players[idx], ...this._clone(updates) };
-    this.players.sort((a, b) => a.seat - b.seat);
+    this.players = this._sortedPlayers();
   },
   _applyLocalLobbyUpdate(updates) {
     if (!this.lobby) return;
@@ -746,9 +828,57 @@ const MPTracker = {
     if (!meta || (!meta.commander && !meta.partner)) return '';
     return `<div class="mp-deck-meta">${meta.commander ? `<span class="mp-deck-commander">${esc(meta.commander)}</span>` : ''}${meta.partner ? `<span class="mp-deck-partner">+ ${esc(meta.partner)}</span>` : ''}</div>`;
   },
+  _button(label, action, attrs = {}, className = '') {
+    const dataAttrs = Object.entries(attrs)
+      .filter(([, value]) => value !== undefined && value !== null)
+      .map(([key, value]) => ` data-${key}="${esc(value)}"`)
+      .join('');
+    return `<button class="${className}" data-action="${esc(action)}"${dataAttrs}>${label}</button>`;
+  },
+  _renderLifeControls(values, mode) {
+    const isHeal = mode === 'heal';
+    return `
+      <div class="mp-control-group">
+        <div class="mp-cmd-title">${isHeal ? 'Heal' : 'Damage'}</div>
+        <div class="mp-life-controls ${isHeal ? 'mp-life-controls-heal' : ''}">
+          ${values.map(value => {
+            const delta = isHeal ? value : -value;
+            const label = isHeal ? `+${value}` : `-${value}`;
+            return this._button(label, 'adjust-life', { delta }, `mp-lbtn ${isHeal ? 'mp-lbtn-plus' : ''}`);
+          }).join('')}
+        </div>
+      </div>`;
+  },
+  _renderToggle(label, action, isOn, extraClass = '') {
+    return this._button(label, action, {}, `mp-toggle-btn ${isOn ? `on ${extraClass}` : ''}`.trim());
+  },
+  _renderCounter(label, value, action, attrs = {}) {
+    return `
+      <div class="${label === 'Poison' ? 'mp-poison-card' : 'mp-generic-counter-card'}">
+        <span class="mp-utility-label">${esc(label)}</span>
+        <div class="mp-poison-ctrl">
+          ${this._button('-', action, { ...attrs, delta: -1 }, 'mp-mini-btn')}
+          <div class="mp-poison-display">
+            ${label === 'Poison' ? '<span class="mp-poison-icon">☠</span>' : ''}
+            <span class="mp-poison-val">${value}</span>
+            ${label === 'Poison' ? '<span class="mp-poison-max">/10</span>' : ''}
+          </div>
+          ${this._button('+', action, { ...attrs, delta: 1 }, 'mp-mini-btn')}
+        </div>
+      </div>`;
+  },
+  _renderCombatAdjustButton(mode, targetId, direction, className = '') {
+    return `<button class="mp-cmd-btn mp-cmd-btn-stepper ${className}" data-hold-mode="${esc(mode)}" data-target-id="${esc(targetId)}" data-direction="${direction}">${direction > 0 ? '+' : '-'}</button>`;
+  },
   _showError(msg) {
+    this.errorMessage = msg;
     const el = document.getElementById('mp-error');
-    if (el) { el.textContent = msg; el.style.display = 'block'; setTimeout(() => { el.style.display = 'none'; }, 4000); }
+    if (el) el.style.display = 'block';
+    setTimeout(() => {
+      if (this.errorMessage === msg) this.errorMessage = '';
+      const current = document.getElementById('mp-error');
+      if (current) current.style.display = 'none';
+    }, 4000);
   },
 
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -774,14 +904,18 @@ const MPTracker = {
   _render() {
     const root = document.getElementById('mp-root');
     if (!root) return;
+    let markup = '';
     switch(this.phase) {
-      case 'menu':    root.innerHTML = this._renderMenu(); break;
-      case 'creating':root.innerHTML = this._renderLoading(); break;
-      case 'waiting': root.innerHTML = this._renderWaiting(); break;
-      case 'live':    root.innerHTML = this._renderLive(); break;
-      case 'finished':root.innerHTML = this._renderFinished(); break;
-      default:        root.innerHTML = this._renderMenu();
+      case 'menu':    markup = this._renderMenu(); break;
+      case 'creating':markup = this._renderLoading(); break;
+      case 'waiting': markup = this._renderWaiting(); break;
+      case 'live':    markup = this._renderLive(); break;
+      case 'finished':markup = this._renderFinished(); break;
+      default:        markup = this._renderMenu();
     }
+    if (markup === this.lastRenderedMarkup) return;
+    root.innerHTML = markup;
+    this.lastRenderedMarkup = markup;
   },
 
   /* â”€â”€ MenÃ¼ â”€â”€ */
@@ -790,7 +924,7 @@ const MPTracker = {
     <div class="mp-screen mp-menu">
       <div class="mp-logo">MagicThe<em>Drinkering</em></div>
       <div class="mp-logo-sub">Commander Tracker</div>
-      <div id="mp-error" class="mp-error" style="display:none;"></div>
+      <div id="mp-error" class="mp-error" style="${this.errorMessage ? '' : 'display:none;'}">${esc(this.errorMessage)}</div>
       <div class="mp-menu-card">
         ${this.authUser ? `
         <div class="mp-auth-card">
@@ -801,15 +935,15 @@ const MPTracker = {
         <label class="mp-label">Dein Name</label>
         <input id="mp-name-input" class="mp-input" type="text" maxlength="24" placeholder="z.B. Felix" autocomplete="off">`}
 
-        <button class="mp-btn mp-btn-gold" onclick="MPTracker.createLobby()">
+        <button class="mp-btn mp-btn-gold" data-action="create-lobby">
           <span class="mp-btn-icon">+</span> Lobby erstellen
         </button>
 
         <div class="mp-divider"><span>oder</span></div>
 
         <label class="mp-label">Lobby-Code</label>
-        <input id="mp-code-input" class="mp-input mp-code-input" type="text" maxlength="6" placeholder="ABC123" autocomplete="off" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
-        <button class="mp-btn mp-btn-outline" onclick="MPTracker.joinLobby()">
+        <input id="mp-code-input" class="mp-input mp-code-input" type="text" maxlength="6" placeholder="ABC123" autocomplete="off" data-field="code">
+        <button class="mp-btn mp-btn-outline" data-action="join-lobby">
           Lobby beitreten
         </button>
       </div>
@@ -831,14 +965,15 @@ const MPTracker = {
     <div class="mp-screen mp-waiting">
       <div class="mp-waiting-inner">
       <div class="mp-waiting-header">
-        <button class="mp-back-btn" onclick="MPTracker.leaveLobby()">Zurueck</button>
+        <button class="mp-back-btn" data-action="leave-lobby">Zurueck</button>
         <div class="mp-logo-sm">MagicThe<em>Drinkering</em></div>
       </div>
+      <div id="mp-error" class="mp-error" style="${this.errorMessage ? '' : 'display:none;'}">${esc(this.errorMessage)}</div>
 
       <div class="mp-code-display">
         <div class="mp-code-label">Lobby-Code</div>
         <div class="mp-code-big">${esc(this.lobbyCode || '------')}</div>
-        <button class="mp-copy-btn" onclick="navigator.clipboard.writeText('${esc(this.lobbyCode || '')}').then(()=>{this.textContent='Kopiert!';setTimeout(()=>this.textContent='Code kopieren',1500)})">Code kopieren</button>
+        <button class="mp-copy-btn" data-action="copy-code">Code kopieren</button>
       </div>
 
       <div class="mp-waiting-players">
@@ -861,22 +996,22 @@ const MPTracker = {
         <label class="mp-label">Name</label>
         ${this.authUser
           ? `<input class="mp-input is-readonly" type="text" value="${esc(me?.name || this.playerName)}" readonly>`
-          : `<input class="mp-input" type="text" value="${esc(me?.name || this.playerName)}" maxlength="24" onchange="MPTracker.updateMyName(this.value)">`
+          : `<input class="mp-input" type="text" value="${esc(me?.name || this.playerName)}" maxlength="24" data-field="name">`
         }
         <label class="mp-label">Deck</label>
         ${this.deckOptions.length
-          ? `<select class="mp-input mp-select" onchange="MPTracker.updateMyDeckChoice(this.value)">
+          ? `<select class="mp-input mp-select" data-field="deck-choice">
               <option value="">Deck auswaehlen</option>
               ${this.deckOptions.map(deck=>`<option value="${esc(deck.name)}" ${deck.name===(me?.deck||'')?'selected':''}>${esc(deck.name)}${deck.commander?` - ${esc(deck.commander)}${deck.partner?` + ${esc(deck.partner)}`:''}`:''}</option>`).join('')}
             </select>`
-          : `<input class="mp-input" type="text" value="${esc(me?.deck || '')}" maxlength="60" placeholder="Deck-Name" onchange="MPTracker.updateMyDeck(this.value)">`
+          : `<input class="mp-input" type="text" value="${esc(me?.deck || '')}" maxlength="60" placeholder="Deck-Name" data-field="deck">`
         }
         ${this._renderDeckMeta(me?.deck || '')}
       </div>
 
       ${isHost ? `
       <div class="mp-host-actions">
-        <button class="mp-btn ${canStart ? 'mp-btn-gold' : 'mp-btn-disabled'}" ${canStart ? '' : 'disabled'} onclick="MPTracker.startGame()">
+        <button class="mp-btn ${canStart ? 'mp-btn-gold' : 'mp-btn-disabled'}" ${canStart ? '' : 'disabled'} data-action="start-game">
           ${canStart ? 'Spiel starten' : `Warte auf Spieler (${this.players.length}/2+)`}
         </button>
       </div>` : `
@@ -903,7 +1038,7 @@ const MPTracker = {
           <span class="mp-active-label">${esc(activePlayer?.name || '?')} ist dran</span>
           <span class="mp-top-chip">${alive.length} alive</span>
           <span class="mp-top-chip ${this.pendingWrites ? 'is-syncing' : ''}">${this.pendingWrites ? 'Syncing…' : 'Live Sync'}</span>
-          ${this.lastUndo ? `<button class="mp-undo-btn" onclick="MPTracker.undoLastAction()">Undo${this.lastUndo.label ? ` · ${esc(this.lastUndo.label)}` : ''}</button>` : ''}
+          ${this.lastUndo ? `<button class="mp-undo-btn" data-action="undo">Undo${this.lastUndo.label ? ` · ${esc(this.lastUndo.label)}` : ''}</button>` : ''}
         </div>
         <div class="mp-other-players">
           ${others.map(p => this._renderOtherCard(p)).join('')}
@@ -920,8 +1055,8 @@ const MPTracker = {
             </div>
             <div class="mp-my-badges">
               ${isMyTurn ? '<span class="mp-badge active-badge">Am Zug</span>' : ''}
-              ${me.monarch ? '<button class="mp-badge monarch-badge" onclick="MPTracker.toggleMonarch()">Monarch</button>' : ''}
-              ${me.initiative ? '<button class="mp-badge initiative-badge" onclick="MPTracker.toggleInitiative()">Initiative</button>' : ''}
+              ${me.monarch ? '<button class="mp-badge monarch-badge" data-action="toggle-monarch">Monarch</button>' : ''}
+              ${me.initiative ? '<button class="mp-badge initiative-badge" data-action="toggle-initiative">Initiative</button>' : ''}
               ${me.eliminated ? '<span class="mp-badge out-badge">Ausgeschieden</span>' : ''}
             </div>
           </div>
@@ -934,26 +1069,8 @@ const MPTracker = {
               </div>
 
               <div class="mp-life-control-groups">
-                <div class="mp-control-group">
-                  <div class="mp-cmd-title">Damage</div>
-                  <div class="mp-life-controls">
-                    <button class="mp-lbtn" onclick="MPTracker.adjustLife(-1)">-1</button>
-                    <button class="mp-lbtn" onclick="MPTracker.adjustLife(-2)">-2</button>
-                    <button class="mp-lbtn" onclick="MPTracker.adjustLife(-3)">-3</button>
-                    <button class="mp-lbtn" onclick="MPTracker.adjustLife(-5)">-5</button>
-                    <button class="mp-lbtn" onclick="MPTracker.adjustLife(-10)">-10</button>
-                  </div>
-                </div>
-                <div class="mp-control-group">
-                  <div class="mp-cmd-title">Heal / Lifegain</div>
-                  <div class="mp-life-controls mp-life-controls-heal">
-                    <button class="mp-lbtn mp-lbtn-plus" onclick="MPTracker.adjustLife(1)">+1</button>
-                    <button class="mp-lbtn mp-lbtn-plus" onclick="MPTracker.adjustLife(2)">+2</button>
-                    <button class="mp-lbtn mp-lbtn-plus" onclick="MPTracker.adjustLife(3)">+3</button>
-                    <button class="mp-lbtn mp-lbtn-plus" onclick="MPTracker.adjustLife(5)">+5</button>
-                    <button class="mp-lbtn mp-lbtn-plus" onclick="MPTracker.adjustLife(10)">+10</button>
-                  </div>
-                </div>
+                ${this._renderLifeControls([1,2,3,5,10], 'damage')}
+                ${this._renderLifeControls([1,2,3,5,10], 'heal')}
               </div>
             </section>
 
@@ -961,58 +1078,20 @@ const MPTracker = {
               <div class="mp-cmd-title">Status & Basics</div>
               <div class="mp-utility-grid mp-utility-grid-tight">
                 <div class="mp-toggle-stack">
-                  <button class="mp-toggle-btn ${me.monarch ? 'on' : ''}" onclick="MPTracker.toggleMonarch()">Monarch</button>
-                  <button class="mp-toggle-btn ${me.initiative ? 'on' : ''}" onclick="MPTracker.toggleInitiative()">Initiative</button>
-                  <button class="mp-toggle-btn ${this.combatLifelink ? 'on lifelink' : ''}" onclick="MPTracker.toggleCombatLifelink()">Lifelink</button>
-                  <button class="mp-toggle-btn ${this.extraTurnQueued ? 'on' : ''}" onclick="MPTracker.toggleExtraTurn()">Extra Turn</button>
-                  ${isMyTurn ? '<button class="mp-pass-btn mp-pass-btn-inline" onclick="MPTracker.nextTurn()">Turn abgeben</button>' : ''}
+                  ${this._renderToggle('Monarch', 'toggle-monarch', me.monarch)}
+                  ${this._renderToggle('Initiative', 'toggle-initiative', me.initiative)}
+                  ${this._renderToggle('Lifelink', 'toggle-lifelink', this.combatLifelink, 'lifelink')}
+                  ${this._renderToggle('Extra Turn', 'toggle-extra-turn', this.extraTurnQueued)}
+                  ${isMyTurn ? '<button class="mp-pass-btn mp-pass-btn-inline" data-action="next-turn">Turn abgeben</button>' : ''}
                 </div>
                 <div class="mp-counter-panel">
-                  <button class="mp-counter-toggle" onclick="MPTracker.toggleCountersPanel()">${this.countersOpen ? 'Counter schließen' : 'Counter öffnen'}</button>
+                  <button class="mp-counter-toggle" data-action="toggle-counters">${this.countersOpen ? 'Counter schließen' : 'Counter öffnen'}</button>
                   ${this.countersOpen ? `
                   <div class="mp-counter-drawer">
-                    <div class="mp-generic-counter-card">
-                      <span class="mp-utility-label">Energy</span>
-                      <div class="mp-poison-ctrl">
-                        <button class="mp-mini-btn" onclick="MPTracker.adjustMiscCounter('energy',-1)">−</button>
-                        <div class="mp-poison-display">
-                          <span class="mp-poison-val">${this.miscCounters.energy || 0}</span>
-                        </div>
-                        <button class="mp-mini-btn" onclick="MPTracker.adjustMiscCounter('energy',1)">+</button>
-                      </div>
-                    </div>
-                    <div class="mp-generic-counter-card">
-                      <span class="mp-utility-label">Experience</span>
-                      <div class="mp-poison-ctrl">
-                        <button class="mp-mini-btn" onclick="MPTracker.adjustMiscCounter('experience',-1)">−</button>
-                        <div class="mp-poison-display">
-                          <span class="mp-poison-val">${this.miscCounters.experience || 0}</span>
-                        </div>
-                        <button class="mp-mini-btn" onclick="MPTracker.adjustMiscCounter('experience',1)">+</button>
-                      </div>
-                    </div>
-                    <div class="mp-generic-counter-card">
-                      <span class="mp-utility-label">Rad</span>
-                      <div class="mp-poison-ctrl">
-                        <button class="mp-mini-btn" onclick="MPTracker.adjustMiscCounter('rad',-1)">−</button>
-                        <div class="mp-poison-display">
-                          <span class="mp-poison-val">${this.miscCounters.rad || 0}</span>
-                        </div>
-                        <button class="mp-mini-btn" onclick="MPTracker.adjustMiscCounter('rad',1)">+</button>
-                      </div>
-                    </div>
-                    <div class="mp-poison-card">
-                      <span class="mp-utility-label">Poison</span>
-                      <div class="mp-poison-ctrl">
-                        <button class="mp-mini-btn" onclick="MPTracker.adjustPoison(-1)">−</button>
-                        <div class="mp-poison-display">
-                          <span class="mp-poison-icon">☠</span>
-                          <span class="mp-poison-val">${me.poison}</span>
-                          <span class="mp-poison-max">/10</span>
-                        </div>
-                        <button class="mp-mini-btn" onclick="MPTracker.adjustPoison(1)">+</button>
-                      </div>
-                    </div>
+                    ${this._renderCounter('Energy', this.miscCounters.energy || 0, 'adjust-counter', { counter: 'energy' })}
+                    ${this._renderCounter('Experience', this.miscCounters.experience || 0, 'adjust-counter', { counter: 'experience' })}
+                    ${this._renderCounter('Rad', this.miscCounters.rad || 0, 'adjust-counter', { counter: 'rad' })}
+                    ${this._renderCounter('Poison', me.poison, 'adjust-poison')}
                   </div>` : ''}
                 </div>
               </div>
@@ -1026,12 +1105,12 @@ const MPTracker = {
               <div class="mp-cmd-title">Combat</div>
               <div class="mp-rules-hint">Tippe auf Gegner-Shortcuts oder öffne das Overlay für mehrere Ziele und Splits.</div>
               <div class="mp-combat-shortcuts">
-                ${others.filter(p => !p.eliminated).map(p => `<button class="mp-combat-shortcut" onclick="MPTracker.openCombatModal('${p.id}')">${esc(p.name)}</button>`).join('')}
+                ${others.filter(p => !p.eliminated).map(p => this._button(esc(p.name), 'open-combat', { 'target-id': p.id }, 'mp-combat-shortcut')).join('')}
               </div>
             </div>
             <div class="mp-combat-launch-actions">
               <div class="mp-combat-launch-meta">${this.combatTargetIds.length} Ziel${this.combatTargetIds.length===1?'':'e'} vorgemerkt</div>
-              <button class="mp-btn mp-btn-outline mp-combat-open-btn" onclick="MPTracker.openCombatModal()">Combat öffnen</button>
+              <button class="mp-btn mp-btn-outline mp-combat-open-btn" data-action="open-combat">Combat öffnen</button>
             </div>
           </section>` : ''}
 
@@ -1039,8 +1118,8 @@ const MPTracker = {
           <div class="mp-finish-section">
             <div class="mp-cmd-title">Spiel beenden</div>
             <div class="mp-finish-btns">
-              ${alive.map(p => `<button class="mp-finish-btn" onclick="MPTracker.finishGame('${p.id}')">${esc(p.name)} gewinnt</button>`).join('')}
-              <button class="mp-finish-btn ghost" onclick="MPTracker.finishGame('')">Kein Gewinner</button>
+              ${alive.map(p => this._button(`${esc(p.name)} gewinnt`, 'finish-game', { value: p.id }, 'mp-finish-btn')).join('')}
+              <button class="mp-finish-btn ghost" data-action="finish-game" data-value="">Kein Gewinner</button>
             </div>
           </div>` : ''}
 
@@ -1058,7 +1137,7 @@ const MPTracker = {
     const cmdReceived = this._cmdMax(p);
     const pulse = this.uiPulseByPlayerId[p.id];
     return `
-    <button class="mp-other-card mp-color-${p.color || 'gold'} ${p.eliminated ? 'is-out' : ''} ${isActive ? 'is-active' : ''} ${pulse ? `pulse-${pulse}` : ''}" ${p.eliminated ? 'disabled' : ''} onclick="MPTracker.openCombatModal('${p.id}')">
+    <button class="mp-other-card mp-color-${p.color || 'gold'} ${p.eliminated ? 'is-out' : ''} ${isActive ? 'is-active' : ''} ${pulse ? `pulse-${pulse}` : ''}" ${p.eliminated ? 'disabled' : ''} data-action="open-combat" data-target-id="${esc(p.id)}">
       <div class="mp-other-orb">${this._initials(p.name)}</div>
       <div class="mp-other-info">
         <span class="mp-other-name">${esc(p.name)}</span>
@@ -1099,15 +1178,15 @@ const MPTracker = {
         <div class="mp-combat-action-row">
           <span class="mp-utility-label">Combat Damage</span>
           <div class="mp-action-buttons mp-action-buttons-stepper">
-            <button class="mp-cmd-btn mp-cmd-btn-stepper" onpointerdown="MPTracker.startCombatAdjust('combat','${player.id}',-1)" onpointerup="MPTracker.stopCombatAdjust('combat','${player.id}',-1)" onpointerleave="MPTracker.stopCombatAdjust()" onpointercancel="MPTracker.stopCombatAdjust()">-</button>
-            <button class="mp-cmd-btn mp-cmd-btn-stepper" onpointerdown="MPTracker.startCombatAdjust('combat','${player.id}',1)" onpointerup="MPTracker.stopCombatAdjust('combat','${player.id}',1)" onpointerleave="MPTracker.stopCombatAdjust()" onpointercancel="MPTracker.stopCombatAdjust()">+</button>
+            ${this._renderCombatAdjustButton('combat', player.id, -1)}
+            ${this._renderCombatAdjustButton('combat', player.id, 1)}
           </div>
         </div>
         <div class="mp-combat-action-row">
           <span class="mp-utility-label">Commander Damage</span>
           <div class="mp-action-buttons mp-action-buttons-stepper">
-            <button class="mp-cmd-btn mp-cmd-btn-stepper" onpointerdown="MPTracker.startCombatAdjust('commander','${player.id}',-1)" onpointerup="MPTracker.stopCombatAdjust('commander','${player.id}',-1)" onpointerleave="MPTracker.stopCombatAdjust()" onpointercancel="MPTracker.stopCombatAdjust()">-</button>
-            <button class="mp-cmd-btn mp-cmd-btn commander mp-cmd-btn-stepper" onpointerdown="MPTracker.startCombatAdjust('commander','${player.id}',1)" onpointerup="MPTracker.stopCombatAdjust('commander','${player.id}',1)" onpointerleave="MPTracker.stopCombatAdjust()" onpointercancel="MPTracker.stopCombatAdjust()">+</button>
+            ${this._renderCombatAdjustButton('commander', player.id, -1)}
+            ${this._renderCombatAdjustButton('commander', player.id, 1, 'commander')}
           </div>
         </div>
       </div>
@@ -1119,20 +1198,20 @@ const MPTracker = {
     const targets = this.players.filter(p => p.id !== this.myPlayerId && !p.eliminated);
     const selectedTargets = targets.filter(p => this.combatTargetIds.includes(p.id));
     return `
-    <div class="mp-combat-modal-backdrop" onclick="MPTracker.closeCombatModal()">
-      <div class="mp-combat-modal" onclick="event.stopPropagation()">
+    <div class="mp-combat-modal-backdrop" data-action="close-combat">
+      <div class="mp-combat-modal">
         <div class="mp-combat-modal-head">
           <div>
             <div class="mp-cmd-title">Combat Overlay</div>
             <div class="mp-combat-modal-sub">Wähle ein oder mehrere Ziele und verteile den Schaden individuell.</div>
           </div>
-          <button class="mp-back-btn" onclick="MPTracker.closeCombatModal()">Schließen</button>
+          <button class="mp-back-btn" data-action="close-combat">Schließen</button>
         </div>
 
         <div class="mp-combat-target-picker">
           ${targets.map(player => {
             const selected = this.combatTargetIds.includes(player.id);
-            return `<button class="mp-combat-target-pill ${selected ? 'is-selected' : ''}" onclick="MPTracker.toggleCombatTarget('${player.id}')">${esc(player.name)}</button>`;
+            return this._button(esc(player.name), 'toggle-combat-target', { 'target-id': player.id }, `mp-combat-target-pill ${selected ? 'is-selected' : ''}`);
           }).join('')}
         </div>
 
@@ -1166,11 +1245,11 @@ const MPTracker = {
         </div>
         ${isHost ? `
         <div class="mp-finished-actions">
-          <button class="mp-btn mp-btn-gold" onclick="MPTracker.rematchSamePlayers()">Neues Spiel, gleiches Pod</button>
-          <button class="mp-btn mp-btn-outline" onclick="MPTracker.returnToWaitingRoom()">Zurück in den Waiting Room</button>
+          <button class="mp-btn mp-btn-gold" data-action="rematch">Neues Spiel, gleiches Pod</button>
+          <button class="mp-btn mp-btn-outline" data-action="waiting-room">Zurück in den Waiting Room</button>
         </div>` : `
         <div class="mp-finished-note">Der Host kann jetzt ein Rematch starten oder den Waiting Room für neue Decks öffnen.</div>`}
-        <button class="mp-btn mp-btn-gold" onclick="MPTracker.leaveLobby()">Zurueck zum Menue</button>
+        <button class="mp-btn mp-btn-gold" data-action="leave-lobby">Zurueck zum Menue</button>
       </div>
     </div>`;
   }
