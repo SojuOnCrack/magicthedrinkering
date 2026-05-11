@@ -162,6 +162,34 @@ window.APP_VERSION = '202605020500';
     border-radius: 12px;
   }
 
+  .mp-logo,
+  .mp-logo-sm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+  }
+
+  .mp-logo {
+    flex-wrap: wrap;
+  }
+
+  .mp-logo-icon {
+    width: 34px;
+    height: 34px;
+    display: block;
+    object-fit: contain;
+    border-radius: 10px;
+    flex: 0 0 auto;
+    filter: drop-shadow(0 8px 18px rgba(0,0,0,.35));
+  }
+
+  .mp-logo-sm .mp-logo-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+  }
+
   .mp-splash-title {
     font-family: 'Cinzel', serif;
     font-size: clamp(1.35rem, 7vw, 2rem);

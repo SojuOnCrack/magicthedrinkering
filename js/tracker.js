@@ -922,7 +922,7 @@ const MPTracker = {
   _renderMenu() {
     return `
     <div class="mp-screen mp-menu">
-      <div class="mp-logo">MagicThe<em>Drinkering</em></div>
+      ${this._renderLogo('mp-logo')}
       <div class="mp-logo-sub">Commander Tracker</div>
       <div id="mp-error" class="mp-error" style="${this.errorMessage ? '' : 'display:none;'}">${esc(this.errorMessage)}</div>
       <div class="mp-menu-card">
@@ -969,6 +969,14 @@ const MPTracker = {
     </div>`;
   },
 
+  _renderLogo(className = 'mp-logo') {
+    return `
+      <div class="${className}">
+        <img class="mp-logo-icon" src="/favicon.svg" alt="" aria-hidden="true">
+        <span>MagicThe<em>Drinkering</em></span>
+      </div>`;
+  },
+
   /* â”€â”€ Wartezimmer â”€â”€ */
   _renderWaiting() {
     const isHost = this._isHost();
@@ -980,7 +988,7 @@ const MPTracker = {
       <div class="mp-waiting-inner">
       <div class="mp-waiting-header">
         <button class="mp-back-btn" data-action="leave-lobby">Zurueck</button>
-        <div class="mp-logo-sm">MagicThe<em>Drinkering</em></div>
+        ${this._renderLogo('mp-logo-sm')}
       </div>
       <div id="mp-error" class="mp-error" style="${this.errorMessage ? '' : 'display:none;'}">${esc(this.errorMessage)}</div>
 
