@@ -170,19 +170,20 @@ window.APP_VERSION = '202605020500';
   }
 
   .mp-logo-icon {
-    width: 72px;
-    height: 72px;
+    width: clamp(144px, 38vw, 220px);
+    height: clamp(86px, 23vw, 132px);
     display: block;
     object-fit: contain;
-    border-radius: 18px;
+    border-radius: 22px;
     flex: 0 0 auto;
-    filter: drop-shadow(0 8px 18px rgba(0,0,0,.35));
+    filter: drop-shadow(0 16px 32px rgba(0,0,0,.42));
   }
 
   .mp-logo-sm .mp-logo-icon {
-    width: 34px;
-    height: 34px;
+    width: 54px;
+    height: 32px;
     border-radius: 10px;
+    filter: drop-shadow(0 8px 18px rgba(0,0,0,.35));
   }
 
   .mp-splash-title {
