@@ -190,6 +190,7 @@ const MPTracker = {
       this.players = players || [];
       this.phase = lobby.phase === 'finished' ? 'finished' : lobby.phase === 'live' ? 'live' : 'waiting';
       this._subscribe();
+      MPStats.attach(this.sb, this.lobby.id, this.myPlayerId, this.players); // NEU
       this._persistLobbyState();
       this._render();
       return true;
@@ -276,6 +277,7 @@ const MPTracker = {
       this.players = [player];
       this.phase = 'waiting';
       this._subscribe();
+      MPStats.attach(this.sb, this.lobbyId, this.myPlayerId, this.players);
       this._persistLobbyState();
       this._render();
     } catch(err) {
@@ -314,6 +316,7 @@ const MPTracker = {
         this.players = players || [];
         this.phase = lobby.phase === 'waiting' ? 'waiting' : 'live';
         this._subscribe();
+        MPStats.attach(this.sb, this.lobbyId, this.myPlayerId, this.players);
         this._persistLobbyState();
         this._render();
         return;
@@ -346,6 +349,7 @@ const MPTracker = {
       this.players = players || [];
       this.phase = 'waiting';
       this._subscribe();
+      MPStats.attach(this.sb, this.lobbyId, this.myPlayerId, this.players);
       this._persistLobbyState();
       this._render();
     } catch(err) {
@@ -386,6 +390,7 @@ const MPTracker = {
       }
       this.players = this.players.filter(p => p.id !== oldRow.id);
     }
+    MPStats.updatePlayers(this.players); // NEU
     this._checkAutoFinish();
     this._render();
   },
@@ -398,6 +403,7 @@ const MPTracker = {
     if (this.lobby.phase === 'finished' && this.phase !== 'finished') { this.phase = 'finished'; }
     this._persistLobbyState();
     this._render();
+    MPStats.renderFinishedStats(this.lobbyId, this.players, this.lobby); // NEU
   },
 
   /* â”€â”€ Host: Spiel starten â”€â”€ */
@@ -425,18 +431,26 @@ const MPTracker = {
     } catch(err) { this._showError('Fehler beim Starten: ' + err.message); }
   },
 
-  /* â”€â”€ Life anpassen â”€â”€ */
-  async adjustLife(delta) {
-    const me = this._me();
-    if (!me || this.phase !== 'live') return;
-    const updates = this._buildPlayerUpdate(me, { life: (me.life || 0) + delta });
-    await this._runOptimistic({
-      playerUpdates: [{ id: this.myPlayerId, updates }],
-      undoLabel: delta >= 0 ? `Heal ${delta}` : `Damage ${Math.abs(delta)}`,
-      pulses: [{ id: this.myPlayerId, kind: delta >= 0 ? 'heal' : 'damage' }]
-    });
-  },
+ /* ── Life anpassen ── */
+async adjustLife(delta) {
+  const me = this._me();
+  if (!me || this.phase !== 'live') return;
+  const updates = this._buildPlayerUpdate(me, { life: (me.life || 0) + delta });
 
+  if (delta > 0) {
+    MPStats.logEvent('heal', {
+      actorId: this.myPlayerId,
+      amount: delta,
+      turn: this.lobby?.turn_number || 1
+    });
+  }
+
+  await this._runOptimistic({
+    playerUpdates: [{ id: this.myPlayerId, updates }],
+    undoLabel: delta >= 0 ? `Heal ${delta}` : `Damage ${Math.abs(delta)}`,
+    pulses: [{ id: this.myPlayerId, kind: delta >= 0 ? 'heal' : 'damage' }]
+  });
+},
   /* â”€â”€ Commander Damage â”€â”€ */
   async dealCommanderDamage(targetId, delta) {
     await this.dealCombatDamage(targetId, delta, { commander: true });
@@ -467,6 +481,15 @@ const MPTracker = {
       const meUpdates = this._buildPlayerUpdate(me, { life: (me.life || 0) + amount });
       playerUpdates.push({ id: this.myPlayerId, updates: meUpdates });
     }
+    const turn = this.lobby?.turn_number || 1;
+    if (amount > 0) {
+      MPStats.logEvent(commander ? 'commander_damage' : 'combat_damage', {
+        actorId: this.myPlayerId,
+        targetId,
+        amount,
+        turn
+      });
+    }
 
     await this._runOptimistic({
       playerUpdates,
@@ -480,15 +503,25 @@ const MPTracker = {
 
   /* â”€â”€ Poison â”€â”€ */
   async adjustPoison(delta) {
-    const me = this._me();
-    if (!me || this.phase !== 'live') return;
-    const updates = this._buildPlayerUpdate(me, { poison: (me.poison || 0) + delta });
-    await this._runOptimistic({
-      playerUpdates: [{ id: this.myPlayerId, updates }],
-      undoLabel: delta >= 0 ? `Poison +${delta}` : `Poison ${delta}`,
-      pulses: [{ id: this.myPlayerId, kind: delta >= 0 ? 'damage' : 'heal' }]
+  const me = this._me();
+  if (!me || this.phase !== 'live') return;
+  const updates = this._buildPlayerUpdate(me, { poison: (me.poison || 0) + delta });
+
+  if (delta > 0) {
+    MPStats.logEvent('poison', {
+      actorId: this.myPlayerId,
+      targetId: this.myPlayerId,
+      amount: delta,
+      turn: this.lobby?.turn_number || 1
     });
-  },
+  }
+
+  await this._runOptimistic({
+    playerUpdates: [{ id: this.myPlayerId, updates }],
+    undoLabel: delta >= 0 ? `Poison +${delta}` : `Poison ${delta}`,
+    pulses: [{ id: this.myPlayerId, kind: delta >= 0 ? 'damage' : 'heal' }]
+  });
+},
 
   /* â”€â”€ Setup: Name/Deck Ã¤ndern â”€â”€ */
   async updateMyName(name) {
