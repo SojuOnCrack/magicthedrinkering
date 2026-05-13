@@ -404,7 +404,9 @@ const MPTracker = {
       { this.phase = 'finished'; 
       this._persistLobbyState();
       this._render();
-      MPStats.renderFinishedStats(this.lobbyId, this.players, this.lobby); // NEU
+      setTimeout(() =>{
+        MPStats.renderFinishedStats(this.lobbyId, this.players, this.lobby)
+      }, 100);
       return;
   }
   this._persistLobbyState();
