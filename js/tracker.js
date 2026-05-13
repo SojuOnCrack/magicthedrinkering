@@ -400,12 +400,16 @@ const MPTracker = {
     this.lobby = payload.new;
     if (this.lobby.phase === 'waiting' && this.phase !== 'waiting') { this.phase = 'waiting'; }
     if (this.lobby.phase === 'live' && this.phase !== 'live') { this.phase = 'live'; }
-    if (this.lobby.phase === 'finished' && this.phase !== 'finished') { this.phase = 'finished'; }
-    this._persistLobbyState();
-    this._render();
-    MPStats.renderFinishedStats(this.lobbyId, this.players, this.lobby); // NEU
-  },
-
+    if (this.lobby.phase === 'finished' && this.phase !== 'finished') 
+      { this.phase = 'finished'; 
+      this._persistLobbyState();
+      this._render();
+      MPStats.renderFinishedStats(this.lobbyId, this.players, this.lobby); // NEU
+      return;
+  }
+  this._persistLobbyState();
+  this._render();
+},
   /* â”€â”€ Host: Spiel starten â”€â”€ */
   async startGame() {
     if (!this._isHost()) return;
@@ -1297,6 +1301,7 @@ async adjustLife(delta) {
               ${p.id === this.lobby?.winner_id ? '<span class="mp-winner-badge">Gewinner</span>' : ''}
             </div>`).join('')}
         </div>
+        <div id="mpp-stats-root"></div>
         ${isHost ? `
         <div class="mp-finished-actions">
           <button class="mp-btn mp-btn-gold" data-action="rematch">Neues Spiel, gleiches Pod</button>
