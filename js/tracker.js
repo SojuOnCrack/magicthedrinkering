@@ -16,10 +16,10 @@ const MPTracker = {
 
   /* â”€â”€ Konstanten â”€â”€ */
   START_LIFE: 40,
-  MAX_PLAYERS: 6,
+  MAX_PLAYERS: 10,
   SESSION_KEY: 'mtd_mp_session_v1',
   LOBBY_STATE_KEY: 'mtd_mp_lobby_state_v1',
-  COLORS: ['gold','ice','green','crimson','purple','steel'],
+  COLORS: ['gold','ice','green','crimson','purple','steel','orange','teal','pink','brown'],
 
   /* â”€â”€ State â”€â”€ */
   sb: null,
@@ -986,7 +986,7 @@ const MPTracker = {
     <div class="mp-screen mp-waiting">
       <div class="mp-waiting-inner">
       <div class="mp-waiting-header">
-        <button class="mp-back-btn" data-action="leave-lobby">Zurueck</button>
+        <button class="mp-back-btn" data-action="leave-lobby">back</button>
         ${this._renderLogo('mp-logo-sm')}
       </div>
       <div id="mp-error" class="mp-error" style="${this.errorMessage ? '' : 'display:none;'}">${esc(this.errorMessage)}</div>
@@ -1270,7 +1270,7 @@ const MPTracker = {
           <button class="mp-btn mp-btn-outline" data-action="waiting-room">Zurück in den Waiting Room</button>
         </div>` : `
         <div class="mp-finished-note">Der Host kann jetzt ein Rematch starten oder den Waiting Room für neue Decks öffnen.</div>`}
-        <button class="mp-btn mp-btn-gold" data-action="leave-lobby">Zurueck zum Menue</button>
+        <button class="mp-btn mp-btn-gold" data-action="leave-lobby">Zurück zum Menü</button>
       </div>
     </div>`;
   }
