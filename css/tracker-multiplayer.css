@@ -1753,3 +1753,25 @@
   font-family: 'JetBrains Mono', monospace;
   padding: .5rem 0;
 }
+.mp-stats-summary {
+  cursor: pointer;
+  padding: .85rem 1rem;
+  background: rgba(201,168,76,.08);
+  border: 1px solid rgba(201,168,76,.2);
+  border-radius: 10px;
+  color: #c9a84c;
+  font-family: 'Cinzel', serif;
+  font-size: .85rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  list-style: none;
+  text-align: center;
+  margin-bottom: .5rem;
+}
+
+.mp-stats-summary::-webkit-details-marker { display: none; }
+
+.mp-stats-details[open] .mp-stats-summary {
+  border-radius: 10px 10px 0 0;
+  margin-bottom: 0;
+}

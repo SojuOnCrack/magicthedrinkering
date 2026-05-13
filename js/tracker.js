@@ -1301,7 +1301,10 @@ async adjustLife(delta) {
               ${p.id === this.lobby?.winner_id ? '<span class="mp-winner-badge">Gewinner</span>' : ''}
             </div>`).join('')}
         </div>
+        <details class="mp-stats-details">
+        <summary class="mp-stats-summary">Spielstatistiken</summary>
         <div id="mp-stats-root"></div>
+        </details>
         ${isHost ? `
         <div class="mp-finished-actions">
           <button class="mp-btn mp-btn-gold" data-action="rematch">Neues Spiel, gleiches Pod</button>
