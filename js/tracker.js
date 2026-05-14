@@ -1308,14 +1308,15 @@ async adjustLife(delta) {
         <div id="mp-stats-root"></div>
         </details>
         ${isHost ? `
-        <div class="mp-finished-actions">
-          <button class="mp-btn mp-btn-gold" data-action="rematch">Neues Spiel, gleiches Pod</button>
+          <button class="mp-btn mp-btn-gold" data-action="rematch">Neues Spiel starten</button>
           <button class="mp-btn mp-btn-outline" data-action="waiting-room">Zurück in den Waiting Room</button>
-        </div>` : `
-        <div class="mp-finished-note">Der Host kann jetzt ein Rematch starten oder den Waiting Room für neue Decks öffnen.</div>`}
-        <button class="mp-btn mp-btn-gold" data-action="leave-lobby">Zurück zum Menü</button>
-      </div>
-    </div>`;
+          ':'
+          <div s=class="mp-finished-note">Der Host kann jetzt ein Rematch starten oder alle zurück in den Waiting Room schicken, um die Decks zu wechseln.</div>
+        '}
+        </div>
+     </div>
+     ${this._renderCombatModal()}
+     `;
   }
 };
 
