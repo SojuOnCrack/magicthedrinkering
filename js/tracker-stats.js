@@ -30,21 +30,67 @@ const MPStats = {
      EVENT LOGGING
   ══════════════════════════════════════════ */
 
-  async logEvent(type, { actorId, targetId = null, amount = 0, turn = 1 } = {}) {
-    if (!this._sb || !this._lobbyId || !actorId) return;
-    try {
-      await this._sb.from('mp_game_events').insert({
-        lobby_id: this._lobbyId,
-        turn,
-        actor_id: actorId,
-        target_id: targetId || null,
-        type,
-        amount: Math.round(amount)
-      });
-    } catch (err) {
-      console.warn('[MPStats.logEvent]', err);
+ async logEvent(type, {
+  actorId,
+  targetId = null,
+  amount = 0,
+  turn = 1
+} = {}) {
+
+  if (!this._sb || !this._lobbyId || !actorId) return;
+
+  try {
+
+    // Prüfen ob schon eine Row für diesen Spieler + Turn existiert
+    const { data: existing } = await this._sb
+      .from('mp_game_events')
+      .select('id, events')
+      .eq('lobby_id', this._lobbyId)
+      .eq('turn', turn)
+      .eq('actor_id', actorId)
+      .maybeSingle();
+
+    // Neues Event
+    const newEvent = {
+      type,
+      target_id: targetId,
+      amount: Math.round(amount),
+      ts: Date.now()
+    };
+
+    // Wenn Row existiert -> Event anhängen
+    if (existing) {
+
+      const updatedEvents = [
+        ...(existing.events || []),
+        newEvent
+      ];
+
+      await this._sb
+        .from('mp_game_events')
+        .update({
+          events: updatedEvents
+        })
+        .eq('id', existing.id);
+
+    } else {
+
+      // Sonst neue Row erstellen
+      await this._sb
+        .from('mp_game_events')
+        .insert({
+          lobby_id: this._lobbyId,
+          turn,
+          actor_id: actorId,
+          events: [newEvent]
+        });
+
     }
-  },
+
+  } catch (err) {
+    console.warn('[MPStats.logEvent]', err);
+  }
+},
 
   /* ══════════════════════════════════════════
      STATS LADEN + RENDERN
@@ -96,10 +142,15 @@ const MPStats = {
       };
     });
 
-    events.forEach(ev => {
-      const actor  = byId[ev.actor_id];
-      const target = ev.target_id ? byId[ev.target_id] : null;
-      const amt    = Number(ev.amount) || 0;
+    events.forEach(row => {
+      const actor = byId[row.actor_id];
+      if (!actor) return;
+
+      (row.events || []).forEach(ev => {
+        const target = ev.target_id
+          ? byId[ev.target_id]
+          : null;
+        const amt = Number(ev.amount) || 0;
 
       if (!actor) return;
 
@@ -128,7 +179,7 @@ const MPStats = {
         actor.totalPoison += amt;
       }
     });
-
+    });
     return byId;
   },
 
