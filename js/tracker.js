@@ -1310,9 +1310,9 @@ async adjustLife(delta) {
         ${isHost ? `
           <button class="mp-btn mp-btn-gold" data-action="rematch">Neues Spiel starten</button>
           <button class="mp-btn mp-btn-outline" data-action="waiting-room">Zurück in den Waiting Room</button>
-          ':'
-          <div s=class="mp-finished-note">Der Host kann jetzt ein Rematch starten oder alle zurück in den Waiting Room schicken, um die Decks zu wechseln.</div>
-        '}
+        ` : `
+          <div class="mp-finished-note">Der Host kann jetzt ein Rematch starten oder alle zurück in den Waiting Room schicken, um die Decks zu wechseln.</div>
+        `}
         </div>
      </div>
      ${this._renderCombatModal()}
