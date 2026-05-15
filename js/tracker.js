@@ -1315,7 +1315,6 @@ async adjustLife(delta) {
         `}
         </div>
      </div>
-     ${this._renderCombatModal()}
      `;
   }
 };
