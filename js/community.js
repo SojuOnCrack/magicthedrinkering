@@ -14,6 +14,49 @@ const BulkPool={
   _backfillRunning:false,
   _backfillTouched:new Set(),
 
+  _qty(row){
+    const n=parseInt(row?.qty,10);
+    return Number.isFinite(n)&&n>0?n:1;
+  },
+
+  _unitPrice(row){
+    const saved=parseFloat(row?.price_usd||0);
+    if(Number.isFinite(saved)&&saved>0)return saved;
+    const local=parseFloat(Store.card(row?.card_name)?.prices?.eur||0);
+    return Number.isFinite(local)&&local>0?local:0;
+  },
+
+  _rowValue(row){
+    return this._unitPrice(row)*this._qty(row);
+  },
+
+  _aggregateRows(rows){
+    const map=new Map();
+    for(const row of rows){
+      const name=(row.card_name||'').trim();
+      if(!name)continue;
+      const condition=row.condition||'NM';
+      const key=name.toLowerCase()+'|'+condition;
+      const qty=this._qty(row);
+      const value=this._rowValue(row);
+      let agg=map.get(key);
+      if(!agg){
+        agg={...row,card_name:name,condition,qty:0,_ids:[],_contributors:new Set(),_total_value:0};
+        map.set(key,agg);
+      }
+      agg.qty+=qty;
+      agg._total_value+=value;
+      if(row.id)agg._ids.push(row.id);
+      if(row.user_id)agg._contributors.add(row.user_id);
+      if(!agg.price_usd&&row.price_usd)agg.price_usd=row.price_usd;
+      if(new Date(row.created_at)>new Date(agg.created_at||0))agg.created_at=row.created_at;
+    }
+    return [...map.values()].map(row=>({
+      ...row,
+      price_usd:row.qty?row._total_value/row.qty:(parseFloat(row.price_usd)||0),
+      contributor_count:row._contributors.size
+    }));
+  },
   render(){
     // Show loading state immediately so user doesn't see blank page
     const list=document.getElementById('bulk-list');
@@ -197,14 +240,10 @@ const BulkPool={
   },
 
   _updateStats(){
-    const total=this._data.reduce((s,r)=>s+(r.qty||0),0);
-    const unique=new Set(this._data.map(r=>r.card_name)).size;
-    /* Use DB price_usd if set, otherwise fall back to local card cache */
-    const val=this._data.reduce((s,r)=>{
-      const p=r.price_usd||parseFloat(Store.card(r.card_name)?.prices?.eur||0);
-      return s+p*(r.qty||1);
-    },0);
-    const contrib=new Set(this._data.map(r=>r.user_id)).size;
+    const total=this._data.reduce((s,r)=>s+this._qty(r),0);
+    const unique=new Set(this._data.map(r=>(r.card_name||'').trim().toLowerCase()).filter(Boolean)).size;
+    const val=this._data.reduce((s,r)=>s+this._rowValue(r),0);
+    const contrib=new Set(this._data.map(r=>r.user_id).filter(Boolean)).size;
     const formattedValue='\u20AC'+val.toFixed(2);
     ['bulk-total-cards','bulk-unique','bulk-value','bulk-contributors'].forEach((id,i)=>{
       const el=document.getElementById(id);
@@ -212,7 +251,6 @@ const BulkPool={
     });
     const topbarBulk=document.getElementById('s-bulk');
     if(topbarBulk)topbarBulk.textContent=formattedValue;
-    // Update sidebar stats too
     const sbc=document.getElementById('bulk-sb-cards');if(sbc)sbc.textContent=total;
     const sbcon=document.getElementById('bulk-sb-contrib');if(sbcon)sbcon.textContent=contrib;
   },
@@ -273,14 +311,15 @@ const BulkPool={
     const srch=(document.getElementById('bulk-search')?.value||'').toLowerCase();
     const sort=document.getElementById('bulk-sort')?.value||'name';
     const owner=document.getElementById('bulk-filter-owner')?.value||'';
-    this._filtered=this._data.filter(r=>{
+    const rows=this._data.filter(r=>{
       if(srch&&!(r.card_name||'').toLowerCase().includes(srch))return false;
       if(owner==='mine'&&DB._user&&r.user_id!==DB._user.id)return false;
       return true;
     });
+    this._filtered=this._aggregateRows(rows);
     this._filtered.sort((a,b)=>{
-      if(sort==='qty')return(b.qty||0)-(a.qty||0);
-      if(sort==='price')return(b.price_usd||0)-(a.price_usd||0);
+      if(sort==='qty')return this._qty(b)-this._qty(a);
+      if(sort==='price')return (b._total_value||this._rowValue(b))-(a._total_value||this._rowValue(a));
       if(sort==='added')return new Date(b.created_at)-new Date(a.created_at);
       return(a.card_name||'').localeCompare(b.card_name||'');
     });
@@ -319,8 +358,9 @@ const BulkPool={
     }
     if(empty)empty.style.display='none';
     list.innerHTML='';
-    const total=this._filtered.reduce((s,r)=>s+(r.qty||1),0);
-    if(status)status.textContent=`${this._filtered.length} unique cards · ${total} total copies`;
+    const total=this._filtered.reduce((s,r)=>s+this._qty(r),0);
+    const shownUnique=new Set(this._filtered.map(r=>(r.card_name||'').trim().toLowerCase()).filter(Boolean)).size;
+    if(status)status.textContent=`${shownUnique} unique cards � ${total} total copies`;
     const pageCount=Math.max(1,Math.ceil(this._filtered.length/this._pageSize));
     if(this._page>pageCount)this._page=pageCount;
     const pager=document.getElementById('bulk-pagination');
@@ -352,11 +392,12 @@ const BulkPool={
     for(const r of pageRows){
       const cd=Store.card(r.card_name)||{};
       const img=cd.img?.normal||cd.img?.crop||'';
-      const price=r.price_usd?'€'+parseFloat(r.price_usd).toFixed(2):'—';
+      const price=(r._total_value||this._rowValue(r))?'�'+(r._total_value||this._rowValue(r)).toFixed(2):'�';
       const rarity=cd.rarity||'common';
       const rarityClass={common:'cs-rarity-c',uncommon:'cs-rarity-u',rare:'cs-rarity-r',mythic:'cs-rarity-m'}[rarity]||'';
-      const owner='community';
-      const isOwn=DB._user&&DB._user.id===r.user_id;
+      const owner=r.contributor_count>1?(r.contributor_count+' contributors'):'community';
+      const canRemove=!!DB._user;
+      const removeIds=(r._ids&&r._ids.length?r._ids:[r.id]).filter(Boolean).join('|');
       const setInfo=cd.set?(cd.set.toUpperCase()+(cd.collector_number?' #'+cd.collector_number:'')):'';
 
       const tile=document.createElement('div');
@@ -373,16 +414,16 @@ const BulkPool={
             <span class="cs-card-price">${esc(price)}</span>
           </div>
           <div style="display:flex;justify-content:space-between;margin-top:3px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3)">
-            <span>${isOwn?'My copy':'Community copy'}</span>
+            <span>${esc(owner)}</span>
             <span style="color:${condColor[r.condition]||'var(--text3)'}">
-              ${esc(r.condition||'NM')} · ${r.qty||1}×
+              ${esc(r.condition||'NM')} &middot; ${BulkPool._qty(r)}x
             </span>
           </div>
         </div>
         <div class="cs-actions">
           <button class="cs-action-btn purple" onclick="WishlistMgr.addByName('${esc(r.card_name).replace(/'/g,"\'")}')">⭐ Wish</button>
           <button class="cs-action-btn gold" onclick="BulkPool._addToDeck('${esc(r.card_name).replace(/'/g,"\'")}')">+ Deck</button>
-          ${isOwn?`<button class="cs-action-btn" style="color:var(--crimson2);border-color:var(--crimson)" onclick="BulkPool.remove('${r.id}')">✕ Remove</button>`:''}
+          ${canRemove&&removeIds?`<button class="cs-action-btn" style="color:var(--crimson2);border-color:var(--crimson)" onclick="BulkPool.removeOne('${removeIds}')">Remove 1</button>`:''}
         </div>`;
 
       /* Click tile = open card modal; fetch data first if not cached */
@@ -415,8 +456,30 @@ const BulkPool={
   },
 
   async remove(id){
+    return this.removeOne(id);
+  },
+
+  async removeOne(idsText){
     if(!DB._sb||!DB._user)return;
-    await DB._sb.from('bulk_pool').delete().eq('id',id);
+    const ids=String(idsText||'').split('|').filter(Boolean);
+    if(!ids.length)return;
+    const rows=this._data.filter(r=>ids.includes(String(r.id)));
+    const target=rows.find(r=>this._qty(r)>1)||rows[0];
+    if(!target)return;
+    const qty=this._qty(target);
+    if(qty>1){
+      await DB._sb.from('bulk_pool').update({qty:qty-1}).eq('id',target.id);
+    }else{
+      await DB._sb.from('bulk_pool').delete().eq('id',target.id);
+    }
+    this.refresh();
+  },
+
+  async removeGroup(idsText){
+    if(!DB._sb||!DB._user)return;
+    const ids=String(idsText||'').split('|').filter(Boolean);
+    if(!ids.length)return;
+    await DB._sb.from('bulk_pool').delete().in('id',ids);
     this.refresh();
   }
 };
