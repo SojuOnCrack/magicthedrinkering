@@ -59,21 +59,35 @@ const BulkPool={
   },
 
   async _fetchAllRows(columns='*'){
-    const pageSize=1000;
-    const rows=[];
-    for(let from=0;;from+=pageSize){
-      const to=from+pageSize-1;
-      const {data,error}=await DB._sb.from('bulk_pool')
+    /* ── FIX: Erst echte Gesamtzahl per count:exact holen,        ──
+       ── dann seitenweise iterieren. Alte break-Bedingung          ──
+       ── (chunk.length < pageSize) bricht zu früh ab wenn         ──
+       ── Supabase ein max_rows-Limit hat oder eine Seite exakt     ──
+       ── pageSize Zeilen zurückgibt und danach noch mehr folgen.  ── */
+    const { count, error: countErr } = await DB._sb
+      .from('bulk_pool')
+      .select('*', { count: 'exact', head: true });
+
+    if(countErr) throw countErr;
+    if(!count) return [];
+
+    const pageSize = 1000;
+    const rows = [];
+
+    for(let from = 0; from < count; from += pageSize){
+      const to = from + pageSize - 1;
+      const { data, error } = await DB._sb
+        .from('bulk_pool')
         .select(columns)
-        .order('created_at',{ascending:false})
-        .range(from,to);
-      if(error)throw error;
-      const chunk=data||[];
-      rows.push(...chunk);
-      if(chunk.length<pageSize)break;
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      if(error) throw error;
+      rows.push(...(data || []));
     }
+
     return rows;
   },
+
   render(){
     // Show loading state immediately so user doesn't see blank page
     const list=document.getElementById('bulk-list');
@@ -376,7 +390,7 @@ const BulkPool={
     list.innerHTML='';
     const total=this._filtered.reduce((s,r)=>s+this._qty(r),0);
     const shownUnique=new Set(this._filtered.map(r=>(r.card_name||'').trim().toLowerCase()).filter(Boolean)).size;
-    if(status)status.textContent=`${shownUnique} unique cards � ${total} total copies`;
+    if(status)status.textContent=`${shownUnique} unique cards · ${total} total copies`;
     const pageCount=Math.max(1,Math.ceil(this._filtered.length/this._pageSize));
     if(this._page>pageCount)this._page=pageCount;
     const pager=document.getElementById('bulk-pagination');
@@ -408,7 +422,7 @@ const BulkPool={
     for(const r of pageRows){
       const cd=Store.card(r.card_name)||{};
       const img=cd.img?.normal||cd.img?.crop||'';
-      const price=(r._total_value||this._rowValue(r))?'�'+(r._total_value||this._rowValue(r)).toFixed(2):'�';
+      const price=(r._total_value||this._rowValue(r))?'€'+(r._total_value||this._rowValue(r)).toFixed(2):'€';
       const rarity=cd.rarity||'common';
       const rarityClass={common:'cs-rarity-c',uncommon:'cs-rarity-u',rare:'cs-rarity-r',mythic:'cs-rarity-m'}[rarity]||'';
       const owner=r.contributor_count>1?(r.contributor_count+' contributors'):'community';
@@ -976,13 +990,7 @@ const CommunityNav={
 
       if(!data?.length){
         el.innerHTML=`<div class="empty-panel"><div class="empty-kicker">Community</div><div class="empty-ico">CM</div><div class="empty-ttl">No Other Players Yet</div><div class="empty-sub">Other users need to open the app once before they appear here. You can also backfill profiles in Supabase.</div><pre style="background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);padding:10px;margin-top:14px;font-size:10px;color:var(--ice);overflow-x:auto">INSERT INTO profiles (id, email, username)
-
-
-
-
-
-
-        </div>`;
+        </pre></div>`;
         return;
       }
 
@@ -990,9 +998,6 @@ const CommunityNav={
       const friendIds=new Set((friends||[]).map(f=>f.friend_id));
 
       el.innerHTML=`<div class="community-list-shell"><div class="community-list-head"><div><div class="community-list-title">All Players</div><div class="community-list-sub">${data.length} visible community profile${data.length===1?'':'s'}</div></div><button class="tbtn sm" onclick="CommunityNav._renderAllUsers()" style="font-size:9px">Refresh</button></div></div>`;
-
-
-
 
       for(const u of data){
         const isFriend=friendIds.has(u.id);
@@ -1014,10 +1019,6 @@ const CommunityNav={
       }
     }catch(e){
       el.innerHTML=`<div style="color:var(--crimson2);padding:12px;font-family:'JetBrains Mono',monospace;font-size:11px">Error: ${esc(e.message)}<br><span style="color:var(--text3);font-size:10px">Make sure you ran supabase_schema.sql and that the profiles table exists.</span></div>`;
-
-
-
-
     }
   },
 
@@ -1057,6 +1058,7 @@ const CommunityNav={
       el.innerHTML=`<div style="color:var(--crimson2);padding:12px">Error: ${esc(e.message)}</div>`;
     }
   },
+
   async addFriend(friendId,email,username){
     if(!DB._sb||!DB._user)return;
     try{
@@ -1190,7 +1192,7 @@ const CommunityNav={
           <div class="fp-deck-title">${esc(d.name)}</div>
           <div class="fp-deck-meta">
             <span>${totalDeckCards} cards</span>
-            <span>�${totalDeckVal.toFixed(0)}</span>
+            <span>€${totalDeckVal.toFixed(0)}</span>
             ${d.partner?`<span>${esc(d.partner)}</span>`:''}
           </div>
         </div>
@@ -1336,76 +1338,6 @@ const CommunityNav={
       const title=document.getElementById('ptitle');
       if(fetched&&title?.textContent===`[Deck] ${deck.name}`) this._renderDeckPopupContent(roDeck);
     });
-    return;
-    const _legacyCardNames=this._collectCardNames({decks:[roDeck]});
-    P._open(`[Deck] ${deck.name}`,true);
-    const totalVal=cards.reduce((s,c)=>s+(parseFloat(Store.card(c.name)?.prices?.eur||0)*(c.qty||0)),0);
-    const totalCards=cards.reduce((s,c)=>s+(c.qty||0),0);
-    const avgCmc=(()=>{
-      let total=0,count=0;
-      cards.forEach(c=>{
-        const cd=Store.card(c.name)||{};
-        if((cd.type_line||'').toLowerCase().includes('land'))return;
-        total+=(cd.cmc||0)*(c.qty||1);
-        count+=c.qty||1;
-      });
-      return count?(total/count).toFixed(1):'--';
-    })();
-    const cmdrs=[roDeck.commander,roDeck.partner].filter(Boolean);
-    const groups=[
-      ['Commander',cards.filter(c=>cmdrs.includes(c.name))],
-      ['Creatures',cards.filter(c=>!cmdrs.includes(c.name)&&(Store.card(c.name)?.type_line||'').toLowerCase().includes('creature')&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('land'))],
-      ['Spells',cards.filter(c=>!cmdrs.includes(c.name)&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('land')&&!(Store.card(c.name)?.type_line||'').toLowerCase().includes('creature'))],
-      ['Lands',cards.filter(c=>!cmdrs.includes(c.name)&&(Store.card(c.name)?.type_line||'').toLowerCase().includes('land'))]
-    ];
-    document.getElementById('pbody').innerHTML=`
-      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px">
-        <div class="kpi gold"><div class="kpi-val">${totalCards}</div><div class="kpi-lbl">Cards</div></div>
-        <div class="kpi ice"><div class="kpi-val">&euro;${totalVal.toFixed(0)}</div><div class="kpi-lbl">Value</div></div>
-        <div class="kpi green"><div class="kpi-val">${avgCmc}</div><div class="kpi-lbl">Avg CMC</div></div>
-        <div class="kpi purple"><div class="kpi-val">${roDeck.commander?esc(roDeck.commander):'--'}</div><div class="kpi-lbl">Commander</div></div>
-      </div>
-      <div id="readonly-deck-groups"></div>
-    `;
-    const wrap=document.getElementById('readonly-deck-groups');
-    groups.forEach(([title,arr],groupIdx)=>{
-      if(!arr.length)return;
-      const sec=document.createElement('div');
-      sec.innerHTML=`<div class="fp-group-title">${title} (${arr.reduce((s,c)=>s+(c.qty||0),0)})</div><div class="fp-mini-grid" id="readonly-group-${groupIdx}"></div>`;
-      wrap.appendChild(sec);
-      const grid=sec.querySelector(`#readonly-group-${groupIdx}`);
-      arr.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(card=>{
-        const cd=Store.card(card.name)||{};
-        const price=parseFloat(cd.prices?.eur||0);
-        const tile=document.createElement('div');
-        tile.className='fp-mini-card';
-        tile.innerHTML=`
-          ${(cd.img?.crop||cd.img?.normal)?`<img class="fp-mini-thumb" src="${esc(cd.img.crop||cd.img.normal)}" loading="lazy" alt="${esc(card.name)}">`:'<div class="fp-mini-thumb"></div>'}
-          ${card.qty>1?`<div class="fp-mini-badge">${card.qty}x</div>`:''}
-          <div class="fp-mini-info">
-            <div class="fp-mini-name">${esc(card.name)}</div>
-            <div class="fp-mini-meta"><span>${price?this._fmtMoney(price,0):'--'}</span><span>${shortType(cd.type_line||'')}</span></div>
-          </div>`;
-        tile.addEventListener('click',()=>M.open({name:card.name,qty:card.qty||1},null));
-        grid.appendChild(tile);
-      });
-    });
-    const _legacyFoot=document.getElementById('pfoot');
-    _legacyFoot.innerHTML='';
-    const _legacyClose=document.createElement('button');
-    _legacyClose.className='tbtn';
-    _legacyClose.textContent='Close';
-    _legacyClose.onclick=()=>P.close();
-    const _legacyImportBtn=document.createElement('button');
-    _legacyImportBtn.className='tbtn gold';
-    _legacyImportBtn.textContent='Import Copy';
-    _legacyImportBtn.onclick=()=>{P.close();this._importDeck(roDeck);};
-    _legacyFoot.append(_legacyClose,_legacyImportBtn);
-
-    this._primeCardData(_legacyCardNames,()=>{
-      const title=document.getElementById('ptitle');
-      if(title?.textContent===`[Deck] ${deck.name}`) this.openDeckPopup(roDeck);
-    });
   },
 
   _toggleDeckViewer(deck,cardEl){
@@ -1420,12 +1352,6 @@ const CommunityNav={
     this._buildDeckViewer(deck,viewerEl);
     this._ensureDeckCardData(deck).then(fetched=>{
       if(fetched&&viewerEl.classList.contains('open')) this._buildDeckViewer(deck,viewerEl);
-    });
-    return;
-    const _legacyCardNames=this._collectCardNames({decks:[deck]});
-    this._buildDeckViewer(deck,viewerEl);
-    this._primeCardData(_legacyCardNames,()=>{
-      if(viewerEl.classList.contains('open')) this._buildDeckViewer(deck,viewerEl);
     });
   },
 
@@ -1655,8 +1581,6 @@ const CommunityNav={
       <!-- Nickname change -->
       <div class="profile-card">
         <div class="profile-card-title">Change Nickname</div>
-
-
         ${canChange ? `
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <input id="profile-nickname-inp" class="auth-field" value="${esc(username)}"
@@ -1681,8 +1605,6 @@ const CommunityNav={
 
       <div class="profile-card">
         <div class="profile-card-title">Profile Picture</div>
-
-
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <input id="profile-avatar-card-inp" class="auth-field" value="${esc(avatarCard)}"
             placeholder="Favourite card name" style="flex:1;min-width:180px;margin-bottom:0">
@@ -1772,7 +1694,6 @@ const CommunityNav={
 
     if(error){if(status)status.innerHTML=`<span style="color:var(--crimson2)">Error: ${esc(error.message)}</span>`;return;}
 
-    // Update topbar display
     // Update topbar + avatar immediately
     const usernameEl=document.getElementById('auth-username');
     if(usernameEl)usernameEl.textContent=newName;
@@ -1828,5 +1749,3 @@ const CommunityNav={
 /* ═══════════════════════════════════════════════════════════
    URL IMPORT — Moxfield / Archidekt / TappedOut
    ═══════════════════════════════════════════════════════════ */
-
-
