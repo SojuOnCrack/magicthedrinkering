@@ -57,6 +57,23 @@ const BulkPool={
       contributor_count:row._contributors.size
     }));
   },
+
+  async _fetchAllRows(columns='*'){
+    const pageSize=1000;
+    const rows=[];
+    for(let from=0;;from+=pageSize){
+      const to=from+pageSize-1;
+      const {data,error}=await DB._sb.from('bulk_pool')
+        .select(columns)
+        .order('created_at',{ascending:false})
+        .range(from,to);
+      if(error)throw error;
+      const chunk=data||[];
+      rows.push(...chunk);
+      if(chunk.length<pageSize)break;
+    }
+    return rows;
+  },
   render(){
     // Show loading state immediately so user doesn't see blank page
     const list=document.getElementById('bulk-list');
@@ -124,8 +141,7 @@ const BulkPool={
     }
     if(el)el.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;text-align:center">Loading pool…</div>';
     try{
-      const{data,error}=await DB._sb.from('bulk_pool').select('*').order('created_at',{ascending:false});
-      if(error)throw error;
+      const data=await this._fetchAllRows('*');
       this._data=data||[];this._filtered=[...this._data];
       this._updateStats();this.filter();
       App?.refreshTopbarStats?.(true);
