@@ -416,7 +416,7 @@ const BulkPool={
 
   async remove(id){
     if(!DB._sb||!DB._user)return;
-    await DB._sb.from('bulk_pool').delete().eq('id',id).eq('user_id',DB._user.id);
+    await DB._sb.from('bulk_pool').delete().eq('id',id);
     this.refresh();
   }
 };
