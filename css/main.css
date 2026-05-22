@@ -1436,6 +1436,83 @@ textarea.ia:focus{border-color:var(--gold3);}
   }
   #trade2-preview,
   #trade-preview{width:100%!important;min-height:96px!important;}
+
+  /* Bulk pool mobile */
+  .bulk-section-head{display:none;}
+  .bulk-page{padding:14px 12px 96px!important;overflow:visible!important;}
+  #section-bulk .pg-title{font-size:18px;margin-bottom:4px;}
+  #section-bulk .pg-sub{margin-bottom:12px;}
+  #section-bulk .bulk-kpis{
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;
+    padding:0;background:transparent;border:none;margin-bottom:10px;
+  }
+  #section-bulk .bulk-stat{
+    min-height:52px;padding:9px 10px;border:1px solid var(--border);
+    border-radius:10px;background:var(--bg2);display:flex;flex-direction:column;
+    justify-content:center;gap:3px;font-size:9px;text-transform:uppercase;
+  }
+  #section-bulk .bulk-stat b{font-size:15px;line-height:1;text-transform:none;}
+  #section-bulk .bulk-pool-badge-wrap{display:none;}
+  #section-bulk .bulk-add-bar{
+    position:sticky;top:104px;z-index:32;
+    display:grid;grid-template-columns:minmax(0,1fr) 72px 82px;gap:8px;
+    padding:10px;margin:0 -12px 10px;
+    background:rgba(12,18,32,.96);border-top:1px solid rgba(30,46,70,.45);
+    border-bottom:1px solid var(--border);backdrop-filter:blur(12px);
+  }
+  #section-bulk .bulk-add-field{grid-column:1 / -1;min-width:0;}
+  #section-bulk .bulk-add-field .cs-inp{min-width:0;}
+  #section-bulk #bulk-add-qty{min-width:0!important;width:100%;max-width:none!important;}
+  #section-bulk #bulk-add-cond{min-width:0;width:100%;}
+  #section-bulk .bulk-primary-action{width:100%;min-height:42px;font-size:12px;}
+  #section-bulk .bulk-secondary-action{min-height:38px;font-size:10px;padding:8px 10px;}
+  #section-bulk .bulk-secondary-action:nth-of-type(2){grid-column:1 / 3;}
+  #section-bulk .bulk-secondary-action:nth-of-type(3){grid-column:3;}
+  #section-bulk .bulk-paste-panel{
+    margin:0 0 10px;padding:12px;border-radius:12px;
+    box-shadow:var(--shadow-soft);
+  }
+  #section-bulk .bulk-paste-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  #section-bulk .bulk-paste-actions .tbtn,
+  #section-bulk .bulk-paste-actions .cs-sel{width:100%;min-width:0;}
+  #section-bulk .bulk-close-action{grid-column:1 / -1;margin-left:0;}
+  #section-bulk .bulk-filter-bar{
+    position:sticky;top:248px;z-index:28;
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;
+    margin:0 -12px 10px;padding:9px 10px;
+    background:rgba(12,18,32,.94);border-bottom:1px solid var(--border);
+    backdrop-filter:blur(12px);
+  }
+  #section-bulk #bulk-search{grid-column:1 / -1;min-width:0!important;}
+  #section-bulk .bulk-filter-bar .cs-sel{min-width:0;width:100%;}
+  #section-bulk #bulk-status{
+    padding:0 2px 8px;font-size:10px;text-align:left;
+  }
+  #section-bulk .bulk-card-list{
+    display:grid;grid-template-columns:1fr;gap:8px;
+  }
+  #section-bulk .cs-card{
+    display:grid;grid-template-columns:48px minmax(0,1fr);gap:10px;
+    padding:9px;border-radius:12px;overflow:visible;
+  }
+  #section-bulk .cs-card:hover{transform:none;box-shadow:var(--shadow-soft);}
+  #section-bulk .cs-card-img{
+    width:48px;height:67px;aspect-ratio:auto;border-radius:7px;border:1px solid var(--border);
+  }
+  #section-bulk .cs-card-body{padding:0;min-width:0;align-self:center;}
+  #section-bulk .cs-card-name{font-size:12px;line-height:1.25;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  #section-bulk .cs-card-meta{margin-top:5px;font-size:10px;}
+  #section-bulk .cs-actions{
+    grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:1px;
+  }
+  #section-bulk .cs-action-btn{min-height:34px;font-size:10px;}
+  #section-bulk .cs-actions .cs-action-btn:only-child,
+  #section-bulk .cs-actions .cs-action-btn:nth-child(3){grid-column:1 / -1;}
+  #section-bulk .bulk-pagination{
+    position:sticky;bottom:70px;z-index:20;margin:12px 0 0;
+    padding:8px;border:1px solid var(--border);border-radius:999px;background:rgba(23,23,28,.94);
+    backdrop-filter:blur(12px);
+  }
 }
 
 @media(min-width:769px){
@@ -1464,6 +1541,8 @@ textarea.ia:focus{border-color:var(--gold3);}
 .folder-del:hover{color:var(--crimson2);}
 
 /* ── BULK / GROUP POOL ── */
+.bulk-section-head{padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--border);font-family:'Cinzel',serif;font-size:12px;color:var(--gold2);}
+.bulk-page{display:block;flex:1;overflow-y:auto;padding:20px;}
 .bulk-pool-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;
                 padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:6px;transition:all .15s;}
 .bulk-pool-card:hover{background:var(--bg3);border-color:var(--border2);}
@@ -1479,11 +1558,21 @@ textarea.ia:focus{border-color:var(--gold3);}
 .bulk-inp::placeholder{color:var(--text3);}
 .bulk-stats{display:flex;gap:16px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);
             border-radius:var(--r);margin-bottom:16px;flex-wrap:wrap;}
+.bulk-kpis{margin-bottom:14px;}
 .bulk-stat{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);}
 .bulk-stat b{color:var(--gold2);}
+.bulk-pool-badge-wrap{margin-left:auto;}
 .pool-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;
             font-family:'JetBrains Mono',monospace;font-size:9px;
             background:rgba(110,201,224,.12);border:1px solid var(--ice2);color:var(--ice);}
+.bulk-add-field{flex:1;min-width:160px;position:relative;}
+.bulk-add-bar,.bulk-filter-bar{margin-bottom:12px;}
+.bulk-primary-action,.bulk-secondary-action{font-size:11px;}
+.bulk-paste-panel{margin-bottom:14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;}
+.bulk-paste-hint{font-size:11px;color:var(--text3);margin-bottom:8px;font-family:'JetBrains Mono',monospace;}
+.bulk-paste-actions{display:flex;gap:8px;margin-top:10px;align-items:center;}
+.bulk-close-action{margin-left:auto;color:var(--text3);font-size:10px;}
+.bulk-card-list{align-items:start;}
 
 /* ── FRIENDS ── */
 .friend-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;

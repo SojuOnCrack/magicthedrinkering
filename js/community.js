@@ -59,10 +59,14 @@ const BulkPool={
 
   setTab(t){
     this._tab=t;
-    document.getElementById('bulk-add-single').style.display=t==='single'?'block':'none';
-    document.getElementById('bulk-add-paste').style.display=t==='paste'?'block':'none';
-    document.getElementById('bulk-tab-single').classList.toggle('on',t==='single');
-    document.getElementById('bulk-tab-paste').classList.toggle('on',t==='paste');
+    const single=document.getElementById('bulk-add-single');
+    const paste=document.getElementById('bulk-add-paste');
+    const tabSingle=document.getElementById('bulk-tab-single');
+    const tabPaste=document.getElementById('bulk-tab-paste');
+    if(single)single.style.display=t==='single'?'block':'none';
+    if(paste)paste.style.display=t==='paste'?'block':'none';
+    tabSingle?.classList.toggle('on',t==='single');
+    tabPaste?.classList.toggle('on',t==='paste');
   },
 
   async refresh(){
