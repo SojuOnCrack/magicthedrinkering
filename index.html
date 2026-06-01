@@ -469,6 +469,38 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
             <option value="added">Recent</option>
           </select>
         </div>
+        <div class="bulk-advanced-filters">
+          <div class="bulk-filter-group">
+            <span class="bulk-filter-label">Color</span>
+            <button class="bulk-color-chip" data-color="W" onclick="BulkPool.toggleColorFilter(this)">W</button>
+            <button class="bulk-color-chip" data-color="U" onclick="BulkPool.toggleColorFilter(this)">U</button>
+            <button class="bulk-color-chip" data-color="B" onclick="BulkPool.toggleColorFilter(this)">B</button>
+            <button class="bulk-color-chip" data-color="R" onclick="BulkPool.toggleColorFilter(this)">R</button>
+            <button class="bulk-color-chip" data-color="G" onclick="BulkPool.toggleColorFilter(this)">G</button>
+            <button class="bulk-color-chip" data-color="C" onclick="BulkPool.toggleColorFilter(this)">C</button>
+          </div>
+          <select class="cs-sel bulk-mini-sel" id="bulk-color-mode" onchange="BulkPool.filter()">
+            <option value="includes">Includes colors</option>
+            <option value="exact">Exact combo</option>
+          </select>
+          <select class="cs-sel bulk-mini-sel" id="bulk-filter-mv" onchange="BulkPool.filter()">
+            <option value="">Any MV</option>
+            <option value="0">MV 0</option><option value="1">MV 1</option>
+            <option value="2">MV 2</option><option value="3">MV 3</option>
+            <option value="4">MV 4</option><option value="5">MV 5</option>
+            <option value="6">MV 6</option><option value="7+">MV 7+</option>
+          </select>
+          <input class="cs-inp bulk-mini-input" id="bulk-filter-set" placeholder="Set"
+            oninput="BulkPool.filter()">
+          <select class="cs-sel bulk-mini-sel" id="bulk-filter-rarity" onchange="BulkPool.filter()">
+            <option value="">Any rarity</option>
+            <option value="common">Common</option>
+            <option value="uncommon">Uncommon</option>
+            <option value="rare">Rare</option>
+            <option value="mythic">Mythic</option>
+          </select>
+          <button class="tbtn bulk-reset-filter" onclick="BulkPool.clearFilters()">Reset</button>
+        </div>
 
         <div class="cs-status" id="bulk-status"></div>
         <div class="cs-grid bulk-card-list" id="bulk-list"></div>

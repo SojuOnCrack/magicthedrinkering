@@ -1497,6 +1497,18 @@ textarea.ia:focus{border-color:var(--gold3);}
   }
   #section-bulk #bulk-search{grid-column:1 / -1;min-width:0!important;}
   #section-bulk .bulk-filter-bar .cs-sel{min-width:0;width:100%;}
+  #section-bulk .bulk-advanced-filters{
+    position:sticky;top:338px;z-index:24;
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;
+    margin:0 -12px 10px;padding:9px 10px;
+    background:rgba(12,18,32,.92);border-bottom:1px solid var(--border);
+    backdrop-filter:blur(12px);
+  }
+  #section-bulk .bulk-filter-group{grid-column:1 / -1;justify-content:space-between;border-radius:12px;padding:7px 8px;}
+  #section-bulk .bulk-color-chip{width:30px;height:30px;}
+  #section-bulk .bulk-mini-sel,
+  #section-bulk .bulk-mini-input,
+  #section-bulk .bulk-reset-filter{width:100%;min-width:0;min-height:38px;}
   #section-bulk #bulk-status{
     padding:0 2px 8px;font-size:10px;text-align:left;
   }
@@ -1585,6 +1597,14 @@ textarea.ia:focus{border-color:var(--gold3);}
 .bulk-paste-actions{display:flex;gap:8px;margin-top:10px;align-items:center;}
 .bulk-close-action{margin-left:auto;color:var(--text3);font-size:10px;}
 .bulk-card-list{align-items:start;}
+.bulk-advanced-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 12px;}
+.bulk-filter-group{display:flex;align-items:center;gap:5px;padding:4px 6px;border:1px solid var(--border);border-radius:999px;background:var(--bg2);}
+.bulk-filter-label{font-family:'JetBrains Mono',monospace;font-size:8px;text-transform:uppercase;color:var(--text3);padding:0 3px;}
+.bulk-color-chip{width:28px;height:28px;border-radius:999px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;}
+.bulk-color-chip.on{border-color:var(--gold3);background:var(--gold4);color:var(--gold2);}
+.bulk-mini-sel{min-height:34px;font-size:10px;padding:6px 9px;width:auto;}
+.bulk-mini-input{min-height:34px;font-size:10px;padding:6px 9px;width:90px;flex:0 0 auto;}
+.bulk-reset-filter{min-height:34px;padding:6px 10px;font-size:10px;}
 
 /* ── FRIENDS ── */
 .friend-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;

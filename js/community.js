@@ -13,6 +13,7 @@ const BulkPool={
   _data:[],_filtered:[],_tab:'single',_pasteLines:[],_page:1,_pageSize:60,
   _backfillRunning:false,
   _backfillTouched:new Set(),
+  _colorFilters:new Set(),
 
   _qty(row){
     const n=parseInt(row?.qty,10);
@@ -28,6 +29,42 @@ const BulkPool={
 
   _rowValue(row){
     return this._unitPrice(row)*this._qty(row);
+  },
+
+  _cardData(row){
+    return Store.card(row?.card_name)||{};
+  },
+
+  _cardColors(card){
+    const colors=card?.color_identity?.length?card.color_identity:(card?.colors||[]);
+    return Array.isArray(colors)?colors:[];
+  },
+
+  _matchesColorFilter(card){
+    const selected=[...this._colorFilters];
+    if(!selected.length)return true;
+    const colors=this._cardColors(card);
+    const mode=document.getElementById('bulk-color-mode')?.value||'includes';
+    if(selected.includes('C'))return selected.length===1&&colors.length===0;
+    if(mode==='exact')return colors.length===selected.length&&selected.every(c=>colors.includes(c));
+    return selected.every(c=>colors.includes(c));
+  },
+
+  toggleColorFilter(btn){
+    const color=btn?.dataset?.color;
+    if(!color)return;
+    if(this._colorFilters.has(color))this._colorFilters.delete(color);
+    else this._colorFilters.add(color);
+    btn.classList.toggle('on',this._colorFilters.has(color));
+    this.filter();
+  },
+
+  clearFilters(){
+    this._colorFilters.clear();
+    document.querySelectorAll('.bulk-color-chip').forEach(btn=>btn.classList.remove('on'));
+    ['bulk-search','bulk-filter-set'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['bulk-filter-owner','bulk-sort','bulk-color-mode','bulk-filter-mv','bulk-filter-rarity'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+    this.filter();
   },
 
   _aggregateRows(rows){
@@ -163,6 +200,7 @@ const BulkPool={
       const names=[...new Set((data||[]).map(r=>r.card_name))];
       Store.warmCards(names).then(()=>{
         this._updateStats(); /* recalc with warmed prices */
+        this.filter();
         App?.refreshTopbarStats?.(true);
         this._backfillPrices(data||[]);
       });
@@ -341,9 +379,23 @@ const BulkPool={
     const srch=(document.getElementById('bulk-search')?.value||'').toLowerCase();
     const sort=document.getElementById('bulk-sort')?.value||'name';
     const owner=document.getElementById('bulk-filter-owner')?.value||'';
+    const mv=document.getElementById('bulk-filter-mv')?.value||'';
+    const setFilter=(document.getElementById('bulk-filter-set')?.value||'').trim().toLowerCase();
+    const rarity=document.getElementById('bulk-filter-rarity')?.value||'';
     const rows=this._data.filter(r=>{
       if(srch&&!(r.card_name||'').toLowerCase().includes(srch))return false;
       if(owner==='mine'&&DB._user&&r.user_id!==DB._user.id)return false;
+      const cd=this._cardData(r);
+      if(!this._matchesColorFilter(cd))return false;
+      if(mv){
+        const cmc=Number(cd.cmc||0);
+        if(mv==='7+'?cmc<7:cmc!==Number(mv))return false;
+      }
+      if(setFilter){
+        const setText=((cd.set||'')+' '+(cd.set_name||'')).toLowerCase();
+        if(!setText.includes(setFilter))return false;
+      }
+      if(rarity&&(cd.rarity||'')!==rarity)return false;
       return true;
     });
     this._filtered=this._aggregateRows(rows);
