@@ -14,6 +14,7 @@ const BulkPool={
   _backfillRunning:false,
   _backfillTouched:new Set(),
   _colorFilters:new Set(),
+  _filtersBound:false,
 
   _qty(row){
     const n=parseInt(row?.qty,10);
@@ -32,7 +33,7 @@ const BulkPool={
   },
 
   _cardData(row){
-    return Store.card(row?.card_name)||{};
+    return {...row,...(Store.card(row?.card_name)||{})};
   },
 
   _cardColors(card){
@@ -100,6 +101,22 @@ const BulkPool={
     this.filter();
   },
 
+  _bindFilters(){
+    if(this._filtersBound)return;
+    const wrap=document.querySelector('#section-bulk .bulk-advanced-filters');
+    if(!wrap)return;
+    this._filtersBound=true;
+    wrap.addEventListener('click',e=>{
+      const chip=e.target.closest('.bulk-color-chip');
+      if(!chip)return;
+      e.preventDefault();
+      this.toggleColorFilter(chip);
+    });
+    ['bulk-color-mode','bulk-filter-mv','bulk-filter-rarity'].forEach(id=>{
+      document.getElementById(id)?.addEventListener('change',()=>this.filter());
+    });
+    document.getElementById('bulk-filter-set')?.addEventListener('input',()=>this.filter());
+  },
   _aggregateRows(rows){
     const map=new Map();
     for(const row of rows){
@@ -159,6 +176,7 @@ const BulkPool={
   },
 
   render(){
+    this._bindFilters();
     // Show loading state immediately so user doesn't see blank page
     const list=document.getElementById('bulk-list');
     if(list&&!this._data.length){

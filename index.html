@@ -27,7 +27,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <script>
-window.APP_VERSION = '202606011030';
+window.APP_VERSION = '202606011045';
 window.INITIAL_SECTION = '';
 document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css/main.css?v='+window.APP_VERSION+'">');
 </script>
@@ -472,12 +472,12 @@ document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/css
         <div class="bulk-advanced-filters">
           <div class="bulk-filter-group">
             <span class="bulk-filter-label">Color</span>
-            <button class="bulk-color-chip" data-color="W" onclick="BulkPool.toggleColorFilter(this)">W</button>
-            <button class="bulk-color-chip" data-color="U" onclick="BulkPool.toggleColorFilter(this)">U</button>
-            <button class="bulk-color-chip" data-color="B" onclick="BulkPool.toggleColorFilter(this)">B</button>
-            <button class="bulk-color-chip" data-color="R" onclick="BulkPool.toggleColorFilter(this)">R</button>
-            <button class="bulk-color-chip" data-color="G" onclick="BulkPool.toggleColorFilter(this)">G</button>
-            <button class="bulk-color-chip" data-color="C" onclick="BulkPool.toggleColorFilter(this)">C</button>
+            <button type="button" class="bulk-color-chip" data-color="W">W</button>
+            <button type="button" class="bulk-color-chip" data-color="U">U</button>
+            <button type="button" class="bulk-color-chip" data-color="B">B</button>
+            <button type="button" class="bulk-color-chip" data-color="R">R</button>
+            <button type="button" class="bulk-color-chip" data-color="G">G</button>
+            <button type="button" class="bulk-color-chip" data-color="C">C</button>
           </div>
           <select class="cs-sel bulk-mini-sel" id="bulk-color-mode" onchange="BulkPool.filter()">
             <option value="includes">Includes colors</option>
