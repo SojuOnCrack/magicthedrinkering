@@ -50,6 +50,39 @@ const BulkPool={
     return selected.every(c=>colors.includes(c));
   },
 
+  _normText(v){
+    return String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  },
+
+  _editDistance(a,b){
+    if(Math.abs(a.length-b.length)>2)return 99;
+    const dp=Array.from({length:a.length+1},(_,i)=>[i]);
+    for(let j=1;j<=b.length;j++)dp[0][j]=j;
+    for(let i=1;i<=a.length;i++){
+      for(let j=1;j<=b.length;j++){
+        dp[i][j]=Math.min(
+          dp[i-1][j]+1,
+          dp[i][j-1]+1,
+          dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1)
+        );
+      }
+    }
+    return dp[a.length][b.length];
+  },
+
+  _matchesSetFilter(card, raw){
+    const needle=this._normText(raw);
+    if(!needle)return true;
+    const values=[card?.set,card?.set_name].filter(Boolean);
+    const hay=this._normText(values.join(' '));
+    if(!hay)return true;
+    if(hay.includes(needle))return true;
+    return values.some(v=>{
+      const norm=this._normText(v);
+      return norm.length>=5&&needle.length>=5&&this._editDistance(norm,needle)<=2;
+    });
+  },
+
   toggleColorFilter(btn){
     const color=btn?.dataset?.color;
     if(!color)return;
@@ -391,10 +424,7 @@ const BulkPool={
         const cmc=Number(cd.cmc||0);
         if(mv==='7+'?cmc<7:cmc!==Number(mv))return false;
       }
-      if(setFilter){
-        const setText=((cd.set||'')+' '+(cd.set_name||'')).toLowerCase();
-        if(!setText.includes(setFilter))return false;
-      }
+      if(setFilter&&!this._matchesSetFilter(cd,setFilter))return false;
       if(rarity&&(cd.rarity||'')!==rarity)return false;
       return true;
     });
