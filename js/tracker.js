@@ -77,6 +77,8 @@ const MPTracker = {
     window.addEventListener('beforeunload', () => {
       this._destroySubscription();
     });
+    window.addEventListener('online', () => this._restoreLobby());
+    window.addEventListener('offline', () => this._showError('Offline: letzter Stand bleibt sichtbar, Sync pausiert.'));
     const root = document.getElementById('mp-root');
     if (!root || root.dataset.bound === '1') return;
     root.dataset.bound = '1';
@@ -92,6 +94,7 @@ const MPTracker = {
   _handleRootClick(event) {
     const el = event.target.closest('[data-action]');
     if (!el) return;
+    this._haptic(el.dataset.action);
     const { action, targetId = '', counter = '', value = '', deck = '' } = el.dataset;
     if (action === 'close-combat' && el.classList.contains('mp-combat-modal-backdrop') && event.target !== el) return;
     const delta = Number(el.dataset.delta || 0);
@@ -135,6 +138,7 @@ const MPTracker = {
   _handleRootPointerDown(event) {
     const el = event.target.closest('[data-hold-mode]');
     if (!el) return;
+    this._haptic('hold');
     el.setPointerCapture?.(event.pointerId);
     this.startCombatAdjust(el.dataset.holdMode, el.dataset.targetId, Number(el.dataset.direction || 0));
   },
@@ -157,7 +161,10 @@ const MPTracker = {
       lobbyId: this.lobbyId,
       lobbyCode: this.lobbyCode,
       myPlayerId: this.myPlayerId,
-      playerName: this.playerName
+      playerName: this.playerName,
+      cachedAt: Date.now(),
+      lobby: this.lobby,
+      players: this.players
     }));
   },
 
@@ -196,6 +203,19 @@ const MPTracker = {
       return true;
     } catch (err) {
       console.warn('[MPTracker._restoreLobby]', err);
+      if (saved?.lobby && Array.isArray(saved.players)) {
+        this.lobbyId = saved.lobbyId;
+        this.lobbyCode = saved.lobbyCode || saved.lobby?.code || '';
+        this.myPlayerId = saved.myPlayerId;
+        this.playerName = saved.playerName || '';
+        this.lobby = saved.lobby;
+        this.players = saved.players;
+        this.phase = saved.lobby.phase === 'finished' ? 'finished' : saved.lobby.phase === 'live' ? 'live' : 'waiting';
+        MPStats.attach(this.sb, this.lobbyId, this.myPlayerId, this.players);
+        this._render();
+        this._showError('Offline-Modus: letzter gespeicherter Stand geladen.');
+        return true;
+      }
       this._clearLobbyState();
       return false;
     }
@@ -627,6 +647,12 @@ async adjustLife(delta) {
     this._render();
   },
 
+  _haptic(action = '') {
+    if (!navigator.vibrate) return;
+    const strong = ['next-turn', 'finish-game', 'undo'].includes(action);
+    navigator.vibrate(strong ? 18 : 8);
+  },
+
   startCombatAdjust(mode, targetId, direction) {
     this.stopCombatAdjust();
     this.combatHoldTriggered = false;
@@ -955,6 +981,7 @@ async adjustLife(delta) {
     if (markup === this.lastRenderedMarkup) return;
     root.innerHTML = markup;
     this.lastRenderedMarkup = markup;
+    if (this.lobbyId && this.myPlayerId) this._persistLobbyState();
   },
 
   /* â”€â”€ MenÃ¼ â”€â”€ */
@@ -1089,6 +1116,7 @@ async adjustLife(delta) {
     const activePlayer = this.players.find(p => p.id === this.lobby?.active_player_id);
     const alive = this.players.filter(p => !p.eliminated);
     const myPulse = this.uiPulseByPlayerId[this.myPlayerId];
+    const detailsOpen = window.matchMedia?.('(max-width: 760px)').matches ? '' : ' open';
 
     return `
     <div class="mp-screen mp-live">
@@ -1134,8 +1162,8 @@ async adjustLife(delta) {
               </div>
             </section>
 
-            <section class="mp-surface mp-utility-surface">
-              <div class="mp-cmd-title">Status & Basics</div>
+            <details class="mp-surface mp-utility-surface mp-mobile-details"${detailsOpen}>
+              <summary class="mp-mobile-summary">Status & Basics</summary>
               <div class="mp-utility-grid mp-utility-grid-tight">
                 <div class="mp-toggle-stack">
                   ${this._renderToggle('Monarch', 'toggle-monarch', me.monarch)}
@@ -1156,13 +1184,14 @@ async adjustLife(delta) {
                 </div>
               </div>
               <div class="mp-rules-hint">Commander Damage zieht direkt Leben ab. Mit aktivem Lifelink heilst du dich um denselben Schaden.</div>
-            </section>
+            </details>
           </div>
 
           ${others.length > 0 ? `
-          <section class="mp-surface mp-arena-surface mp-arena-launcher">
+          <details class="mp-surface mp-arena-surface mp-mobile-details"${detailsOpen}>
+          <summary class="mp-mobile-summary">Combat</summary>
+          <div class="mp-arena-launcher">
             <div class="mp-combat-launch-copy">
-              <div class="mp-cmd-title">Combat</div>
               <div class="mp-rules-hint">Tippe auf Gegner-Shortcuts oder öffne das Overlay für mehrere Ziele und Splits.</div>
               <div class="mp-combat-shortcuts">
                 ${others.filter(p => !p.eliminated).map(p => this._button(esc(p.name), 'open-combat', { 'target-id': p.id }, 'mp-combat-shortcut')).join('')}
@@ -1172,7 +1201,8 @@ async adjustLife(delta) {
               <div class="mp-combat-launch-meta">${this.combatTargetIds.length} Ziel${this.combatTargetIds.length===1?'':'e'} vorgemerkt</div>
               <button class="mp-btn mp-btn-outline mp-combat-open-btn" data-action="open-combat">Combat öffnen</button>
             </div>
-          </section>` : ''}
+          </div>
+          </details>` : ''}
 
           ${this._isHost() && alive.length <= 2 ? `
           <div class="mp-finish-section">
@@ -1182,6 +1212,16 @@ async adjustLife(delta) {
               <button class="mp-finish-btn ghost" data-action="finish-game" data-value="">Kein Gewinner</button>
             </div>
           </div>` : ''}
+
+          <div class="mp-sticky-actions" aria-label="Schnellaktionen">
+            ${this._button('-5', 'adjust-life', { delta: -5 }, 'mp-sticky-btn danger')}
+            ${this._button('-1', 'adjust-life', { delta: -1 }, 'mp-sticky-btn danger')}
+            ${this._button('+1', 'adjust-life', { delta: 1 }, 'mp-sticky-btn')}
+            ${this._button('+5', 'adjust-life', { delta: 5 }, 'mp-sticky-btn')}
+            ${others.length ? '<button class="mp-sticky-btn wide" data-action="open-combat">Combat</button>' : ''}
+            ${isMyTurn ? '<button class="mp-sticky-btn wide gold" data-action="next-turn">Pass</button>' : ''}
+            ${this.lastUndo ? '<button class="mp-sticky-btn wide" data-action="undo">Undo</button>' : ''}
+          </div>
 
         </div>
       </div>
@@ -1321,4 +1361,3 @@ async adjustLife(delta) {
 
 /* â”€â”€ Start â”€â”€ */
 document.addEventListener('DOMContentLoaded', () => MPTracker.init());
-

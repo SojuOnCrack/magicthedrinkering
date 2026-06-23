@@ -119,7 +119,7 @@ const MPStats = {
 
       const stats = this._crunch(rows || [], players || []);
 
-      container.innerHTML = this._renderStats(
+      container.innerHTML = this._renderStatsMobile(
         stats,
         players || [],
         lobby || {}
@@ -380,6 +380,66 @@ const MPStats = {
     `;
   },
 
+  _renderStatsMobile(stats, players, lobby) {
+
+    const pStats = (players || [])
+      .map(p => stats[p.id])
+      .filter(Boolean);
+
+    const turns = lobby?.turn_number || '?';
+    const winner = (players || []).find(p => p.id === lobby?.winner_id);
+    const mvp = [...pStats].sort((a, b) => b.totalDamageDealt - a.totalDamageDealt)[0];
+    const tankiest = [...pStats].sort((a, b) => b.totalDamageReceived - a.totalDamageReceived)[0];
+    const healer = [...pStats].sort((a, b) => b.totalHealingDone - a.totalHealingDone)[0];
+    const cmdking = [...pStats].sort((a, b) => b.totalCmdDealt - a.totalCmdDealt)[0];
+
+    return `
+    <div class="mps-wrap">
+      <div class="mps-header">
+        <div class="mps-header-title">Game Stats</div>
+        <div class="mps-header-sub">
+          Turn ${turns} / ${players.length} Spieler
+          ${winner ? ` / Gewinner: ${this._esc(winner.name)}` : ''}
+        </div>
+      </div>
+
+      <div class="mps-tabs">
+        <input id="mps-tab-highlights" name="mps-tab" type="radio" checked>
+        <input id="mps-tab-players" name="mps-tab" type="radio">
+        <input id="mps-tab-matrix" name="mps-tab" type="radio">
+
+        <div class="mps-tabbar" role="tablist" aria-label="Game stats">
+          <label for="mps-tab-highlights">Highlights</label>
+          <label for="mps-tab-players">Players</label>
+          <label for="mps-tab-matrix">Attacks</label>
+        </div>
+
+        <section class="mps-tab-panel mps-tab-highlights">
+          <div class="mps-highlights">
+            ${this._highlight('DMG', 'Most Damage', mvp?.name, `${mvp?.totalDamageDealt || 0} dealt`)}
+            ${this._highlight('DEF', 'Most Tanked', tankiest?.name, `${tankiest?.totalDamageReceived || 0} received`)}
+            ${this._highlight('HP', 'Most Healed', healer?.name, `${healer?.totalHealingDone || 0} healed`)}
+            ${this._highlight('CMD', 'Commander King', cmdking?.name, `${cmdking?.totalCmdDealt || 0} cmd`)}
+          </div>
+        </section>
+
+        <section class="mps-tab-panel mps-tab-players">
+          <div class="mps-players">
+            ${pStats.map(s => this._renderPlayerStat(s, stats, players)).join('')}
+          </div>
+        </section>
+
+        <section class="mps-tab-panel mps-tab-matrix">
+          <div class="mps-section">
+            <div class="mps-section-title">Wer hat wen angegriffen</div>
+            ${this._renderMatrixCards(pStats)}
+            ${this._renderMatrix(pStats, players)}
+          </div>
+        </section>
+      </div>
+    </div>`;
+  },
+
   _highlight(icon, label, name, value) {
 
     if (!name) return '';
@@ -565,6 +625,42 @@ const MPStats = {
   /* ══════════════════════════════════════════
      HELPERS
   ══════════════════════════════════════════ */
+
+  _renderMatrixCards(pStats) {
+    const rows = [];
+
+    (pStats || []).forEach(attacker => {
+      Object.entries(attacker.targetsHit || {})
+        .filter(([, dmg]) => Number(dmg) > 0)
+        .forEach(([targetId, dmg]) => {
+          const target = pStats.find(p => p.id === targetId);
+          if (!target) return;
+          rows.push({
+            attacker: attacker.name,
+            target: target.name,
+            dmg: Number(dmg) || 0
+          });
+        });
+    });
+
+    if (!rows.length) {
+      return `<div class="mps-attack-list"><div class="mps-empty">Keine Angriffe erfasst.</div></div>`;
+    }
+
+    return `
+      <div class="mps-attack-list">
+        ${rows
+          .sort((a, b) => b.dmg - a.dmg)
+          .map(row => `
+            <div class="mps-attack-row">
+              <span>${this._esc(row.attacker)}</span>
+              <b>${row.dmg}</b>
+              <span>${this._esc(row.target)}</span>
+            </div>
+          `).join('')}
+      </div>
+    `;
+  },
 
   _esc(s) {
     return String(s || '')
