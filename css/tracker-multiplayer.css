@@ -1051,7 +1051,7 @@
   gap: .45rem;
 }
 .mp-action-buttons-stepper {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .mp-cmd-btn-stepper {
   width: 100%;
@@ -1887,6 +1887,10 @@
     overflow: hidden;
   }
 
+  .mp-arena-surface.mp-mobile-details {
+    display: none;
+  }
+
   .mp-mobile-summary {
     min-height: 44px;
     display: flex;
@@ -1958,6 +1962,16 @@
 
   .mp-sticky-btn.wide {
     grid-column: span 2;
+  }
+
+  .mp-combat-modal .mp-action-buttons-stepper {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .mp-combat-modal .mp-cmd-btn {
+    min-height: 38px;
+    height: auto;
+    font-size: .78rem;
   }
 
   .mps-wrap {

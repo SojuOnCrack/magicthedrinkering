@@ -658,7 +658,7 @@ async adjustLife(delta) {
     this.combatHoldTriggered = false;
     this.combatHoldTimeout = setTimeout(() => {
       this.combatHoldTriggered = true;
-      const step = direction * 10;
+      const step = Number(direction) || 0;
       this._runCombatAdjust(mode, targetId, step);
       this.combatHoldInterval = setInterval(() => {
         this._runCombatAdjust(mode, targetId, step);
@@ -932,8 +932,14 @@ async adjustLife(delta) {
         </div>
       </div>`;
   },
-  _renderCombatAdjustButton(mode, targetId, direction, className = '') {
-    return `<button class="mp-cmd-btn mp-cmd-btn-stepper ${className}" data-hold-mode="${esc(mode)}" data-target-id="${esc(targetId)}" data-direction="${direction}">${direction > 0 ? '+' : '-'}</button>`;
+  _renderCombatAdjustButton(mode, targetId, amount, className = '') {
+    const label = amount > 0 ? `+${amount}` : String(amount);
+    return `<button class="mp-cmd-btn mp-cmd-btn-stepper ${className}" data-hold-mode="${esc(mode)}" data-target-id="${esc(targetId)}" data-direction="${amount}">${label}</button>`;
+  },
+  _renderCombatAdjustButtons(mode, targetId, className = '') {
+    return [-10, -5, -2, -1, 1, 2, 5, 10]
+      .map(amount => this._renderCombatAdjustButton(mode, targetId, amount, className))
+      .join('');
   },
   _showError(msg) {
     this.errorMessage = msg;
@@ -1278,15 +1284,13 @@ async adjustLife(delta) {
         <div class="mp-combat-action-row">
           <span class="mp-utility-label">Combat Damage</span>
           <div class="mp-action-buttons mp-action-buttons-stepper">
-            ${this._renderCombatAdjustButton('combat', player.id, -1)}
-            ${this._renderCombatAdjustButton('combat', player.id, 1)}
+            ${this._renderCombatAdjustButtons('combat', player.id)}
           </div>
         </div>
         <div class="mp-combat-action-row">
           <span class="mp-utility-label">Commander Damage</span>
           <div class="mp-action-buttons mp-action-buttons-stepper">
-            ${this._renderCombatAdjustButton('commander', player.id, -1)}
-            ${this._renderCombatAdjustButton('commander', player.id, 1, 'commander')}
+            ${this._renderCombatAdjustButtons('commander', player.id, 'commander')}
           </div>
         </div>
       </div>
