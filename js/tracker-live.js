@@ -240,7 +240,7 @@ T._renderLive = function () {
         ${others.filter(p => !p.eliminated).map(p => {
           const value = clamp((p.cmd_damage || {})[this.myPlayerId] || 0, 0, 99) + (this.pendingCmdDealt[p.id] || 0);
           return `<button class="lt-cmd-dock-card" data-action="cmd-select" data-pid="${esc(p.id)}">
-            <span>${esc(p.name)}</span><strong>${value}<small>/21</small></strong>
+            <span>${esc(p.name)}</span><strong data-cmd-dock-value="${esc(p.id)}">${value}<small>/21</small></strong>
           </button>`;
         }).join('') || '<div class="lt-muted">Keine aktiven Gegner</div>'}
       </div>
@@ -283,6 +283,35 @@ T._renderOpp = function (p) {
 };
 
 /* Commander-Schaden aus Sicht des Angreifers: Wert am Gegner speichern, Gegner-LP abziehen. */
+T._paintCmdDealt = function (targetId) {
+  const target = this.players.find(p => p.id === targetId);
+  if (!target) return;
+  const base = (target.cmd_damage || {})[this.myPlayerId] || 0;
+  const value = clamp(base + (this.pendingCmdDealt[targetId] || 0), 0, 99);
+  const life = (target.life || 0) - (this.pendingCmdDealt[targetId] || 0);
+
+  document.querySelectorAll('[data-cmd-value]').forEach(el => {
+    if (el.dataset.cmdValue !== targetId) return;
+    const small = el.querySelector('small');
+    el.firstChild.nodeValue = String(value);
+    if (small) el.appendChild(small);
+  });
+  document.querySelectorAll('[data-cmd-dock-value]').forEach(el => {
+    if (el.dataset.cmdDockValue !== targetId) return;
+    const small = el.querySelector('small');
+    el.firstChild.nodeValue = String(value);
+    if (small) el.appendChild(small);
+  });
+  document.querySelectorAll('.lt-opp[data-target-id]').forEach(card => {
+    if (card.dataset.targetId !== targetId) return;
+    const lifeEl = card.querySelector('.lt-opp-life');
+    if (lifeEl) {
+      lifeEl.textContent = String(life);
+      lifeEl.className = 'lt-opp-life ' + this._lifeClass(life);
+    }
+  });
+};
+
 T.adjustCmdDealt = function (targetId, delta) {
   const target = this.players.find(p => p.id === targetId && p.id !== this.myPlayerId);
   const me = this._me();
@@ -294,9 +323,9 @@ T.adjustCmdDealt = function (targetId, delta) {
   if (!applied || (target.eliminated && applied > 0)) return;
   this.pendingCmdDealt[targetId] = pending + applied;
   if (!this.pendingCmdDealt[targetId]) delete this.pendingCmdDealt[targetId];
+  this._paintCmdDealt(targetId);
   clearTimeout(this.cmdDealtFlushTimer);
   this.cmdDealtFlushTimer = setTimeout(() => this._flushCmdDealt(), 350);
-  this._render();
 };
 
 T._flushCmdDealt = async function () {
