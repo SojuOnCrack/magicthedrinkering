@@ -333,28 +333,41 @@ T._flushCmdDealt = async function () {
   this.cmdDealtFlushTimer = null;
   if (this.phase !== 'live') { this.pendingCmdDealt = {}; return; }
   await this._ltFlush();
+
   const deltas = this.pendingCmdDealt;
   this.pendingCmdDealt = {};
-  const playerUpdates = [];
-  let total = 0;
+  const jobs = [];
+  const undoRows = [];
+  const changed = [];
+
   Object.entries(deltas).forEach(([targetId, delta]) => {
     const target = this.players.find(p => p.id === targetId);
-    if (!target) return;
-    const cmd = { ...(target.cmd_damage || {}) };
-    const before = cmd[this.myPlayerId] || 0;
+    if (!target || !delta) return;
+    const oldCmd = { ...(target.cmd_damage || {}) };
+    const before = oldCmd[this.myPlayerId] || 0;
     const after = clamp(before + delta, 0, 99);
     const applied = after - before;
     if (!applied) return;
-    if (after > 0) cmd[this.myPlayerId] = after;
-    else delete cmd[this.myPlayerId];
-    playerUpdates.push({
-      id: targetId,
-      updates: this._buildPlayerUpdate(target, {
-        life: (target.life || 0) - applied,
-        cmd_damage: cmd
-      })
+
+    const nextCmd = { ...oldCmd };
+    if (after > 0) nextCmd[this.myPlayerId] = after;
+    else delete nextCmd[this.myPlayerId];
+
+    const updates = this._buildPlayerUpdate(target, {
+      life: (target.life || 0) - applied,
+      cmd_damage: nextCmd
     });
-    total += applied;
+    undoRows.push({
+      id: targetId,
+      updates: {
+        life: target.life,
+        cmd_damage: oldCmd,
+        eliminated: target.eliminated
+      }
+    });
+    changed.push({ target, updates, targetId, applied });
+    jobs.push(this.sb.from('mp_players').update(updates).eq('id', targetId));
+
     if (applied > 0) {
       MPStats.logEvent('commander_damage', {
         actorId: this.myPlayerId, targetId, amount: applied,
@@ -362,14 +375,35 @@ T._flushCmdDealt = async function () {
       });
     }
   });
-  if (!playerUpdates.length) { this._render(); return; }
-  await this._runOptimistic({
-    playerUpdates,
-    undoLabel: `Commander ${total > 0 ? '+' : ''}${total}`,
-    pulses: playerUpdates.map(({ id, updates }) => ({
-      id, kind: (updates.life || 0) < (this.players.find(p => p.id === id)?.life || 0) ? 'damage' : 'heal'
-    }))
-  });
+
+  if (!jobs.length) return;
+  this.pendingWrites += 1;
+  this.lastUndo = {
+    label: 'Commander-Schaden',
+    playerUpdates: undoRows,
+    lobbyUpdates: null,
+    pulses: undoRows.map(row => ({ id: row.id, kind: 'heal' }))
+  };
+
+  try {
+    const results = await Promise.all(jobs);
+    const failed = results.find(result => result?.error);
+    if (failed?.error) throw failed.error;
+
+    changed.forEach(({ target, updates, targetId }) => {
+      Object.assign(target, updates);
+      this._recentLocalPlayerWrites ||= new Set();
+      this._recentLocalPlayerWrites.add(targetId);
+      setTimeout(() => this._recentLocalPlayerWrites?.delete(targetId), 1800);
+      this._paintCmdDealt(targetId);
+    });
+    MPStats.updatePlayers(this.players);
+  } catch (err) {
+    changed.forEach(({ targetId }) => this._paintCmdDealt(targetId));
+    this._showError(err?.message || 'Commander-Schaden konnte nicht gespeichert werden.');
+  } finally {
+    this.pendingWrites = Math.max(0, this.pendingWrites - 1);
+  }
 };
 
 /* Commander-Schaden auf der Empfaengerseite (wie bei LifeTap): zieht auch Leben ab */
