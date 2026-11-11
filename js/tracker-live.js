@@ -28,6 +28,7 @@ const attrs = o => Object.entries(o)
 
 Object.assign(T, {
   pendingLife: 0, flushTimer: null,
+  pendingCmdDamage: {}, cmdFlushTimer: null,
   gesture: null, renderDeferred: false,
   burst: {},
   sheet: null, toolResult: null,
@@ -61,10 +62,10 @@ T._bindLiveGestures = function () {
   root.addEventListener('change', e => this._liveChange(e));
   root.addEventListener('input', e => this._liveInput(e));
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) this._ltFlush();
+    if (document.hidden) { this._ltFlush(); this._flushCmdReceived(); }
     else this._afterRender();
   });
-  window.addEventListener('pagehide', () => this._ltFlush());
+  window.addEventListener('pagehide', () => { this._ltFlush(); this._flushCmdReceived(); });
 };
 
 T._afterRender = function () {
@@ -183,7 +184,8 @@ T._renderLive = function () {
   const alive = this.players.filter(p => !p.eliminated);
   const pulse = this.uiPulseByPlayerId[this.myPlayerId];
   const pending = this.pendingLife;
-  const shown = (me.life || 0) + pending;
+  const pendingCmdLife = Object.values(this.pendingCmdDamage).reduce((sum, value) => sum + value, 0);
+  const shown = (me.life || 0) + pending - pendingCmdLife;
   const cmdMax = this._cmdMax(me);
   const hasTargets = others.some(p => !p.eliminated);
   const syncing = this.pendingWrites > 0 || pending !== 0;
@@ -267,26 +269,51 @@ T._renderOpp = function (p) {
 };
 
 /* Commander-Schaden auf der Empfaengerseite (wie bei LifeTap): zieht auch Leben ab */
-T.adjustCmdReceived = async function (fromId, delta) {
+T.adjustCmdReceived = function (fromId, delta) {
   const me = this._me();
   if (!me || this.phase !== 'live' || !fromId) return;
-  await this._ltFlush();
-  const cur = (me.cmd_damage || {})[fromId] || 0;
-  const next = clamp(cur + delta, 0, 99);
-  const applied = next - cur;
+  const current = (me.cmd_damage || {})[fromId] || 0;
+  const pending = this.pendingCmdDamage[fromId] || 0;
+  const next = clamp(current + pending + (Number(delta) || 0), 0, 99);
+  const applied = next - current - pending;
   if (!applied) return;
-  const cmd = { ...(me.cmd_damage || {}) };
-  if (next > 0) cmd[fromId] = next; else delete cmd[fromId];
-  const updates = this._buildPlayerUpdate(me, { life: (me.life || 0) - applied, cmd_damage: cmd });
+  this.pendingCmdDamage[fromId] = pending + applied;
+  if (!this.pendingCmdDamage[fromId]) delete this.pendingCmdDamage[fromId];
   if (applied > 0) {
     MPStats.logEvent('commander_damage', {
       actorId: fromId, targetId: this.myPlayerId, amount: applied, turn: this.lobby?.turn_number || 1
     });
   }
+  clearTimeout(this.cmdFlushTimer);
+  this.cmdFlushTimer = setTimeout(() => this._flushCmdReceived(), 350);
+  this._render();
+};
+
+T._flushCmdReceived = async function () {
+  clearTimeout(this.cmdFlushTimer);
+  this.cmdFlushTimer = null;
+  if (this.phase !== 'live') { this.pendingCmdDamage = {}; return; }
+  await this._ltFlush();
+  const deltas = this.pendingCmdDamage;
+  this.pendingCmdDamage = {};
+  const me = this._me();
+  if (!me || !Object.keys(deltas).length) return;
+  const cmd = { ...(me.cmd_damage || {}) };
+  let total = 0;
+  Object.entries(deltas).forEach(([fromId, delta]) => {
+    const next = clamp((cmd[fromId] || 0) + delta, 0, 99);
+    total += next - (cmd[fromId] || 0);
+    if (next > 0) cmd[fromId] = next; else delete cmd[fromId];
+  });
+  if (!total) return;
+  const updates = this._buildPlayerUpdate(me, {
+    life: (me.life || 0) - total,
+    cmd_damage: cmd
+  });
   await this._runOptimistic({
     playerUpdates: [{ id: this.myPlayerId, updates }],
-    undoLabel: `Commander ${applied > 0 ? '+' : ''}${applied}`,
-    pulses: [{ id: this.myPlayerId, kind: applied > 0 ? 'damage' : 'heal' }]
+    undoLabel: `Commander ${total > 0 ? '+' : ''}${total}`,
+    pulses: [{ id: this.myPlayerId, kind: total > 0 ? 'damage' : 'heal' }]
   });
 };
 
@@ -339,7 +366,7 @@ T._sheetCounters = function () {
   return `
     ${this._ctl('Gift (Poison)', `${me.poison || 0}<i>/10</i>`, { action: 'adjust-poison' })}
     <div class="lt-sec">Commander-Schaden erhalten <small>zieht auch Leben ab</small></div>
-    ${others.map(p => this._ctl(esc(p.name), `${(me.cmd_damage || {})[p.id] || 0}<i>/21</i>`, { action: 'cmd-recv', from: p.id })).join('') || '<div class="lt-muted">Keine Gegner.</div>'}
+    ${others.map(p => this._ctl(esc(p.name), `${clamp((me.cmd_damage || {})[p.id] || 0, 0, 99) + (this.pendingCmdDamage[p.id] || 0)}<i>/21</i>`, { action: 'cmd-recv', from: p.id })).join('') || '<div class="lt-muted">Keine Gegner.</div>'}
     <div class="lt-sec">Weitere Counter <small>nur auf diesem Gerät</small></div>
     ${this._ctl('Energy', c.energy || 0, { action: 'adjust-counter', counter: 'energy' })}
     ${this._ctl('Experience', c.experience || 0, { action: 'adjust-counter', counter: 'experience' })}
