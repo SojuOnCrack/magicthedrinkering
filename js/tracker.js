@@ -395,9 +395,12 @@ const MPTracker = {
 
   _handlePlayerChange(payload) {
     const { eventType, new: newRow, old: oldRow } = payload;
+    // Während lokaler Writes keine möglicherweise veralteten UPDATE-Echos übernehmen.
+    // Nach Abschluss aller Writes wird der autoritative Stand einmal neu geladen.
     if (eventType === 'INSERT') {
       if (!this.players.find(p => p.id === newRow.id)) this.players = this._sortedPlayers([...this.players, newRow]);
     } else if (eventType === 'UPDATE') {
+      if (this.pendingWrites > 0) return;
       const idx = this.players.findIndex(p => p.id === newRow.id);
       if (idx >= 0) this.players[idx] = newRow; else this.players.push(newRow);
       this.players = this._sortedPlayers();
@@ -877,6 +880,21 @@ async adjustLife(delta) {
     } finally {
       this.pendingWrites = Math.max(0, this.pendingWrites - 1);
       this._render();
+      if (this.pendingWrites === 0 && this.lobbyId) {
+        const lobbyId = this.lobbyId;
+        try {
+          const { data, error } = await this.sb.from('mp_players')
+            .select('*').eq('lobby_id', lobbyId).order('seat');
+          if (!error && Array.isArray(data) && this.lobbyId === lobbyId) {
+            this.players = this._sortedPlayers(data);
+            MPStats.updatePlayers(this.players);
+            this._checkAutoFinish();
+            this._render();
+          }
+        } catch (syncError) {
+          console.warn('[MPTracker] Realtime-Abgleich fehlgeschlagen:', syncError);
+        }
+      }
     }
   },
   _cmdMax(player) {
