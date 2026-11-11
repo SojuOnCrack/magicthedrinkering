@@ -421,7 +421,7 @@ T._renderSheet = function () {
   let title = '', body = '', top = false;
   if (s.type === 'counters') { title = 'Counter'; body = this._sheetCounters(); }
   else if (s.type === 'commander') { title = 'Commander-Schaden'; body = this._sheetCommanderDamage(); }
-  else if (s.type === 'commanderTarget') { title = s.pid ? (this.players.find(p => p.id === s.pid)?.name || 'Gegner') : 'Commander-Schaden'; body = this._sheetCommanderTarget(s.pid); top = true; }
+  else if (s.type === 'commanderTarget') { title = s.pid ? (this.players.find(p => p.id === s.pid)?.name || 'Gegner') : 'Commander-Schaden'; body = this._sheetCommanderTarget(s.pid); top = false; }
   else if (s.type === 'tools') { title = 'Würfel & Werkzeuge'; body = this._sheetTools(); }
   else if (s.type === 'lmenu') { title = 'Spiel'; body = this._sheetLocalMenu(); }
   else if (s.type === 'lplayer') {
