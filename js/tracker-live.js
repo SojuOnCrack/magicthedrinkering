@@ -188,7 +188,7 @@ T._renderLive = function () {
   const shown = (me.life || 0) + pending - pendingCmdLife;
   const cmdMax = this._cmdMax(me);
   const hasTargets = others.some(p => !p.eliminated);
-  const syncing = this.pendingWrites > 0 || pending !== 0;
+  const syncing = this.pendingWrites > 0 || pending !== 0 || Object.keys(this.pendingCmdDamage).length > 0;
 
   const chips = [];
   if (me.poison > 0) chips.push(`<button class="lt-chip-btn is-bad" data-action="open-sheet" data-sheet="counters">☠ ${me.poison}/10</button>`);
