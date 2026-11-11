@@ -300,3 +300,23 @@ body.lt-fixed #mp-root { height: 100dvh; min-height: 0; overflow: hidden; }
   .lt-pass, .lt-sheet, .lt-result b, .lt-me .lt-life, .lt-panel .lt-life { animation: none !important; }
   .lt-zone, .lt-bubble, .lt-zone span { transition: none; }
 }
+
+
+/* Compact multi-step buttons for commander damage */
+.lt-cmd-btns {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-items: center;
+  gap: .25rem;
+  width: 100%;
+}
+.lt-cmd-btns .lt-round {
+  width: 100%;
+  height: 40px;
+  font-size: .82rem;
+  border-radius: 12px;
+}
+.lt-cmd-btns .lt-ctl-val {
+  min-width: 0;
+  font-size: 1.05rem;
+}
