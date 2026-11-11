@@ -29,6 +29,7 @@ const attrs = o => Object.entries(o)
 Object.assign(T, {
   pendingLife: 0, flushTimer: null,
   pendingCmdDamage: {}, cmdFlushTimer: null,
+  pendingCmdDealt: {}, cmdDealtFlushTimer: null,
   gesture: null, renderDeferred: false,
   burst: {},
   sheet: null, toolResult: null,
@@ -62,10 +63,10 @@ T._bindLiveGestures = function () {
   root.addEventListener('change', e => this._liveChange(e));
   root.addEventListener('input', e => this._liveInput(e));
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { this._ltFlush(); this._flushCmdReceived(); }
+    if (document.hidden) { this._ltFlush(); this._flushCmdReceived(); this._flushCmdDealt(); }
     else this._afterRender();
   });
-  window.addEventListener('pagehide', () => { this._ltFlush(); this._flushCmdReceived(); });
+  window.addEventListener('pagehide', () => { this._ltFlush(); this._flushCmdReceived(); this._flushCmdDealt(); });
 };
 
 T._afterRender = function () {
@@ -128,7 +129,7 @@ T._ltStep = function (owner, delta) {
   if (navigator.vibrate) navigator.vibrate(Math.abs(delta) > 1 ? 14 : 6);
   if (this.phase === 'local') return this._ltStepLocal(owner, delta);
   if (this.phase !== 'live' || !this._me()) return;
-  if (owner !== 'me') return this.adjustCmdReceived(owner, delta);
+  if (owner !== 'me') return this.adjustCmdDealt(owner, delta);
   this.pendingLife += delta;
   clearTimeout(this.flushTimer);
   this.flushTimer = setTimeout(() => this._ltFlush(), FLUSH_MS);
@@ -237,7 +238,7 @@ T._renderLive = function () {
       <div class="lt-cmd-dock-label">COMMANDER-SCHADEN</div>
       <div class="lt-cmd-dock-list">
         ${others.filter(p => !p.eliminated).map(p => {
-          const value = clamp((me.cmd_damage || {})[p.id] || 0, 0, 99) + (this.pendingCmdDamage[p.id] || 0);
+          const value = clamp((p.cmd_damage || {})[this.myPlayerId] || 0, 0, 99) + (this.pendingCmdDealt[p.id] || 0);
           return `<button class="lt-cmd-dock-card" data-action="cmd-select" data-pid="${esc(p.id)}">
             <span>${esc(p.name)}</span><strong>${value}<small>/21</small></strong>
           </button>`;
@@ -267,6 +268,7 @@ T._renderOpp = function (p) {
   const isActive = this.lobby?.active_player_id === p.id;
   const cmd = this._cmdMax(p);
   const pulse = this.uiPulseByPlayerId[p.id];
+  const shownLife = (p.life || 0) - (this.pendingCmdDealt[p.id] || 0);
   const meta = [];
   if (p.poison > 0) meta.push(`☠${p.poison}`);
   if (cmd >= 7) meta.push(`⚔${cmd}`);
@@ -275,9 +277,70 @@ T._renderOpp = function (p) {
   return `
   <button class="lt-opp ${p.eliminated ? 'is-out' : ''} ${isActive ? 'is-active' : ''} ${pulse ? `pulse-${pulse}` : ''}" style="--pc:${hexOf(p.color)}" ${p.eliminated ? 'disabled' : ''} data-action="open-combat" data-target-id="${esc(p.id)}">
     <span class="lt-opp-name">${esc(p.name)}</span>
-    <span class="lt-opp-life ${this._lifeClass(p.life)}">${p.life}</span>
+    <span class="lt-opp-life ${this._lifeClass(shownLife)}">${shownLife}</span>
     <span class="lt-opp-meta">${p.eliminated ? 'Out' : esc(meta.join(' '))}</span>
   </button>`;
+};
+
+/* Commander-Schaden aus Sicht des Angreifers: Wert am Gegner speichern, Gegner-LP abziehen. */
+T.adjustCmdDealt = function (targetId, delta) {
+  const target = this.players.find(p => p.id === targetId && p.id !== this.myPlayerId);
+  const me = this._me();
+  if (!target || !me || me.eliminated || this.phase !== 'live') return;
+  const current = (target.cmd_damage || {})[this.myPlayerId] || 0;
+  const pending = this.pendingCmdDealt[targetId] || 0;
+  const next = clamp(current + pending + (Number(delta) || 0), 0, 99);
+  const applied = next - current - pending;
+  if (!applied || (target.eliminated && applied > 0)) return;
+  this.pendingCmdDealt[targetId] = pending + applied;
+  if (!this.pendingCmdDealt[targetId]) delete this.pendingCmdDealt[targetId];
+  clearTimeout(this.cmdDealtFlushTimer);
+  this.cmdDealtFlushTimer = setTimeout(() => this._flushCmdDealt(), 350);
+  this._render();
+};
+
+T._flushCmdDealt = async function () {
+  clearTimeout(this.cmdDealtFlushTimer);
+  this.cmdDealtFlushTimer = null;
+  if (this.phase !== 'live') { this.pendingCmdDealt = {}; return; }
+  await this._ltFlush();
+  const deltas = this.pendingCmdDealt;
+  this.pendingCmdDealt = {};
+  const playerUpdates = [];
+  let total = 0;
+  Object.entries(deltas).forEach(([targetId, delta]) => {
+    const target = this.players.find(p => p.id === targetId);
+    if (!target) return;
+    const cmd = { ...(target.cmd_damage || {}) };
+    const before = cmd[this.myPlayerId] || 0;
+    const after = clamp(before + delta, 0, 99);
+    const applied = after - before;
+    if (!applied) return;
+    if (after > 0) cmd[this.myPlayerId] = after;
+    else delete cmd[this.myPlayerId];
+    playerUpdates.push({
+      id: targetId,
+      updates: this._buildPlayerUpdate(target, {
+        life: (target.life || 0) - applied,
+        cmd_damage: cmd
+      })
+    });
+    total += applied;
+    if (applied > 0) {
+      MPStats.logEvent('commander_damage', {
+        actorId: this.myPlayerId, targetId, amount: applied,
+        turn: this.lobby?.turn_number || 1
+      });
+    }
+  });
+  if (!playerUpdates.length) { this._render(); return; }
+  await this._runOptimistic({
+    playerUpdates,
+    undoLabel: `Commander ${total > 0 ? '+' : ''}${total}`,
+    pulses: playerUpdates.map(({ id, updates }) => ({
+      id, kind: (updates.life || 0) < (this.players.find(p => p.id === id)?.life || 0) ? 'damage' : 'heal'
+    }))
+  });
 };
 
 /* Commander-Schaden auf der Empfaengerseite (wie bei LifeTap): zieht auch Leben ab */
@@ -385,7 +448,7 @@ T._sheetCommanderTarget = function (playerId) {
   const me = this._me();
   const player = this.players.find(p => p.id === playerId && p.id !== this.myPlayerId);
   if (!me || !player) return '<div class="lt-muted">Gegner nicht verfügbar.</div>';
-  const value = clamp((me.cmd_damage || {})[player.id] || 0, 0, 99) + (this.pendingCmdDamage[player.id] || 0);
+  const value = clamp((player.cmd_damage || {})[this.myPlayerId] || 0, 0, 99) + (this.pendingCmdDealt[player.id] || 0);
   return `
     <div class="lt-cmd-expanded">
       <div class="lt-cmd-expanded-name">${esc(player.name)}</div>
