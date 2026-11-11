@@ -233,9 +233,17 @@ T._renderLive = function () {
       <div class="lt-out"><span>Ausgeschieden</span></div>
     </main>
 
-    <button class="lt-cmd-launch" data-action="open-sheet" data-sheet="commander">
-      <span>⚔</span><span>Commander-Schaden</span><small>Gegner auswählen · gedrückt halten</small>
-    </button>
+    <div class="lt-cmd-dock">
+      <div class="lt-cmd-dock-label">COMMANDER-SCHADEN</div>
+      <div class="lt-cmd-dock-list">
+        ${others.filter(p => !p.eliminated).map(p => {
+          const value = clamp((me.cmd_damage || {})[p.id] || 0, 0, 99) + (this.pendingCmdDamage[p.id] || 0);
+          return `<button class="lt-cmd-dock-card" data-action="cmd-select" data-pid="${esc(p.id)}">
+            <span>${esc(p.name)}</span><strong>${value}<small>/21</small></strong>
+          </button>`;
+        }).join('') || '<div class="lt-muted">Keine aktiven Gegner</div>'}
+      </div>
+    </div>
     ${isMyTurn ? '<button class="lt-pass" data-action="next-turn">Zug abgeben →</button>' : ''}
 
     <nav class="lt-dock" aria-label="Aktionen">
@@ -345,6 +353,7 @@ T._renderSheet = function () {
   let title = '', body = '', top = false;
   if (s.type === 'counters') { title = 'Counter'; body = this._sheetCounters(); }
   else if (s.type === 'commander') { title = 'Commander-Schaden'; body = this._sheetCommanderDamage(); }
+  else if (s.type === 'commanderTarget') { title = s.pid ? (this.players.find(p => p.id === s.pid)?.name || 'Gegner') : 'Commander-Schaden'; body = this._sheetCommanderTarget(s.pid); top = true; }
   else if (s.type === 'tools') { title = 'Würfel & Werkzeuge'; body = this._sheetTools(); }
   else if (s.type === 'lmenu') { title = 'Spiel'; body = this._sheetLocalMenu(); }
   else if (s.type === 'lplayer') {
@@ -364,24 +373,26 @@ T._renderSheet = function () {
 };
 
 T._sheetCommanderDamage = function () {
+  return this._sheetCommanderTarget(this.players.find(p => p.id !== this.myPlayerId && !p.eliminated)?.id);
+};
+
+T._sheetCommanderTarget = function (playerId) {
   const me = this._me();
-  if (!me) return '';
-  const others = this.players.filter(p => p.id !== this.myPlayerId);
-  if (!others.length) return '<div class="lt-muted">Keine Gegner in der Lobby.</div>';
+  const player = this.players.find(p => p.id === playerId && p.id !== this.myPlayerId);
+  if (!me || !player) return '<div class="lt-muted">Gegner nicht verfügbar.</div>';
+  const value = clamp((me.cmd_damage || {})[player.id] || 0, 0, 99) + (this.pendingCmdDamage[player.id] || 0);
   return `
-    <div class="lt-sec">Gegner auswählen und gedrückt halten <small>Tippen = 1 · Halten = 5</small></div>
-    <div class="lt-cmd-hold-list">
-      ${others.map(p => {
-        const value = clamp((me.cmd_damage || {})[p.id] || 0, 0, 99) + (this.pendingCmdDamage[p.id] || 0);
-        return `
-          <div class="lt-cmd-hold-row">
-            <div class="lt-cmd-hold-name">${esc(p.name)} <strong>${value}<small>/21</small></strong></div>
-            <div class="lt-cmd-hold-zones">
-              <div class="lt-cmd-hold-zone" data-zone="cmd-minus" data-owner="${esc(p.id)}"><span>−</span><small>Schaden zurück</small></div>
-              <div class="lt-cmd-hold-zone" data-zone="cmd-plus" data-owner="${esc(p.id)}"><span>+</span><small>Schaden zufügen</small></div>
-            </div>
-          </div>`;
-      }).join('')}
+    <div class="lt-cmd-expanded">
+      <div class="lt-cmd-expanded-name">${esc(player.name)}</div>
+      <div class="lt-cmd-expanded-value">${value}<small>/21 Commander-Schaden</small></div>
+      <div class="lt-cmd-expanded-controls">
+        <div class="lt-zone lt-zone-minus lt-cmd-zone" data-zone="cmd-minus" data-owner="${esc(player.id)}" aria-label="Commander-Schaden verringern"><span>−</span></div>
+        <div class="lt-zone lt-zone-plus lt-cmd-zone" data-zone="cmd-plus" data-owner="${esc(player.id)}" aria-label="Commander-Schaden erhöhen"><span>+</span></div>
+        <div class="lt-cmd-expanded-hint">Antippen = 1 · Gedrückt halten = 5</div>
+      </div>
+    </div>
+    <div class="lt-cmd-switch">
+      ${this.players.filter(p => p.id !== this.myPlayerId && !p.eliminated).map(p => `<button class="lt-cmd-switch-btn ${p.id === player.id ? 'is-active' : ''}" data-action="cmd-select" data-pid="${esc(p.id)}">${esc(p.name)}</button>`).join('')}
     </div>`;
 };
 
@@ -683,6 +694,7 @@ T._liveClick = function (el, event) {
       if (el.classList.contains('lt-sheet-backdrop') && event.target !== el) return true;
       this.sheet = null; this._render(); return true;
     case 'cmd-recv': this.adjustCmdReceived(el.dataset.from, d); return true;
+    case 'cmd-select': this.sheet = { type: 'commanderTarget', pid: el.dataset.pid }; this._render(); return true;
     case 'roll': { const s = Number(el.dataset.sides) || 6; this._ltResult('W' + s, String(1 + rnd(s))); return true; }
     case 'coin': this._ltResult('Münze', rnd(2) ? 'Kopf' : 'Zahl'); return true;
     case 'pick-player': {
