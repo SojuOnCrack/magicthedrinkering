@@ -346,3 +346,25 @@ body.lt-fixed #mp-root { height: 100dvh; min-height: 0; overflow: hidden; }
 .lt-cmd-hold-zone span { font: 700 1.8rem var(--lt-display); }
 .lt-cmd-hold-zone small { color: var(--lt-muted); font-size: .7rem; }
 .lt-cmd-hold-zone.is-down { background: rgba(201,168,76,.24); border-color: var(--lt-gold); }
+
+
+/* Commander damage dock: compact opponent cards below the life panel */
+.lt-cmd-dock { width: 100%; padding: .55rem .7rem; border: 1px solid rgba(201,168,76,.28); border-radius: 16px; background: rgba(8,12,20,.92); }
+.lt-cmd-dock-label { margin-bottom: .4rem; color: var(--lt-gold); font: 700 .68rem var(--lt-mono); letter-spacing: .12em; }
+.lt-cmd-dock-list { display: flex; gap: .45rem; overflow-x: auto; }
+.lt-cmd-dock-card { display: flex; flex: 1 0 115px; min-width: 0; align-items: center; justify-content: space-between; gap: .4rem; padding: .65rem .75rem; border: 1px solid var(--lt-line); border-radius: 12px; background: rgba(255,255,255,.04); color: var(--lt-text); text-align: left; }
+.lt-cmd-dock-card span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.lt-cmd-dock-card strong { color: var(--lt-gold); font: 700 1rem var(--lt-display); white-space: nowrap; }
+.lt-cmd-dock-card small { opacity: .55; font-size: .7em; }
+.lt-sheet.is-cmd-expanded { width: min(100%, 760px); max-height: min(92dvh, 900px); border-radius: 24px; border-bottom: 1px solid rgba(201,168,76,.25); align-self: center; }
+.lt-sheet-backdrop.is-top:has(.is-cmd-expanded) { align-items: center; }
+.lt-cmd-expanded { position: relative; min-height: min(58dvh, 520px); display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 1rem .5rem; border: 1px solid rgba(201,168,76,.38); border-radius: 20px; background: radial-gradient(ellipse at top, rgba(201,168,76,.14), transparent 65%), #080c14; overflow: hidden; }
+.lt-cmd-expanded-name { font: 700 clamp(1.3rem, 4vw, 2rem) var(--lt-display); color: var(--lt-text); text-align: center; }
+.lt-cmd-expanded-value { display: flex; flex-direction: column; align-items: center; color: #f4ecd8; font: 700 clamp(4rem, 20vw, 8rem)/1 var(--lt-display); font-variant-numeric: tabular-nums; }
+.lt-cmd-expanded-value small { color: var(--lt-muted); font: 600 .75rem var(--lt-mono); }
+.lt-cmd-expanded-controls { position: relative; width: 100%; min-height: 150px; flex: 1; margin-top: 1rem; border-radius: 16px; overflow: hidden; }
+.lt-cmd-zone { width: 50%; }
+.lt-cmd-expanded-hint { position: absolute; z-index: 2; bottom: .7rem; left: 0; right: 0; text-align: center; color: var(--lt-muted); font: 500 .68rem var(--lt-mono); pointer-events: none; }
+.lt-cmd-switch { display: flex; gap: .4rem; overflow-x: auto; padding-top: .65rem; }
+.lt-cmd-switch-btn { padding: .55rem .8rem; border: 1px solid var(--lt-line); border-radius: 10px; background: transparent; color: var(--lt-muted); white-space: nowrap; }
+.lt-cmd-switch-btn.is-active { color: var(--lt-gold); border-color: var(--lt-gold); background: rgba(201,168,76,.1); }
