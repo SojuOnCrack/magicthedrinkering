@@ -400,7 +400,7 @@ const MPTracker = {
     if (eventType === 'INSERT') {
       if (!this.players.find(p => p.id === newRow.id)) this.players = this._sortedPlayers([...this.players, newRow]);
     } else if (eventType === 'UPDATE') {
-      if (this.pendingWrites > 0) return;
+      if (this.pendingWrites > 0 || this._recentLocalPlayerWrites?.has(newRow?.id)) return;
       const idx = this.players.findIndex(p => p.id === newRow.id);
       if (idx >= 0) this.players[idx] = newRow; else this.players.push(newRow);
       this.players = this._sortedPlayers();
