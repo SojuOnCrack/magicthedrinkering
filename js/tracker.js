@@ -62,7 +62,7 @@ const MPTracker = {
     await this._bootstrapIdentity();
     const restored = await this._restoreLobby();
     if (!restored) {
-      this.phase = 'menu';
+      this.phase = this._localResumeOnBoot() ? 'local' : 'menu';
       this._render();
     }
   },
@@ -900,38 +900,6 @@ async adjustLife(delta) {
       .join('');
     return `<button class="${className}" data-action="${esc(action)}"${dataAttrs}>${label}</button>`;
   },
-  _renderLifeControls(values, mode) {
-    const isHeal = mode === 'heal';
-    return `
-      <div class="mp-control-group">
-        <div class="mp-cmd-title">${isHeal ? 'Heal' : 'Damage'}</div>
-        <div class="mp-life-controls ${isHeal ? 'mp-life-controls-heal' : ''}">
-          ${values.map(value => {
-            const delta = isHeal ? value : -value;
-            const label = isHeal ? `+${value}` : `-${value}`;
-            return this._button(label, 'adjust-life', { delta }, `mp-lbtn ${isHeal ? 'mp-lbtn-plus' : ''}`);
-          }).join('')}
-        </div>
-      </div>`;
-  },
-  _renderToggle(label, action, isOn, extraClass = '') {
-    return this._button(label, action, {}, `mp-toggle-btn ${isOn ? `on ${extraClass}` : ''}`.trim());
-  },
-  _renderCounter(label, value, action, attrs = {}) {
-    return `
-      <div class="${label === 'Poison' ? 'mp-poison-card' : 'mp-generic-counter-card'}">
-        <span class="mp-utility-label">${esc(label)}</span>
-        <div class="mp-poison-ctrl">
-          ${this._button('-', action, { ...attrs, delta: -1 }, 'mp-mini-btn')}
-          <div class="mp-poison-display">
-            ${label === 'Poison' ? '<span class="mp-poison-icon">☠</span>' : ''}
-            <span class="mp-poison-val">${value}</span>
-            ${label === 'Poison' ? '<span class="mp-poison-max">/10</span>' : ''}
-          </div>
-          ${this._button('+', action, { ...attrs, delta: 1 }, 'mp-mini-btn')}
-        </div>
-      </div>`;
-  },
   _renderCombatAdjustButton(mode, targetId, amount, className = '') {
     const label = amount > 0 ? `+${amount}` : String(amount);
     return `<button class="mp-cmd-btn mp-cmd-btn-stepper ${className}" data-hold-mode="${esc(mode)}" data-target-id="${esc(targetId)}" data-direction="${amount}">${label}</button>`;
@@ -975,19 +943,25 @@ async adjustLife(delta) {
   _render() {
     const root = document.getElementById('mp-root');
     if (!root) return;
+    if (this.gesture) { this.renderDeferred = true; return; }
+    if (this.phase !== 'live' && this.phase !== 'local') this.sheet = null;
     let markup = '';
     switch(this.phase) {
       case 'menu':    markup = this._renderMenu(); break;
       case 'creating':markup = this._renderLoading(); break;
       case 'waiting': markup = this._renderWaiting(); break;
       case 'live':    markup = this._renderLive(); break;
+      case 'local-setup': markup = this._renderLocalSetup(); break;
+      case 'local':   markup = this._renderLocal(); break;
       case 'finished':markup = this._renderFinished(); break;
       default:        markup = this._renderMenu();
     }
-    if (markup === this.lastRenderedMarkup) return;
-    root.innerHTML = markup;
-    this.lastRenderedMarkup = markup;
-    if (this.lobbyId && this.myPlayerId) this._persistLobbyState();
+    if (markup !== this.lastRenderedMarkup) {
+      root.innerHTML = markup;
+      this.lastRenderedMarkup = markup;
+      if (this.lobbyId && this.myPlayerId) this._persistLobbyState();
+    }
+    this._afterRender();
   },
 
   /* â”€â”€ MenÃ¼ â”€â”€ */
@@ -1018,6 +992,8 @@ async adjustLife(delta) {
         <button class="mp-btn mp-btn-outline" data-action="join-lobby">
           Lobby beitreten
         </button>
+
+        ${this._renderLocalMenu()}
       </div>
     </div>`;
   },
@@ -1113,149 +1089,6 @@ async adjustLife(delta) {
     </div>`;
   },
 
-  /* â”€â”€ Live Game â”€â”€ */
-  _renderLive() {
-    const me = this._me();
-    if (!me) return this._renderLoading();
-    const others = this.players.filter(p => p.id !== this.myPlayerId);
-    const isMyTurn = this.lobby?.active_player_id === this.myPlayerId;
-    const activePlayer = this.players.find(p => p.id === this.lobby?.active_player_id);
-    const alive = this.players.filter(p => !p.eliminated);
-    const myPulse = this.uiPulseByPlayerId[this.myPlayerId];
-    const detailsOpen = window.matchMedia?.('(max-width: 760px)').matches ? '' : ' open';
-
-    return `
-    <div class="mp-screen mp-live">
-      <div class="mp-top-strip">
-        <div class="mp-strip-meta">
-          <span class="mp-turn-badge ${isMyTurn ? 'active' : ''}">Turn ${this.lobby?.turn_number || 1}</span>
-          <span class="mp-active-label">${esc(activePlayer?.name || '?')} ist dran</span>
-          <span class="mp-top-chip">${alive.length} alive</span>
-          <span class="mp-top-chip ${this.pendingWrites ? 'is-syncing' : ''}">${this.pendingWrites ? 'Syncing…' : 'Live Sync'}</span>
-          ${this.lastUndo ? `<button class="mp-undo-btn" data-action="undo">Undo${this.lastUndo.label ? ` · ${esc(this.lastUndo.label)}` : ''}</button>` : ''}
-        </div>
-        <div class="mp-other-players">
-          ${others.map(p => this._renderOtherCard(p)).join('')}
-        </div>
-      </div>
-
-      <div class="mp-my-card mp-color-bg-${me.color || 'gold'} ${me.eliminated ? 'is-eliminated' : ''} ${isMyTurn ? 'is-my-turn' : ''} ${myPulse ? `pulse-${myPulse}` : ''}">
-        <div class="mp-my-card-inner">
-          <div class="mp-my-header">
-            <div class="mp-my-name-row">
-              <span class="mp-my-name">${esc(me.name)}</span>
-              <span class="mp-my-deck">${esc(me.deck || 'Kein Deck')}</span>
-              ${this._renderDeckMeta(me.deck)}
-            </div>
-            <div class="mp-my-badges">
-              ${isMyTurn ? '<span class="mp-badge active-badge">Am Zug</span>' : ''}
-              ${me.monarch ? '<button class="mp-badge monarch-badge" data-action="toggle-monarch">Monarch</button>' : ''}
-              ${me.initiative ? '<button class="mp-badge initiative-badge" data-action="toggle-initiative">Initiative</button>' : ''}
-              ${me.eliminated ? '<span class="mp-badge out-badge">Ausgeschieden</span>' : ''}
-            </div>
-          </div>
-
-          <div class="mp-live-grid">
-            <section class="mp-surface mp-life-surface">
-              <div class="mp-life-section">
-                <div class="mp-life-number ${this._lifeClass(me.life)}">${me.life}</div>
-                <div class="mp-life-label">Lebenspunkte</div>
-              </div>
-
-              <div class="mp-life-control-groups">
-                ${this._renderLifeControls([1,2,3,5,10], 'damage')}
-                ${this._renderLifeControls([1,2,3,5,10], 'heal')}
-              </div>
-            </section>
-
-            <details class="mp-surface mp-utility-surface mp-mobile-details"${detailsOpen}>
-              <summary class="mp-mobile-summary">Status & Basics</summary>
-              <div class="mp-utility-grid mp-utility-grid-tight">
-                <div class="mp-toggle-stack">
-                  ${this._renderToggle('Monarch', 'toggle-monarch', me.monarch)}
-                  ${this._renderToggle('Initiative', 'toggle-initiative', me.initiative)}
-                  ${this._renderToggle('Lifelink', 'toggle-lifelink', this.combatLifelink, 'lifelink')}
-                  ${this._renderToggle('Extra Turn', 'toggle-extra-turn', this.extraTurnQueued)}
-                  ${isMyTurn ? '<button class="mp-pass-btn mp-pass-btn-inline" data-action="next-turn">Turn abgeben</button>' : ''}
-                </div>
-                <div class="mp-counter-panel">
-                  <button class="mp-counter-toggle" data-action="toggle-counters">${this.countersOpen ? 'Counter schließen' : 'Counter öffnen'}</button>
-                  ${this.countersOpen ? `
-                  <div class="mp-counter-drawer">
-                    ${this._renderCounter('Energy', this.miscCounters.energy || 0, 'adjust-counter', { counter: 'energy' })}
-                    ${this._renderCounter('Experience', this.miscCounters.experience || 0, 'adjust-counter', { counter: 'experience' })}
-                    ${this._renderCounter('Rad', this.miscCounters.rad || 0, 'adjust-counter', { counter: 'rad' })}
-                    ${this._renderCounter('Poison', me.poison, 'adjust-poison')}
-                  </div>` : ''}
-                </div>
-              </div>
-              <div class="mp-rules-hint">Commander Damage zieht direkt Leben ab. Mit aktivem Lifelink heilst du dich um denselben Schaden.</div>
-            </details>
-          </div>
-
-          ${others.length > 0 ? `
-          <details class="mp-surface mp-arena-surface mp-mobile-details"${detailsOpen}>
-          <summary class="mp-mobile-summary">Combat</summary>
-          <div class="mp-arena-launcher">
-            <div class="mp-combat-launch-copy">
-              <div class="mp-rules-hint">Tippe auf Gegner-Shortcuts oder öffne das Overlay für mehrere Ziele und Splits.</div>
-              <div class="mp-combat-shortcuts">
-                ${others.filter(p => !p.eliminated).map(p => this._button(esc(p.name), 'open-combat', { 'target-id': p.id }, 'mp-combat-shortcut')).join('')}
-              </div>
-            </div>
-            <div class="mp-combat-launch-actions">
-              <div class="mp-combat-launch-meta">${this.combatTargetIds.length} Ziel${this.combatTargetIds.length===1?'':'e'} vorgemerkt</div>
-              <button class="mp-btn mp-btn-outline mp-combat-open-btn" data-action="open-combat">Combat öffnen</button>
-            </div>
-          </div>
-          </details>` : ''}
-
-          ${this._isHost() && alive.length <= 2 ? `
-          <div class="mp-finish-section">
-            <div class="mp-cmd-title">Spiel beenden</div>
-            <div class="mp-finish-btns">
-              ${alive.map(p => this._button(`${esc(p.name)} gewinnt`, 'finish-game', { value: p.id }, 'mp-finish-btn')).join('')}
-              <button class="mp-finish-btn ghost" data-action="finish-game" data-value="">Kein Gewinner</button>
-            </div>
-          </div>` : ''}
-
-          <div class="mp-sticky-actions" aria-label="Schnellaktionen">
-            ${this._button('-5', 'adjust-life', { delta: -5 }, 'mp-sticky-btn danger')}
-            ${this._button('-1', 'adjust-life', { delta: -1 }, 'mp-sticky-btn danger')}
-            ${this._button('+1', 'adjust-life', { delta: 1 }, 'mp-sticky-btn')}
-            ${this._button('+5', 'adjust-life', { delta: 5 }, 'mp-sticky-btn')}
-            ${others.length ? '<button class="mp-sticky-btn wide" data-action="open-combat">Combat</button>' : ''}
-            ${isMyTurn ? '<button class="mp-sticky-btn wide gold" data-action="next-turn">Pass</button>' : ''}
-            ${this.lastUndo ? '<button class="mp-sticky-btn wide" data-action="undo">Undo</button>' : ''}
-          </div>
-
-        </div>
-      </div>
-
-      ${this.combatModalOpen ? this._renderCombatModal() : ''}
-
-    </div>`;
-  },
-
-  /* Other player cards */
-  _renderOtherCard(p) {
-    const isActive = this.lobby?.active_player_id === p.id;
-    const cmdReceived = this._cmdMax(p);
-    const pulse = this.uiPulseByPlayerId[p.id];
-    return `
-    <button class="mp-other-card mp-color-${p.color || 'gold'} ${p.eliminated ? 'is-out' : ''} ${isActive ? 'is-active' : ''} ${pulse ? `pulse-${pulse}` : ''}" ${p.eliminated ? 'disabled' : ''} data-action="open-combat" data-target-id="${esc(p.id)}">
-      <div class="mp-other-orb">${this._initials(p.name)}</div>
-      <div class="mp-other-info">
-        <span class="mp-other-name">${esc(p.name)}</span>
-        <span class="mp-other-life ${this._lifeClass(p.life)}">${p.life}</span>
-        ${p.poison > 0 ? `<span class="mp-other-poison">P ${p.poison}</span>` : ''}
-        ${cmdReceived >= 7 ? `<span class="mp-other-cmd ${cmdReceived >= 21 ? 'danger' : cmdReceived >= 14 ? 'warn' : ''}">CMD ${cmdReceived}</span>` : ''}
-      </div>
-      ${isActive ? '<span class="mp-other-active-pill">Active</span>' : ''}
-      ${p.eliminated ? '<div class="mp-other-out">Out</div>' : ''}
-      ${isActive ? '<div class="mp-other-turn">TURN</div>' : ''}
-    </button>`;
-  },
   _renderCombatTargetRow(player) {
     const isActive = this.lobby?.active_player_id === player.id;
     const myCmdOnTarget = (player.cmd_damage || {})[this.myPlayerId] || 0;
@@ -1337,13 +1170,13 @@ async adjustLife(delta) {
       <div class="mp-finished-inner">
         <div class="mp-finished-crown">WIN</div>
         <div class="mp-finished-title">${winner ? esc(winner.name) + ' gewinnt!' : 'Spiel beendet'}</div>
-        <div class="mp-finished-sub">Turn ${this.lobby?.turn_number || '?'} Â· ${this.players.length} Spieler</div>
+        <div class="mp-finished-sub">Turn ${this.lobby?.turn_number || '?'} · ${this.players.length} Spieler</div>
         <div class="mp-finished-players">
           ${this.players.map(p => `
             <div class="mp-finished-row ${p.id === this.lobby?.winner_id ? 'winner' : ''}">
               <div class="mp-player-orb mp-color-${p.color || 'gold'}">${this._initials(p.name)}</div>
               <strong>${esc(p.name)}</strong>
-              <span>${p.life} LP Â· ${p.poison} Gift</span>
+              <span>${p.life} LP · ${p.poison} Gift</span>
               ${p.id === this.lobby?.winner_id ? '<span class="mp-winner-badge">Gewinner</span>' : ''}
             </div>`).join('')}
         </div>
