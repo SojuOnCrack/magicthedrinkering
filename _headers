@@ -27,6 +27,9 @@
 /js/tracker.js
   Cache-Control: no-cache, no-store, must-revalidate
 
+/js/tracker-live.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
 # ── Static assets: aggressives Caching mit immutable ──
 /*.js
   Cache-Control: public, max-age=31536000, immutable
