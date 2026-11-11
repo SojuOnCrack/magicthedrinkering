@@ -427,9 +427,6 @@ const MPTracker = {
       { this.phase = 'finished'; 
       this._persistLobbyState();
       this._render();
-      setTimeout(() =>{
-        MPStats.renderFinishedStats(this.lobbyId, this.players, this.lobby)
-      }, 100);
       return;
   }
   this._persistLobbyState();
@@ -978,6 +975,15 @@ async adjustLife(delta) {
       root.innerHTML = markup;
       this.lastRenderedMarkup = markup;
       if (this.lobbyId && this.myPlayerId) this._persistLobbyState();
+      // Load stats whenever a finished screen is rendered, including after refresh/rejoin.
+      if (this.phase === 'finished' && this.lobbyId) {
+        const lobbyId = this.lobbyId;
+        setTimeout(() => {
+          if (this.phase === 'finished' && this.lobbyId === lobbyId) {
+            MPStats.renderFinishedStats(lobbyId, this.players, this.lobby);
+          }
+        }, 0);
+      }
     }
     this._afterRender();
   },
