@@ -52,7 +52,7 @@ const MPStats = {
 
       const { data, error } = await this._sb
         .from('mp_game_events')
-        .select('id, events')
+        .select('id, type, target_id, amount, ts, events')
         .eq('lobby_id', this._lobbyId)
         .eq('turn', turn)
         .eq('actor_id', actorId)
@@ -85,7 +85,11 @@ const MPStats = {
             lobby_id: this._lobbyId,
             turn,
             actor_id: actorId,
-            events: [newEvent]
+            type,
+            target_id: targetId,
+            amount: normalizedAmount,
+            ts: new Date(newEvent.ts).toISOString(),
+            events: []
           });
 
         if (insertError) throw insertError;
@@ -178,9 +182,17 @@ const MPStats = {
       if (!actor) return;
 
       const turn = Number(row.turn) || 0;
-      const events = Array.isArray(row.events)
-        ? row.events
-        : [];
+      // Support both legacy flat columns and grouped JSON events.
+      const events = [];
+      if (row.type) {
+        events.push({
+          type: row.type,
+          target_id: row.target_id,
+          amount: row.amount,
+          ts: row.ts
+        });
+      }
+      if (Array.isArray(row.events)) events.push(...row.events);
 
       events.forEach(ev => {
 
