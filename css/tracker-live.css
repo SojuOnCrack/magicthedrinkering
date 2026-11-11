@@ -320,3 +320,29 @@ body.lt-fixed #mp-root { height: 100dvh; min-height: 0; overflow: hidden; }
   min-width: 0;
   font-size: 1.05rem;
 }
+
+
+/* Dedicated hold-to-apply commander damage area */
+.lt-cmd-launch {
+  display: flex; align-items: center; justify-content: center; gap: .55rem;
+  flex-wrap: wrap; width: 100%; min-height: 58px; padding: .65rem 1rem;
+  border: 1px solid rgba(201,168,76,.48); border-radius: 16px;
+  background: linear-gradient(135deg, rgba(201,168,76,.18), rgba(201,168,76,.06));
+  color: var(--lt-gold); font: 700 1rem var(--lt-display);
+}
+.lt-cmd-launch small { flex-basis: 100%; margin-top: -.35rem; color: var(--lt-muted); font: 500 .72rem var(--lt-mono); }
+.lt-cmd-hold-list { display: grid; gap: .8rem; }
+.lt-cmd-hold-row { padding: .75rem; border: 1px solid var(--lt-line); border-radius: 16px; background: rgba(255,255,255,.025); }
+.lt-cmd-hold-name { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .6rem; font-weight: 700; }
+.lt-cmd-hold-name strong { color: var(--lt-gold); font: 700 1.1rem var(--lt-display); }
+.lt-cmd-hold-name small { margin-left: 2px; opacity: .55; font-size: .7em; }
+.lt-cmd-hold-zones { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.lt-cmd-hold-zone {
+  display: flex; min-height: 76px; flex-direction: column; align-items: center; justify-content: center;
+  gap: .1rem; border: 1px solid rgba(201,168,76,.3); border-radius: 12px;
+  background: rgba(201,168,76,.07); color: var(--lt-gold);
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.lt-cmd-hold-zone span { font: 700 1.8rem var(--lt-display); }
+.lt-cmd-hold-zone small { color: var(--lt-muted); font-size: .7rem; }
+.lt-cmd-hold-zone.is-down { background: rgba(201,168,76,.24); border-color: var(--lt-gold); }
