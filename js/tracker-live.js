@@ -95,7 +95,7 @@ T._ltDown = function (e) {
   if (!zone || !e.isPrimary || e.button > 0) return;
   this._ltCancelGesture();
   const owner = zone.dataset.owner;
-  const dir = zone.dataset.zone === 'plus' ? 1 : -1;
+  const dir = zone.dataset.zone.endsWith('plus') ? 1 : -1;
   const g = { owner, dir, held: false, el: zone, timer: null, interval: null };
   g.timer = setTimeout(() => {
     g.held = true;
@@ -127,7 +127,8 @@ T._ltUp = function (e, cancelled) {
 T._ltStep = function (owner, delta) {
   if (navigator.vibrate) navigator.vibrate(Math.abs(delta) > 1 ? 14 : 6);
   if (this.phase === 'local') return this._ltStepLocal(owner, delta);
-  if (this.phase !== 'live' || owner !== 'me' || !this._me()) return;
+  if (this.phase !== 'live' || !this._me()) return;
+  if (owner !== 'me') return this.adjustCmdReceived(owner, delta);
   this.pendingLife += delta;
   clearTimeout(this.flushTimer);
   this.flushTimer = setTimeout(() => this._ltFlush(), FLUSH_MS);
@@ -232,6 +233,9 @@ T._renderLive = function () {
       <div class="lt-out"><span>Ausgeschieden</span></div>
     </main>
 
+    <button class="lt-cmd-launch" data-action="open-sheet" data-sheet="commander">
+      <span>⚔</span><span>Commander-Schaden</span><small>Gegner auswählen · gedrückt halten</small>
+    </button>
     ${isMyTurn ? '<button class="lt-pass" data-action="next-turn">Zug abgeben →</button>' : ''}
 
     <nav class="lt-dock" aria-label="Aktionen">
@@ -340,6 +344,7 @@ T._renderSheet = function () {
   if (!s) return '';
   let title = '', body = '', top = false;
   if (s.type === 'counters') { title = 'Counter'; body = this._sheetCounters(); }
+  else if (s.type === 'commander') { title = 'Commander-Schaden'; body = this._sheetCommanderDamage(); }
   else if (s.type === 'tools') { title = 'Würfel & Werkzeuge'; body = this._sheetTools(); }
   else if (s.type === 'lmenu') { title = 'Spiel'; body = this._sheetLocalMenu(); }
   else if (s.type === 'lplayer') {
@@ -356,6 +361,28 @@ T._renderSheet = function () {
       <div class="lt-sheet-body">${body}</div>
     </div>
   </div>`;
+};
+
+T._sheetCommanderDamage = function () {
+  const me = this._me();
+  if (!me) return '';
+  const others = this.players.filter(p => p.id !== this.myPlayerId);
+  if (!others.length) return '<div class="lt-muted">Keine Gegner in der Lobby.</div>';
+  return `
+    <div class="lt-sec">Gegner auswählen und gedrückt halten <small>Tippen = 1 · Halten = 5</small></div>
+    <div class="lt-cmd-hold-list">
+      ${others.map(p => {
+        const value = clamp((me.cmd_damage || {})[p.id] || 0, 0, 99) + (this.pendingCmdDamage[p.id] || 0);
+        return `
+          <div class="lt-cmd-hold-row">
+            <div class="lt-cmd-hold-name">${esc(p.name)} <strong>${value}<small>/21</small></strong></div>
+            <div class="lt-cmd-hold-zones">
+              <div class="lt-cmd-hold-zone" data-zone="cmd-minus" data-owner="${esc(p.id)}"><span>−</span><small>Schaden zurück</small></div>
+              <div class="lt-cmd-hold-zone" data-zone="cmd-plus" data-owner="${esc(p.id)}"><span>+</span><small>Schaden zufügen</small></div>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>`;
 };
 
 T._sheetCounters = function () {
