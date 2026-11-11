@@ -298,6 +298,11 @@ T.adjustCmdReceived = function (fromId, delta) {
   }
   clearTimeout(this.cmdFlushTimer);
   this.cmdFlushTimer = setTimeout(() => this._flushCmdReceived(), 350);
+  const valueEl = document.querySelector('[data-cmd-value="' + CSS.escape(fromId) + '"]');
+  if (valueEl) {
+    const shown = clamp((me.cmd_damage || {})[fromId] || 0, 0, 99) + this.pendingCmdDamage[fromId];
+    valueEl.firstChild.textContent = shown;
+  }
   this._render();
 };
 
@@ -365,7 +370,7 @@ T._renderSheet = function () {
   } else return '';
   return `
   <div class="lt-sheet-backdrop ${top ? 'is-top' : ''}" data-action="close-sheet">
-    <div class="lt-sheet ${top ? 'is-flipped' : ''}" role="dialog" aria-label="${esc(title)}">
+    <div class="lt-sheet ${top ? 'is-flipped' : ''} ${s.type === 'commanderTarget' ? 'is-cmd-expanded' : ''}" role="dialog" aria-label="${esc(title)}">
       <div class="lt-sheet-head"><strong>${esc(title)}</strong><button class="lt-x" data-action="close-sheet" aria-label="Schließen">✕</button></div>
       <div class="lt-sheet-body">${body}</div>
     </div>
@@ -384,7 +389,7 @@ T._sheetCommanderTarget = function (playerId) {
   return `
     <div class="lt-cmd-expanded">
       <div class="lt-cmd-expanded-name">${esc(player.name)}</div>
-      <div class="lt-cmd-expanded-value">${value}<small>/21 Commander-Schaden</small></div>
+      <div class="lt-cmd-expanded-value" data-cmd-value="${esc(player.id)}">${value}<small>/21 Commander-Schaden</small></div>
       <div class="lt-cmd-expanded-controls">
         <div class="lt-zone lt-zone-minus lt-cmd-zone" data-zone="cmd-minus" data-owner="${esc(player.id)}" aria-label="Commander-Schaden verringern"><span>−</span></div>
         <div class="lt-zone lt-zone-plus lt-cmd-zone" data-zone="cmd-plus" data-owner="${esc(player.id)}" aria-label="Commander-Schaden erhöhen"><span>+</span></div>
