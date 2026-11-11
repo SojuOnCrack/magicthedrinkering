@@ -190,7 +190,7 @@ T._renderLive = function () {
   const shown = (me.life || 0) + pending - pendingCmdLife;
   const cmdMax = this._cmdMax(me);
   const hasTargets = others.some(p => !p.eliminated);
-  const syncing = this.pendingWrites > 0 || pending !== 0 || Object.keys(this.pendingCmdDamage).length > 0;
+  const syncing = this.pendingWrites > 0 || pending !== 0 || Object.keys(this.pendingCmdDamage).length > 0 || Object.keys(this.pendingCmdDealt).length > 0;
 
   const chips = [];
   if (me.poison > 0) chips.push(`<button class="lt-chip-btn is-bad" data-action="open-sheet" data-sheet="counters">☠ ${me.poison}/10</button>`);
@@ -235,7 +235,7 @@ T._renderLive = function () {
     </main>
 
     <div class="lt-cmd-dock">
-      <div class="lt-cmd-dock-label">COMMANDER-SCHADEN</div>
+      <div class="lt-cmd-dock-label">DEIN COMMANDER → GEGNER</div>
       <div class="lt-cmd-dock-list">
         ${others.filter(p => !p.eliminated).map(p => {
           const value = clamp((p.cmd_damage || {})[this.myPlayerId] || 0, 0, 99) + (this.pendingCmdDealt[p.id] || 0);
