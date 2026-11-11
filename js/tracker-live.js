@@ -366,7 +366,18 @@ T._sheetCounters = function () {
   return `
     ${this._ctl('Gift (Poison)', `${me.poison || 0}<i>/10</i>`, { action: 'adjust-poison' })}
     <div class="lt-sec">Commander-Schaden erhalten <small>zieht auch Leben ab</small></div>
-    ${others.map(p => this._ctl(esc(p.name), `${clamp((me.cmd_damage || {})[p.id] || 0, 0, 99) + (this.pendingCmdDamage[p.id] || 0)}<i>/21</i>`, { action: 'cmd-recv', from: p.id })).join('') || '<div class="lt-muted">Keine Gegner.</div>'}
+    ${others.map(p => {
+      const value = clamp((me.cmd_damage || {})[p.id] || 0, 0, 99) + (this.pendingCmdDamage[p.id] || 0);
+      return `
+        <div class="lt-ctl">
+          <div class="lt-ctl-label">${esc(p.name)}</div>
+          <div class="lt-cmd-btns">
+            ${[-10, -5, -1].map(step => `<button class="lt-round" data-action="cmd-recv" data-from="${esc(p.id)}" data-delta="${step}">${step}</button>`).join('')}
+            <span class="lt-ctl-val">${value}<i>/21</i></span>
+            ${[1, 5, 10].map(step => `<button class="lt-round" data-action="cmd-recv" data-from="${esc(p.id)}" data-delta="${step}">+${step}</button>`).join('')}
+          </div>
+        </div>`;
+    }).join('') || '<div class="lt-muted">Keine Gegner.</div>'}
     <div class="lt-sec">Weitere Counter <small>nur auf diesem Gerät</small></div>
     ${this._ctl('Energy', c.energy || 0, { action: 'adjust-counter', counter: 'energy' })}
     ${this._ctl('Experience', c.experience || 0, { action: 'adjust-counter', counter: 'experience' })}
