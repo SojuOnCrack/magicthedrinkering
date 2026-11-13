@@ -12,6 +12,9 @@ create table if not exists decks (
 alter table decks enable row level security;
 create policy "Users own their decks" on decks
   for all using (auth.uid() = user_id);
+drop policy if exists "Public decks are readable" on decks;
+create policy "Public decks are readable" on decks
+  for select using (public = true);
 
 create table if not exists profiles (
   id uuid primary key references auth.users,
@@ -19,8 +22,14 @@ create table if not exists profiles (
   username text
 );
 alter table profiles enable row level security;
-create policy "Profiles are public" on profiles for select using (true);
-create policy "Users manage own profile" on profiles for all using (auth.uid() = id);
+drop policy if exists "Profiles are public" on profiles;
+drop policy if exists "Users manage own profile" on profiles;
+create policy "Users manage own profile" on profiles
+  for all using (auth.uid() = id) with check (auth.uid() = id);
+-- Community-visible profile data deliberately excludes email addresses.
+create or replace view public_profiles with (security_barrier = true) as
+  select id, username from profiles;
+grant select on public_profiles to authenticated;
 
 create table if not exists shared_decks (
   token text primary key,
