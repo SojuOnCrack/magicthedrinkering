@@ -15,8 +15,9 @@ export async function onRequest(context) {
   if (request.method !== 'GET') {
     return new Response('Method Not Allowed', { status: 405, headers: corsHeaders() });
   }
-  if (!id) {
-    return json({ error: 'Missing deck id' }, 400);
+  if (!id) return json({ error: 'Missing deck id' }, 400);
+  if (!/^[A-Za-z0-9_-]{4,64}$/.test(id)) {
+    return json({ error: 'Invalid deck id' }, 400);
   }
 
   const cache = caches.default;
@@ -31,9 +32,10 @@ export async function onRequest(context) {
 
   let lastError = 'Deck not found';
   for (const makeUrl of CANDIDATE_ENDPOINTS) {
-    const target = makeUrl(id);
+    const target = makeUrl(encodeURIComponent(id));
     try {
       const upstream = await fetch(target, {
+        signal: AbortSignal.timeout(10000),
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'CommanderForge/1.0',
@@ -45,12 +47,18 @@ export async function onRequest(context) {
         lastError = `HTTP ${upstream.status}`;
         continue;
       }
-      const body = await upstream.arrayBuffer();
+      const contentLength = Number(upstream.headers.get('Content-Length') || 0);
+      if (contentLength > 5 * 1024 * 1024) {
+        return json({ error: 'Moxfield response is too large' }, 502);
+      }
+      const body = await readLimitedBody(upstream, 5 * 1024 * 1024);
+      if (!body) return json({ error: 'Moxfield response is too large' }, 502);
       const resp = new Response(body, {
         status: 200,
         headers: {
           'Content-Type': upstream.headers.get('Content-Type') || 'application/json',
-          'Cache-Control': 'public, max-age=900, s-maxage=900',
+          'Cache-Control': 'public, max-age=0, s-maxage=900',
+          'X-Content-Type-Options': 'nosniff',
           ...corsHeaders()
         }
       });
@@ -64,10 +72,35 @@ export async function onRequest(context) {
   return json({ error: lastError }, 502);
 }
 
+async function readLimitedBody(response, limit) {
+  if (!response.body) return new ArrayBuffer(0);
+  const reader = response.body.getReader();
+  const chunks = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const merged = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
+  return merged.buffer;
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+    headers: { 'Content-Type': 'application/json', 'X-Content-Type-Options': 'nosniff', ...corsHeaders() }
   });
 }
 
