@@ -148,6 +148,12 @@ create policy "Users update own wishlist entries" on public.wishlist for update 
 create policy "Users delete own wishlist entries" on public.wishlist for delete to authenticated
   using ((select auth.uid()) = user_id);
 
+-- Ensure the optional bulk-pool card metadata columns exist on fresh installs too.
+alter table public.bulk_pool add column if not exists foil boolean default false;
+alter table public.bulk_pool add column if not exists set_code text;
+alter table public.bulk_pool add column if not exists collector_number text;
+alter table public.bulk_pool add column if not exists scryfallid bigint;
+
 -- Restrict SELECT to safe fields; email columns are excluded from all API roles.
 revoke select on public.bulk_pool, public.trade_list, public.wishlist, public.deck_comments from anon, authenticated;
 grant select (id, card_name, qty, condition, user_id, price_usd, created_at, foil, set_code, collector_number, scryfallid)
