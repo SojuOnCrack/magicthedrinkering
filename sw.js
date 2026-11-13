@@ -14,7 +14,6 @@ const IMAGE_CACHE = 'cforge-images-v15';
 const IMAGE_LIMIT = 500;
 const IMAGE_TTL = 7 * 24 * 60 * 60 * 1000;
 const API_CACHE_LIMIT = 300;
-const DEFAULT_API_TTL = 6 * 60 * 60 * 1000;
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 
 const SHELL_FILES = ['/index.html', '/manifest.json'];
@@ -112,7 +111,7 @@ async function staleWhileRevalidate(request, cacheName, event) {
     const maxAgeMatch = cacheControl.match(/max-age=(\d+)/i);
     const ttl = /no-cache|no-store|must-revalidate/i.test(cacheControl)
       ? 0
-      : maxAgeMatch ? Number(maxAgeMatch[1]) * 1000 : DEFAULT_API_TTL;
+      : maxAgeMatch ? Number(maxAgeMatch[1]) * 1000 : 0;
     const fresh = cachedAt > 0 && Date.now() - cachedAt < ttl;
     if (fresh) {
       event?.waitUntil?.(refresh);
