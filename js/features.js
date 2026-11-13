@@ -75,7 +75,7 @@ const DeckComments={
 
     try{
       const[{data:comments},{data:reactions}]=await Promise.all([
-        DB._sb.from('deck_comments').select('*').eq('deck_id',deckId).order('created_at'),
+        DB._sb.from('deck_comments').select('id,deck_id,user_id,comment_text,created_at').eq('deck_id',deckId).order('created_at'),
         DB._sb.from('deck_reactions').select('*').eq('deck_id',deckId)
       ]);
 
