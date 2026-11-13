@@ -1084,7 +1084,7 @@ const CommunityNav={
         username:_myName
       },{onConflict:'id',ignoreDuplicates:true});
 
-      const{data,error}=await DB._sb.from('profiles').select('id,email,username')
+      const{data,error}=await DB._sb.from('public_profiles').select('id,username')
         .neq('id',DB._user.id).order('username',{nullsFirst:false}).limit(200);
       if(error)throw error;
 
@@ -1101,7 +1101,7 @@ const CommunityNav={
 
       for(const u of data){
         const isFriend=friendIds.has(u.id);
-        const displayName=communityDisplayName(u.username,u.email);
+        const displayName=communityDisplayName(u.username,'');
         const hue=(u.id.charCodeAt(0)*17)%360;
         const card=document.createElement('div');card.className='friend-card';card.id='user-card-'+u.id;
         card.innerHTML=`
