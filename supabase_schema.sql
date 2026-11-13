@@ -131,8 +131,18 @@ create table if not exists deck_comments (
   created_at timestamptz default now()
 );
 alter table deck_comments enable row level security;
-create policy "Comments on public decks are public" on deck_comments for select using (true);
-create policy "Authenticated users can comment" on deck_comments for insert with check (auth.role() = 'authenticated');
+drop policy if exists "Comments on public decks are public" on deck_comments;
+drop policy if exists "Authenticated users can comment" on deck_comments;
+create policy "Comments on public decks are public" on deck_comments
+  for select using (
+    exists (select 1 from decks d
+      where d.id = deck_id and (d.public = true or d.user_id = auth.uid()))
+  );
+create policy "Authenticated users can comment" on deck_comments
+  for insert with check (
+    auth.uid() = user_id and exists (select 1 from decks d
+      where d.id = deck_id and (d.public = true or d.user_id = auth.uid()))
+  );
 create policy "Users delete own comments" on deck_comments for delete using (auth.uid() = user_id);
 
 create table if not exists deck_reactions (
@@ -144,8 +154,18 @@ create table if not exists deck_reactions (
   unique(deck_id, user_id, emoji)
 );
 alter table deck_reactions enable row level security;
-create policy "Reactions on public decks are public" on deck_reactions for select using (true);
-create policy "Authenticated users can react" on deck_reactions for insert with check (auth.role() = 'authenticated');
+drop policy if exists "Reactions on public decks are public" on deck_reactions;
+drop policy if exists "Authenticated users can react" on deck_reactions;
+create policy "Reactions on public decks are public" on deck_reactions
+  for select using (
+    exists (select 1 from decks d
+      where d.id = deck_id and (d.public = true or d.user_id = auth.uid()))
+  );
+create policy "Authenticated users can react" on deck_reactions
+  for insert with check (
+    auth.uid() = user_id and exists (select 1 from decks d
+      where d.id = deck_id and (d.public = true or d.user_id = auth.uid()))
+  );
 create policy "Users delete own reactions" on deck_reactions for delete using (auth.uid() = user_id);
 
 -- Optional backfill for older trade_list / wishlist rows that were saved
