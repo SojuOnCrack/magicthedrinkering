@@ -1,0 +1,10 @@
+{
+  "name": "commanderforge",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node scripts/check-syntax.mjs",
+    "test": "node --test tests/*.test.js",
+    "verify": "npm run check && npm test"
+  }
+}
