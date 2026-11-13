@@ -218,7 +218,7 @@ const DB={
         data:{username:nickname||email.split('@')[0]}
       }
     });
-    if(!error)this._user=data.user;
+    if(!error)this._user=data?.session?.user||null;
     return{data,error};
   },
 
