@@ -232,7 +232,8 @@ const DB={
 
   async signOut(){
     if(!this._sb)return;
-    await this._sb.auth.signOut();
+    const{error}=await this._sb.auth.signOut();
+    if(error)throw error;
     this._user=null;
   },
 
@@ -458,28 +459,41 @@ const Auth={
     if(remember)Config.set('auth_email',email);
     else{Config.set('auth_email','');Config.set('auth_dismissed','');}
 
-    const{data,error}=this._mode==='login'
-      ? await DB.signIn(email,pass)
-      : await DB.signUp(email,pass,nickname);
+    let result;
+    try{
+      result=this._mode==='login'
+        ? await DB.signIn(email,pass)
+        : await DB.signUp(email,pass,nickname);
+    }catch(e){
+      this._setErr(e?.message||'Connection failed. Please try again.');
+      if(btn)btn.textContent=this._mode==='login'?'Sign In':'Create Account';
+      return;
+    }
 
+    const{data,error}=result||{};
     if(error){
-      /* Supabase 500: user-friendly error message. */
-      const msg = error.status===500
-        ? 'Server error. The Supabase project may be paused or rate-limited. Check the Supabase dashboard.'
+      const msg=error.status===500
+        ? 'Server error. Check the Supabase project status and try again.'
         : (error.message||'Unknown error');
       this._setErr(msg);
       if(btn)btn.textContent=this._mode==='login'?'Sign In':'Create Account';
       return;
     }
-    this.hide();
-    DB._bootHandled=true; /* prevent onAuthStateChange double-call after manual login */
-    const user=data.user||data.session?.user;
-    // Save nickname to profile on signup
-    if(this._mode==='signup'&&nickname&&user&&DB._sb){
-      await DB._sb.from('profiles').upsert({id:user.id,username:nickname},{onConflict:'id'});
+
+    // Email-confirmation signups have a user but deliberately no session yet.
+    // Do not show the user as signed in until Supabase actually issued a session.
+    if(this._mode==='signup'&&!data?.session){
+      this.hide();
+      this.showTab('login');
+      Notify.show('Account created. Confirm your email, then sign in.','ok',6000);
+      if(btn)btn.textContent='Sign In';
+      return;
     }
+
+    this.hide();
+    DB._bootHandled=true;
+    const user=data?.session?.user||data?.user;
     this._onSignedIn(user);
-    if(this._mode==='signup')Notify.show('Account created! Check your email to confirm.','ok',5000);
   },
 
 
