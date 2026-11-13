@@ -92,6 +92,16 @@ Open `http://localhost:8788`.
 
 The frontend uses a Supabase publishable key. Publishable keys are intended for browser use; database access must be protected by RLS policies. Never put a Supabase secret/service-role key in frontend code.
 
+## Quality checks
+
+The repository includes dependency-free checks for JavaScript syntax and the Cloudflare Pages API proxies:
+
+```bash
+npm run verify
+```
+
+GitHub Actions runs the same checks for pushes to `main` and pull requests targeting `main`. The tracker JavaScript is intentionally excluded from the app syntax pass.
+
 ## Notes
 
 - The Scryfall proxy allows read requests and the `/cards/collection` batch endpoint.
