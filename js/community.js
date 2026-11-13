@@ -1080,7 +1080,6 @@ const CommunityNav={
       const _myName=DB._nickname||DB._user.user_metadata?.username||DB._user.email?.split('@')[0]||'User';
       await DB._sb.from('profiles').upsert({
         id:DB._user.id,
-        email:DB._user.email||'',
         username:_myName
       },{onConflict:'id',ignoreDuplicates:true});
 
@@ -1089,7 +1088,7 @@ const CommunityNav={
       if(error)throw error;
 
       if(!data?.length){
-        el.innerHTML=`<div class="empty-panel"><div class="empty-kicker">Community</div><div class="empty-ico">CM</div><div class="empty-ttl">No Other Players Yet</div><div class="empty-sub">Other users need to open the app once before they appear here. You can also backfill profiles in Supabase.</div><pre style="background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);padding:10px;margin-top:14px;font-size:10px;color:var(--ice);overflow-x:auto">INSERT INTO profiles (id, email, username)
+        el.innerHTML=`<div class="empty-panel"><div class="empty-kicker">Community</div><div class="empty-ico">CM</div><div class="empty-ttl">No Other Players Yet</div><div class="empty-sub">Other users need to open the app once before they appear here. You can also backfill profiles in Supabase.</div><pre style="background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);padding:10px;margin-top:14px;font-size:10px;color:var(--ice);overflow-x:auto">INSERT INTO profiles (id, username)
         </pre></div>`;
         return;
       }
@@ -1655,7 +1654,7 @@ const CommunityNav={
     }
 
     // Fetch profile
-    const{data:profile}=await DB._sb.from('profiles').select('*').eq('id',DB._user.id).single();
+    const{data:profile}=await DB._sb.from('profiles').select('username,username_changed_at').eq('id',DB._user.id).single();
     const username=profile?.username||DB._user.email?.split('@')[0]||'User';
     const lastChange=profile?.username_changed_at?new Date(profile.username_changed_at):null;
     const daysSince=lastChange?Math.floor((Date.now()-lastChange)/(1000*60*60*24)):999;
