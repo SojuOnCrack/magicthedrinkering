@@ -448,7 +448,7 @@ const Auth={
     const user=data.user||data.session?.user;
     // Save nickname to profile on signup
     if(this._mode==='signup'&&nickname&&user&&DB._sb){
-      await DB._sb.from('profiles').upsert({id:user.id,email,username:nickname},{onConflict:'id'});
+      await DB._sb.from('profiles').upsert({id:user.id,username:nickname},{onConflict:'id'});
     }
     this._onSignedIn(user);
     if(this._mode==='signup')Notify.show('Account created! Check your email to confirm.','ok',5000);
@@ -463,7 +463,7 @@ const Auth={
     document.getElementById('auth-user-bar').classList.add('show');
     // Fetch profile for nickname — update topbar and avatar with it
     if(DB._sb){
-      DB._sb.from('profiles').select('username,email').eq('id',user.id).single().then(({data:p})=>{
+      DB._sb.from('profiles').select('username').eq('id',user.id).single().then(({data:p})=>{
         const display=p?.username||user.email?.split('@')[0]||'User';
         // Update topbar username
         const el=document.getElementById('auth-username');if(el)el.textContent=display;
