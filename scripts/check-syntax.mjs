@@ -2,7 +2,7 @@ import { readdir } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { join, relative } from 'node:path';
 
-const roots = ['js', 'functions', 'scripts'];
+const roots = ['js', 'functions', 'scripts', 'tests'];
 const rootFiles = ['sw.js'];
 const excluded = /(^|\/)tracker(?:-[^/]+)?\.js$/;
 const files = [...rootFiles];
