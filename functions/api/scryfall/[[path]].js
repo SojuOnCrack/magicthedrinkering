@@ -35,7 +35,18 @@ export async function onRequest(context) {
 
   // Reconstruct the Scryfall URL from the wildcard path param
   const pathSegments = params.path ?? [];
-  const scryfallPath = '/' + (Array.isArray(pathSegments) ? pathSegments.join('/') : pathSegments);
+  const segments = Array.isArray(pathSegments) ? pathSegments : [pathSegments];
+  if (!segments.length || segments.some(segment => !/^[A-Za-z0-9._~-]+$/.test(segment) || segment === '.' || segment === '..')) {
+    return new Response(JSON.stringify({ error: 'Invalid Scryfall path' }), {
+      status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+    });
+  }
+  const scryfallPath = '/' + segments.join('/');
+  if (request.url.length > 8192) {
+    return new Response(JSON.stringify({ error: 'Request URL is too long' }), {
+      status: 414, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+    });
+  }
   const originalUrl = new URL(request.url);
   const targetUrl = new URL(SCRYFALL_BASE + scryfallPath + originalUrl.search);
 
@@ -47,9 +58,23 @@ export async function onRequest(context) {
     });
   }
 
-  // Only allow GET and POST (Scryfall /cards/collection is POST)
+  // Only GET is generally allowed; POST is needed solely for Scryfall collection lookup.
   if (!['GET', 'POST'].includes(request.method)) {
-    return new Response('Method Not Allowed', { status: 405 });
+    return new Response('Method Not Allowed', { status: 405, headers: corsHeaders() });
+  }
+  if (request.method === 'POST' && scryfallPath !== '/cards/collection') {
+    return new Response(JSON.stringify({ error: 'POST is only supported for /cards/collection' }), {
+      status: 405, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+    });
+  }
+  if (request.method === 'POST') {
+    const contentType = request.headers.get('Content-Type') || '';
+    const length = Number(request.headers.get('Content-Length') || 0);
+    if (!contentType.toLowerCase().includes('application/json') || length > 1024 * 1024) {
+      return new Response(JSON.stringify({ error: 'Invalid or oversized JSON request' }), {
+        status: 413, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+      });
+    }
   }
 
   const ttl = getTTL(scryfallPath);
@@ -78,12 +103,23 @@ export async function onRequest(context) {
     proxyHeaders['Content-Type'] = 'application/json';
   }
 
+  let requestBody;
+  if (request.method === 'POST') {
+    requestBody = await readRequestBody(request, 1024 * 1024);
+    if (requestBody === null) {
+      return new Response(JSON.stringify({ error: 'Request body is too large' }), {
+        status: 413, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+      });
+    }
+  }
+
   let scryfallResp;
   try {
     scryfallResp = await fetch(targetUrl.toString(), {
       method: request.method,
       headers: proxyHeaders,
-      body: request.method === 'POST' ? await request.text() : undefined,
+      body: request.method === 'POST' ? requestBody : undefined,
+      signal: AbortSignal.timeout(15000),
     });
   } catch (err) {
     return new Response(JSON.stringify({ error: 'Upstream fetch failed', detail: err.message }), {
@@ -110,6 +146,7 @@ export async function onRequest(context) {
       'Content-Type': contentType,
       'Cache-Control': `public, max-age=${ttl}, s-maxage=${ttl}`,
       'X-Cache': 'MISS',
+      'X-Content-Type-Options': 'nosniff',
       ...corsHeaders(),
     },
   });
@@ -120,6 +157,31 @@ export async function onRequest(context) {
   }
 
   return response;
+}
+
+async function readRequestBody(request, limit) {
+  if (!request.body) return new ArrayBuffer(0);
+  const reader = request.body.getReader();
+  const chunks = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const merged = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
+  return merged;
 }
 
 function corsHeaders() {

@@ -75,7 +75,7 @@ const DeckComments={
 
     try{
       const[{data:comments},{data:reactions}]=await Promise.all([
-        DB._sb.from('deck_comments').select('*').eq('deck_id',deckId).order('created_at'),
+        DB._sb.from('deck_comments').select('id,deck_id,user_id,comment_text,created_at').eq('deck_id',deckId).order('created_at'),
         DB._sb.from('deck_reactions').select('*').eq('deck_id',deckId)
       ]);
 
@@ -110,8 +110,8 @@ const DeckComments={
       } else {
         // Load profile names
         const userIds=[...new Set(comments.map(c=>c.user_id))];
-        const{data:profiles}=await DB._sb.from('profiles').select('id,username,email').in('id',userIds);
-        const profileMap={};(profiles||[]).forEach(p=>{profileMap[p.id]=p.username||p.email?.split('@')[0]||'User';});
+        const{data:profiles}=await DB._sb.from('public_profiles').select('id,username').in('id',userIds);
+        const profileMap={};(profiles||[]).forEach(p=>{profileMap[p.id]=p.username||'Player';});
 
         comments.forEach(c=>{
           const item=this._buildComment(c,profileMap[c.user_id]||'User',deckId,containerId);

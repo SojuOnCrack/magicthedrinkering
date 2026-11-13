@@ -27,17 +27,17 @@ const TradeMatch={
 
     try{
       const [{data:allTrades,error:te},{data:allWishes,error:we}]=await Promise.all([
-        DB._sb.from('trade_list').select('user_id,user_email,card_name,qty,condition'),
-        DB._sb.from('wishlist').select('user_id,user_email,card_name,note')
+        DB._sb.from('trade_list').select('user_id,card_name,qty,condition'),
+        DB._sb.from('wishlist').select('user_id,card_name,note')
       ]);
       if(te)throw te;
       if(we)throw we;
 
       const userIds=new Set([...(allTrades||[]).map(t=>t.user_id),...(allWishes||[]).map(w=>w.user_id)]);
-      const {data:profiles}=await DB._sb.from('profiles').select('id,username,email').in('id',[...userIds]);
+      const {data:profiles}=await DB._sb.from('public_profiles').select('id,username').in('id',[...userIds]);
       const profileMap={};
       (profiles||[]).forEach(p=>{
-        profileMap[p.id]={username:communityDisplayName(p.username,p.email),email:p.email||''};
+        profileMap[p.id]={username:p.username||'Player',email:''};
       });
 
       const myId=DB._user.id;

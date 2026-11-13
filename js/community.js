@@ -153,7 +153,7 @@ const BulkPool={
        ── pageSize Zeilen zurückgibt und danach noch mehr folgen.  ── */
     const { count, error: countErr } = await DB._sb
       .from('bulk_pool')
-      .select('*', { count: 'exact', head: true });
+      .select('id', { count: 'exact', head: true });
 
     if(countErr) throw countErr;
     if(!count) return [];
@@ -243,7 +243,7 @@ const BulkPool={
     }
     if(el)el.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;text-align:center">Loading pool…</div>';
     try{
-      const data=await this._fetchAllRows('*');
+      const data=await this._fetchAllRows('id,card_name,qty,condition,user_id,price_usd,created_at,foil,set_code,collector_number,scryfallid');
       this._data=data||[];this._filtered=[...this._data];
       this._updateStats();this.filter();
       App?.refreshTopbarStats?.(true);
@@ -339,7 +339,6 @@ const BulkPool={
           qty:line.qty,
           condition:cond,
           user_id:DB._user.id,
-          user_email:DB._user.email||'',
           price_usd:parseFloat(cd?.prices?.eur||0),
           created_at:new Date().toISOString()
         });
@@ -629,7 +628,6 @@ const TradeMgr={
     return {
       ...DB._listingSnapshot(cardName,extra),
       user_id:DB._user.id,
-      user_email:DB._user.email||'',
       qty:extra?.qty??1,
       condition:extra?.condition||'NM',
       note:extra?.note||''
@@ -642,7 +640,7 @@ const TradeMgr={
       if(listEl)listEl.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">Sign in to use Trade Tracker.</div>';
       return;
     }
-    const{data,error}=await DB._sb.from('trade_list').select('*').eq('user_id',DB._user.id).order('created_at',{ascending:false});
+    const{data,error}=await DB._sb.from('trade_list').select('id,user_id,card_name,qty,condition,created_at,img,type_line,cmc,prices,set,set_name,collector_number,scryfall_id,rarity,color_identity').eq('user_id',DB._user.id).order('created_at',{ascending:false});
     if(error){
       const isMissing=error.message?.includes('does not exist')||error.message?.includes('relation');
       if(listEl)listEl.innerHTML=`<div style="padding:16px;color:var(--crimson2);font-size:12px">
@@ -746,7 +744,6 @@ const WishlistMgr={
       card_name:cardName,
       note,
       user_id:DB._user.id,
-      user_email:DB._user.email||''
     };
   },
 
@@ -756,7 +753,7 @@ const WishlistMgr={
       if(listEl)listEl.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">Sign in to use Wishlist.</div>';
       return;
     }
-    const{data,error}=await DB._sb.from('wishlist').select('*').eq('user_id',DB._user.id).order('created_at',{ascending:false});
+    const{data,error}=await DB._sb.from('wishlist').select('id,user_id,card_name,note,created_at,img,type_line,cmc,prices,set,set_name,collector_number,scryfall_id,rarity,color_identity').eq('user_id',DB._user.id).order('created_at',{ascending:false});
     if(error){
       const isMissing=error.message?.includes('does not exist')||error.message?.includes('relation');
       if(listEl)listEl.innerHTML='<div style="padding:16px;color:var(--crimson2);font-size:12px">'
@@ -1080,16 +1077,15 @@ const CommunityNav={
       const _myName=DB._nickname||DB._user.user_metadata?.username||DB._user.email?.split('@')[0]||'User';
       await DB._sb.from('profiles').upsert({
         id:DB._user.id,
-        email:DB._user.email||'',
         username:_myName
       },{onConflict:'id',ignoreDuplicates:true});
 
-      const{data,error}=await DB._sb.from('profiles').select('id,email,username')
+      const{data,error}=await DB._sb.from('public_profiles').select('id,username')
         .neq('id',DB._user.id).order('username',{nullsFirst:false}).limit(200);
       if(error)throw error;
 
       if(!data?.length){
-        el.innerHTML=`<div class="empty-panel"><div class="empty-kicker">Community</div><div class="empty-ico">CM</div><div class="empty-ttl">No Other Players Yet</div><div class="empty-sub">Other users need to open the app once before they appear here. You can also backfill profiles in Supabase.</div><pre style="background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);padding:10px;margin-top:14px;font-size:10px;color:var(--ice);overflow-x:auto">INSERT INTO profiles (id, email, username)
+        el.innerHTML=`<div class="empty-panel"><div class="empty-kicker">Community</div><div class="empty-ico">CM</div><div class="empty-ttl">No Other Players Yet</div><div class="empty-sub">Other users need to open the app once before they appear here. You can also backfill profiles in Supabase.</div><pre style="background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);padding:10px;margin-top:14px;font-size:10px;color:var(--ice);overflow-x:auto">INSERT INTO profiles (id, username)
         </pre></div>`;
         return;
       }
@@ -1101,7 +1097,7 @@ const CommunityNav={
 
       for(const u of data){
         const isFriend=friendIds.has(u.id);
-        const displayName=communityDisplayName(u.username,u.email);
+        const displayName=communityDisplayName(u.username,'');
         const hue=(u.id.charCodeAt(0)*17)%360;
         const card=document.createElement('div');card.className='friend-card';card.id='user-card-'+u.id;
         card.innerHTML=`
@@ -1230,8 +1226,8 @@ const CommunityNav={
     // ── Load all data in parallel ──────────────────────────────
     const[deckRes,tradeRes,wishRes,friendRes]=await Promise.allSettled([
       DB._sb.from('decks').select('id,name,commander,partner,cards,public').eq('user_id',userId).eq('public',true),
-      DB._sb.from('trade_list').select('*').eq('user_id',userId),
-      DB._sb.from('wishlist').select('*').eq('user_id',userId),
+      DB._sb.from('trade_list').select('id,user_id,card_name,qty,condition,created_at,img,type_line,cmc,prices,set,set_name,collector_number,scryfall_id,rarity,color_identity').eq('user_id',userId),
+      DB._sb.from('wishlist').select('id,user_id,card_name,note,created_at,img,type_line,cmc,prices,set,set_name,collector_number,scryfall_id,rarity,color_identity').eq('user_id',userId),
       DB._user?DB._sb.from('friendships').select('id').eq('user_id',DB._user.id).eq('friend_id',userId):Promise.resolve({data:[]})
     ]);
 
@@ -1655,7 +1651,7 @@ const CommunityNav={
     }
 
     // Fetch profile
-    const{data:profile}=await DB._sb.from('profiles').select('*').eq('id',DB._user.id).single();
+    const{data:profile}=await DB._sb.from('profiles').select('username,username_changed_at').eq('id',DB._user.id).single();
     const username=profile?.username||DB._user.email?.split('@')[0]||'User';
     const lastChange=profile?.username_changed_at?new Date(profile.username_changed_at):null;
     const daysSince=lastChange?Math.floor((Date.now()-lastChange)/(1000*60*60*24)):999;
