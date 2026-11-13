@@ -153,7 +153,7 @@ const BulkPool={
        ── pageSize Zeilen zurückgibt und danach noch mehr folgen.  ── */
     const { count, error: countErr } = await DB._sb
       .from('bulk_pool')
-      .select('*', { count: 'exact', head: true });
+      .select('id', { count: 'exact', head: true });
 
     if(countErr) throw countErr;
     if(!count) return [];
@@ -243,7 +243,7 @@ const BulkPool={
     }
     if(el)el.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;text-align:center">Loading pool…</div>';
     try{
-      const data=await this._fetchAllRows('*');
+      const data=await this._fetchAllRows('id,card_name,qty,condition,user_id,price_usd,created_at,foil,set_code,collector_number,scryfallid');
       this._data=data||[];this._filtered=[...this._data];
       this._updateStats();this.filter();
       App?.refreshTopbarStats?.(true);
@@ -642,7 +642,7 @@ const TradeMgr={
       if(listEl)listEl.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">Sign in to use Trade Tracker.</div>';
       return;
     }
-    const{data,error}=await DB._sb.from('trade_list').select('*').eq('user_id',DB._user.id).order('created_at',{ascending:false});
+    const{data,error}=await DB._sb.from('trade_list').select('id,user_id,card_name,qty,condition,created_at,img,type_line,cmc,prices,set,set_name,collector_number,scryfall_id,rarity,color_identity').eq('user_id',DB._user.id).order('created_at',{ascending:false});
     if(error){
       const isMissing=error.message?.includes('does not exist')||error.message?.includes('relation');
       if(listEl)listEl.innerHTML=`<div style="padding:16px;color:var(--crimson2);font-size:12px">
@@ -756,7 +756,7 @@ const WishlistMgr={
       if(listEl)listEl.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">Sign in to use Wishlist.</div>';
       return;
     }
-    const{data,error}=await DB._sb.from('wishlist').select('*').eq('user_id',DB._user.id).order('created_at',{ascending:false});
+    const{data,error}=await DB._sb.from('wishlist').select('id,user_id,card_name,note,created_at,img,type_line,cmc,prices,set,set_name,collector_number,scryfall_id,rarity,color_identity').eq('user_id',DB._user.id).order('created_at',{ascending:false});
     if(error){
       const isMissing=error.message?.includes('does not exist')||error.message?.includes('relation');
       if(listEl)listEl.innerHTML='<div style="padding:16px;color:var(--crimson2);font-size:12px">'
@@ -1230,8 +1230,8 @@ const CommunityNav={
     // ── Load all data in parallel ──────────────────────────────
     const[deckRes,tradeRes,wishRes,friendRes]=await Promise.allSettled([
       DB._sb.from('decks').select('id,name,commander,partner,cards,public').eq('user_id',userId).eq('public',true),
-      DB._sb.from('trade_list').select('*').eq('user_id',userId),
-      DB._sb.from('wishlist').select('*').eq('user_id',userId),
+      DB._sb.from('trade_list').select('id,user_id,card_name,qty,condition,created_at,img,type_line,cmc,prices,set,set_name,collector_number,scryfall_id,rarity,color_identity').eq('user_id',userId),
+      DB._sb.from('wishlist').select('id,user_id,card_name,note,created_at,img,type_line,cmc,prices,set,set_name,collector_number,scryfall_id,rarity,color_identity').eq('user_id',userId),
       DB._user?DB._sb.from('friendships').select('id').eq('user_id',DB._user.id).eq('friend_id',userId):Promise.resolve({data:[]})
     ]);
 
