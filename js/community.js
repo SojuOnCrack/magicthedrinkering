@@ -258,7 +258,7 @@ const BulkPool={
     }catch(e){
       const msg=e.message||JSON.stringify(e);
       const isMissing=msg.includes('does not exist')||msg.includes('relation');
-      const sqlHint='CREATE TABLE IF NOT EXISTS bulk_pool (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, card_name text, qty int DEFAULT 1, condition text DEFAULT \'NM\', user_id uuid, user_email text, price_usd numeric DEFAULT 0, created_at timestamptz DEFAULT now()); ALTER TABLE bulk_pool ENABLE ROW LEVEL SECURITY; CREATE POLICY "all" ON bulk_pool FOR ALL USING(true) WITH CHECK(auth.uid()=user_id);';
+      const sqlHint='CREATE TABLE IF NOT EXISTS bulk_pool (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, card_name text, qty int DEFAULT 1, condition text DEFAULT \'NM\', user_id uuid NOT NULL REFERENCES auth.users(id), price_usd numeric DEFAULT 0, created_at timestamptz DEFAULT now()); ALTER TABLE bulk_pool ENABLE ROW LEVEL SECURITY; CREATE POLICY "Public can read bulk pool" ON bulk_pool FOR SELECT TO anon, authenticated USING (true); CREATE POLICY "Users insert own bulk entries" ON bulk_pool FOR INSERT TO authenticated WITH CHECK ((select auth.uid()) = user_id); CREATE POLICY "Users update own bulk entries" ON bulk_pool FOR UPDATE TO authenticated USING ((select auth.uid()) = user_id) WITH CHECK ((select auth.uid()) = user_id); CREATE POLICY "Users delete own bulk entries" ON bulk_pool FOR DELETE TO authenticated USING ((select auth.uid()) = user_id);';
       if(el)el.innerHTML=`<div style="padding:20px;color:var(--crimson2);font-size:12px">${isMissing?
         '<b>bulk_pool table missing.</b> Run in Supabase → SQL Editor:<br><code style="display:block;margin-top:6px;padding:8px;background:var(--bg3);border-radius:4px;font-size:10px;white-space:normal;word-break:break-all">'+esc(sqlHint)+'</code>':
         esc(msg)}</div>`;
@@ -282,7 +282,7 @@ const BulkPool={
       const price=parseFloat(cd?.prices?.eur||0);
       const{error}=await DB._sb.from('bulk_pool').insert({
         card_name:name,qty,condition:cond,
-        user_id:DB._user.id,user_email:DB._user.email||'',
+        user_id:DB._user.id,
         price_usd:price,created_at:new Date().toISOString()
       });
       if(error)throw error;
