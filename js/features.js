@@ -110,8 +110,8 @@ const DeckComments={
       } else {
         // Load profile names
         const userIds=[...new Set(comments.map(c=>c.user_id))];
-        const{data:profiles}=await DB._sb.from('profiles').select('id,username,email').in('id',userIds);
-        const profileMap={};(profiles||[]).forEach(p=>{profileMap[p.id]=p.username||p.email?.split('@')[0]||'User';});
+        const{data:profiles}=await DB._sb.from('public_profiles').select('id,username').in('id',userIds);
+        const profileMap={};(profiles||[]).forEach(p=>{profileMap[p.id]=p.username||'Player';});
 
         comments.forEach(c=>{
           const item=this._buildComment(c,profileMap[c.user_id]||'User',deckId,containerId);
