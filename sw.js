@@ -8,11 +8,14 @@
  * - Google Fonts: pass through to browser cache
  */
 
-const CACHE_NAME = 'cforge-v14';
-const SHELL_CACHE = 'cforge-shell-v14';
-const IMAGE_CACHE = 'cforge-images-v14';
+const CACHE_NAME = 'cforge-v15';
+const SHELL_CACHE = 'cforge-shell-v15';
+const IMAGE_CACHE = 'cforge-images-v15';
 const IMAGE_LIMIT = 500;
 const IMAGE_TTL = 7 * 24 * 60 * 60 * 1000;
+const API_CACHE_LIMIT = 300;
+const DEFAULT_API_TTL = 6 * 60 * 60 * 1000;
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 
 const SHELL_FILES = ['/index.html', '/manifest.json'];
 
@@ -45,7 +48,7 @@ self.addEventListener('fetch', event => {
   }
 
   if (url.pathname.startsWith('/api/scryfall')) {
-    event.respondWith(staleWhileRevalidate(request, CACHE_NAME));
+    event.respondWith(staleWhileRevalidate(request, CACHE_NAME, event));
     return;
   }
 
@@ -85,16 +88,43 @@ async function networkFirstShell(request) {
   }
 }
 
-async function staleWhileRevalidate(request, cacheName) {
+async function staleWhileRevalidate(request, cacheName, event) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
-  const fetchPromise = fetch(request)
-    .then(resp => {
-      if (resp.ok) cache.put(request, resp.clone());
-      return resp;
-    })
-    .catch(() => null);
-  return cached ?? await fetchPromise ?? new Response('', { status: 503 });
+  const refresh = fetch(request).then(async response => {
+    if (response.ok && !/no-store/i.test(response.headers.get('Cache-Control') || '')) {
+      const headers = new Headers(response.headers);
+      headers.set('x-cforge-cached-at', String(Date.now()));
+      const stored = new Response(response.clone().body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers
+      });
+      await cache.put(request, stored);
+      await trimCache(cache, API_CACHE_LIMIT);
+    }
+    return response;
+  }).catch(() => null);
+
+  if (cached) {
+    const cachedAt = Number(cached.headers.get('x-cforge-cached-at') || 0);
+    const maxAge = Number((cached.headers.get('Cache-Control') || '').match(/max-age=(\\d+)/i)?.[1] || 0);
+    const ttl = maxAge ? maxAge * 1000 : DEFAULT_API_TTL;
+    const fresh = cachedAt > 0 && Date.now() - cachedAt < ttl;
+    if (fresh) {
+      event?.waitUntil?.(refresh);
+      return cached;
+    }
+    // Expired entries are refreshed first, but remain available if offline.
+    return await refresh ?? cached;
+  }
+  return await refresh ?? new Response('', { status: 503 });
+}
+
+async function trimCache(cache, limit) {
+  const keys = await cache.keys();
+  if (keys.length <= limit) return;
+  await Promise.all(keys.slice(0, keys.length - limit).map(key => cache.delete(key)));
 }
 
 async function cacheFirstImages(request) {
@@ -113,7 +143,7 @@ async function cacheFirstImages(request) {
     if (resp.ok) {
       const headers = new Headers(resp.headers);
       headers.set('x-sw-cached-at', String(Date.now()));
-      const respWithTs = new Response(await resp.arrayBuffer(), {
+      const imageBytes = await resp.arrayBuffer();\n      if (imageBytes.byteLength > MAX_IMAGE_BYTES) return cached ?? new Response('', { status: 413 });\n      const respWithTs = new Response(imageBytes, {
         status: resp.status,
         headers
       });
