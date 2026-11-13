@@ -131,20 +131,30 @@ const DB={
   _mergePulledDecks(remoteRows){
     const remoteDecks=(remoteRows||[]).map(r=>this._normalizeCloudDeck(r));
     const localById=new Map((Store.decks||[]).map(d=>[d.id,d]));
-    const merged=[...remoteDecks];
+    const merged=[];
     let localOnlyCount=0;
+    let pendingPushCount=0;
     for(const remote of remoteDecks){
+      const local=localById.get(remote.id);
+      if(!local){merged.push(remote);continue;}
       localById.delete(remote.id);
+      const localUpdated=Number(local.updated||local.created||0);
+      const remoteUpdated=Number(remote.cloudUpdatedAt||remote.updated||0);
+      if(local.localOnly){
+        merged.push(local);
+        localOnlyCount++;
+      }else if(localUpdated>remoteUpdated+1000){
+        merged.push({...local,localOnly:false,cloudUpdatedAt:remoteUpdated});
+        pendingPushCount++;
+      }else{
+        merged.push(remote);
+      }
     }
     for(const local of localById.values()){
-      merged.push({
-        ...local,
-        localOnly:true,
-        cloudUpdatedAt:local.cloudUpdatedAt||0
-      });
+      merged.push({...local,localOnly:true,cloudUpdatedAt:local.cloudUpdatedAt||0});
       localOnlyCount++;
     }
-    return {decks:merged,localOnlyCount};
+    return {decks:merged,localOnlyCount,pendingPushCount};
   },
 
   _cloudDecks(){
@@ -234,7 +244,7 @@ const DB={
   },
 
   // Upload all decks to Supabase
-  _pushTimer:null,
+  _pushTimer:null,_pushQueued:false,
   schedulePush(){
     const cloudDecks=this._cloudDecks();
     if(!cloudDecks.length)return;
@@ -254,15 +264,21 @@ const DB={
   },
   async pushDecks(){
     if(!this._sb||!this._user)return;
-    this._syncing=true;Auth._updSyncDot('syncing');
+    if(this._syncing){this._pushQueued=true;return;}
+    this._syncing=true;
+    Auth._updSyncDot('syncing');
     try{
-      const allRows=this._cloudDecks().map(d=>({
-        id:d.id,user_id:this._user.id,
-        name:d.name,commander:d.commander||'',partner:d.partner||'',
-        cards:serializeDeckZones({...d,cards:this._deckCardsForCloud(d).main,sideboard:this._deckCardsForCloud(d).sideboard,maybeboard:this._deckCardsForCloud(d).maybeboard}),public:d.public!==false,
-        created_at:new Date(d.created||Date.now()).toISOString(),
-        updated_at:new Date(this._deckTimestamp(d)).toISOString()
-      }));
+      const allRows=this._cloudDecks().map(d=>{
+        const snapshot=this._deckCardsForCloud(d);
+        return {
+          id:d.id,user_id:this._user.id,
+          name:d.name,commander:d.commander||'',partner:d.partner||'',
+          cards:serializeDeckZones({...d,cards:snapshot.main,sideboard:snapshot.sideboard,maybeboard:snapshot.maybeboard}),
+          public:d.public!==false,
+          created_at:new Date(d.created||Date.now()).toISOString(),
+          updated_at:new Date(this._deckTimestamp(d)).toISOString()
+        };
+      });
       if(!allRows.length){
         Auth._updSyncDot('ok');
         return;
@@ -273,15 +289,23 @@ const DB={
         const{error}=await this._sb.from('decks').upsert(chunk,{onConflict:'id'});
         if(error)throw error;
       }
+      Store.decks=Store.decks.map(d=>this._cloudDecks().some(x=>x.id===d.id)
+        ? {...d,cloudUpdatedAt:Math.max(Number(d.cloudUpdatedAt||0),Number(d.updated||Date.now()))}
+        : d);
+      Store.saveDecks();
       Auth._updSyncDot('ok');
       Notify.show('Synced to cloud','ok');
     }catch(e){
       Auth._updSyncDot('err');
-      Notify.show('Sync failed: '+e.message,'err');
+      Notify.show('Sync failed: '+(e?.message||'Unknown error'),'err');
+    }finally{
+      this._syncing=false;
+      if(this._pushQueued){
+        this._pushQueued=false;
+        this.schedulePush();
+      }
     }
-    this._syncing=false;
   },
-
   // Download decks from Supabase
   async pullDecks(){
     if(!this._sb||!this._user)return;
@@ -298,6 +322,10 @@ const DB={
         App.renderSidebar();
         const last=Store.getCur();
         if(last&&Store.getDeck(last))App.loadDeck(last);
+        if(merged.pendingPushCount){
+          Notify.show(`Kept ${merged.pendingPushCount} newer local edit${merged.pendingPushCount===1?'':'s'} and queued them for cloud sync.`,'inf');
+          this.schedulePush();
+        }
         if(merged.localOnlyCount){
           Notify.show(`Pulled ${data.length} cloud decks. Kept ${merged.localOnlyCount} local-only draft${merged.localOnlyCount===1?'':'s'} on this device only.`,'inf');
           Auth._updSyncDot('warn');
