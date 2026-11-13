@@ -8,6 +8,8 @@ drop policy if exists "Users manage own profile" on public.profiles;
 drop policy if exists "Profiles are public" on public.profiles;
 drop policy if exists "Anyone reads profiles" on public.profiles;
 drop policy if exists "Public usernames are visible" on public.profiles;
+drop policy if exists "Users insert own profile" on public.profiles;
+drop policy if exists "Users update own profile" on public.profiles;
 create policy "Public usernames are visible" on public.profiles
   for select to anon, authenticated using (true);
 create policy "Users insert own profile" on public.profiles
