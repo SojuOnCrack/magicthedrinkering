@@ -1516,7 +1516,8 @@ const Dashboard={
     if(trig.length){trigEl.style.display='flex';document.getElementById('dash-trig-count').textContent=trig.length;}
     else trigEl.style.display='none';
     const base=totalVal||100;
-    Charts.line('dash-portfolio-chart',Array.from({length:7},(_,i)=>({v:base*(0.93+Math.random()*.12+i*.005)})));
+    const portfolioChart=document.getElementById('dash-portfolio-chart');
+    if(portfolioChart)portfolioChart.innerHTML='<div class="price-history-empty">Historical portfolio data is not collected yet.</div>';
     if(deck){
       document.getElementById('dash-curve-deck-name').textContent=deck.name;
       const curve={};
@@ -1613,45 +1614,19 @@ const CollView={
 const PriceView={
   _lastPriceBase:0,
   async renderPriceProviders(base,deck){
-    const scryfallVal=base.toFixed(2);
-    const scEl=document.getElementById('prov-scryfall');if(scEl)scEl.textContent='�'+scryfallVal;
-    const sdEl=document.getElementById('prov-scryfall-d');if(sdEl){sdEl.textContent='Baseline';sdEl.className='prov-diff eq';}
-    // External providers are optional; only display verified API responses.
-    const tcgEl=document.getElementById('prov-tcgplayer');
-    const tcgdEl=document.getElementById('prov-tcgplayer-d');
-    const mkmEl=document.getElementById('prov-mkm');
-    const mkmdEl=document.getElementById('prov-mkm-d');
-    const msEl=document.getElementById('prov-mtgstocks');
-    const msdEl=document.getElementById('prov-mtgstocks-d');
-    [[tcgEl,tcgdEl],[mkmEl,mkmdEl],[msEl,msdEl]].forEach(([valueEl,detailEl])=>{
-      if(valueEl)valueEl.textContent='—';
-      if(detailEl){detailEl.textContent='Keine Live-Daten';detailEl.className='prov-diff eq';}
+    const valueEl=document.getElementById('prov-scryfall');
+    const detailEl=document.getElementById('prov-scryfall-d');
+    if(valueEl)valueEl.textContent='€'+base.toFixed(2);
+    if(detailEl){detailEl.textContent='Scryfall card prices';detailEl.className='prov-diff eq';}
+    // No full-deck history or provider totals are available yet. Do not fabricate them.
+    ['prov-tcgplayer','prov-mkm','prov-mtgstocks'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el)el.textContent='—';
     });
-    if(deck){
-      const topCard=[...deck.cards].sort((a,b)=>(parseFloat(Store.card(b.name)?.prices?.eur||0))-(parseFloat(Store.card(a.name)?.prices?.eur||0)))[0];
-      if(topCard){
-        const prices=await PriceProxy.fetchAll(topCard.name);
-        // TCGPlayer
-        if(prices.tcgplayer?.usd){
-          const ratio=prices.tcgplayer.usd/parseFloat(Store.card(topCard.name)?.prices?.eur||prices.tcgplayer.usd);
-          const tcgTotal=(base*ratio).toFixed(2);
-          if(tcgEl)tcgEl.textContent='�'+tcgTotal;
-          const pct=((ratio-1)*100).toFixed(1);
-          if(tcgdEl){tcgdEl.textContent=(ratio>1?'? +':'? ')+Math.abs(pct)+'% vs Scryfall'+(prices.tcgplayer.simulated?' (est.)':'');tcgdEl.className='prov-diff '+(ratio>1?'up':'dn');}
-        }
-        // MKM
-
-        if(prices.mkm?.eur){
-          const eurTotal=(base*(prices.mkm.eur/parseFloat(Store.card(topCard.name)?.prices?.eur||prices.mkm.eur))).toFixed(2);
-          if(mkmEl)mkmEl.textContent='�'+eurTotal;
-          if(mkmdEl){mkmdEl.textContent='? -8% (EUR)'+(prices.mkm.simulated?' (est.)':'');mkmdEl.className='prov-diff dn';}
-        }
-      }
-    }
-    // MTGStocks � simulated
-    const msEl=document.getElementById('prov-mtgstocks');const msdEl=document.getElementById('prov-mtgstocks-d');
-    if(msEl)msEl.textContent='�'+(base*1.02).toFixed(2);
-    if(msdEl){msdEl.textContent='? +2% (est.)';msdEl.className='prov-diff up';}
+    ['prov-tcgplayer-d','prov-mkm-d','prov-mtgstocks-d'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el){el.textContent='No verified full-deck data';el.className='prov-diff eq';}
+    });
   },
 
   render(){
