@@ -20,7 +20,7 @@ for (const file of files) {
   const result = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
   if (result.status !== 0) {
     failed = true;
-    process.stderr.write(`\\n✗ ${relative(process.cwd(), file)}\\n${result.stderr || result.stdout}`);
+    process.stderr.write(`\n✗ ${relative(process.cwd(), file)}\n${result.stderr || result.stdout}`);
   }
 }
 if (failed) process.exit(1);
