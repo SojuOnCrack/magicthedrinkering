@@ -171,7 +171,7 @@ const DeckComments={
     try{
       const{error}=await DB._sb.from('deck_comments').insert({
         deck_id:deckId, user_id:DB._user.id,
-        user_email:DB._user.email||'', comment_text:text,
+        comment_text:text,
         created_at:new Date().toISOString()
       });
       if(error)throw error;
@@ -1740,7 +1740,7 @@ const WishSection={
     const note=(noteEl?.value||'').trim();
     if(!name){Notify.show('Enter a card name','err');return;}
     if(!DB._sb||!DB._user){Notify.show('Sign in to use Wishlist','err');return;}
-    const {error}=await DB._sb.from('wishlist').insert({card_name:name,note,user_id:DB._user.id,user_email:DB._user.email||''});
+    const {error}=await DB._sb.from('wishlist').insert({card_name:name,note,user_id:DB._user.id});
     if(error){Notify.show('Could not save card','err');return;}
     Notify.show(`${name} saved to wishlist`,'ok');
     if(nameEl)nameEl.value='';
