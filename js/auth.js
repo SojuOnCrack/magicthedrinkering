@@ -143,7 +143,7 @@ const DB={
       if(local.localOnly){
         merged.push(local);
         localOnlyCount++;
-      }else if(localUpdated>remoteUpdated+1000){
+      }else if(localUpdated>remoteUpdated){
         merged.push({...local,localOnly:false,cloudUpdatedAt:remoteUpdated});
         pendingPushCount++;
       }else{
@@ -290,8 +290,9 @@ const DB={
         const{error}=await this._sb.from('decks').upsert(chunk,{onConflict:'id'});
         if(error)throw error;
       }
-      Store.decks=Store.decks.map(d=>this._cloudDecks().some(x=>x.id===d.id)
-        ? {...d,cloudUpdatedAt:Math.max(Number(d.cloudUpdatedAt||0),Number(d.updated||Date.now()))}
+      const syncedAtById=new Map(allRows.map(row=>[row.id,new Date(row.updated_at).getTime()]));
+      Store.decks=Store.decks.map(d=>syncedAtById.has(d.id)
+        ? {...d,cloudUpdatedAt:Math.max(Number(d.cloudUpdatedAt||0),syncedAtById.get(d.id))}
         : d);
       Store.saveDecks();
       Auth._updSyncDot('ok');
