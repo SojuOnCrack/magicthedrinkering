@@ -108,8 +108,11 @@ async function staleWhileRevalidate(request, cacheName, event) {
 
   if (cached) {
     const cachedAt = Number(cached.headers.get('x-cforge-cached-at') || 0);
-    const maxAge = Number((cached.headers.get('Cache-Control') || '').match(/max-age=(\\d+)/i)?.[1] || 0);
-    const ttl = maxAge ? maxAge * 1000 : DEFAULT_API_TTL;
+    const cacheControl = cached.headers.get('Cache-Control') || '';
+    const maxAgeMatch = cacheControl.match(/max-age=(\\d+)/i);
+    const ttl = /no-cache|no-store|must-revalidate/i.test(cacheControl)
+      ? 0
+      : maxAgeMatch ? Number(maxAgeMatch[1]) * 1000 : DEFAULT_API_TTL;
     const fresh = cachedAt > 0 && Date.now() - cachedAt < ttl;
     if (fresh) {
       event?.waitUntil?.(refresh);
