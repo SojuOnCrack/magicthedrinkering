@@ -42,6 +42,11 @@ export async function onRequest(context) {
     });
   }
   const scryfallPath = '/' + segments.join('/');
+  if (request.url.length > 8192) {
+    return new Response(JSON.stringify({ error: 'Request URL is too long' }), {
+      status: 414, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+    });
+  }
   const originalUrl = new URL(request.url);
   const targetUrl = new URL(SCRYFALL_BASE + scryfallPath + originalUrl.search);
 
@@ -98,12 +103,22 @@ export async function onRequest(context) {
     proxyHeaders['Content-Type'] = 'application/json';
   }
 
+  let requestBody;
+  if (request.method === 'POST') {
+    requestBody = await readRequestBody(request, 1024 * 1024);
+    if (requestBody === null) {
+      return new Response(JSON.stringify({ error: 'Request body is too large' }), {
+        status: 413, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+      });
+    }
+  }
+
   let scryfallResp;
   try {
     scryfallResp = await fetch(targetUrl.toString(), {
       method: request.method,
       headers: proxyHeaders,
-      body: request.method === 'POST' ? await request.text() : undefined,
+      body: request.method === 'POST' ? requestBody : undefined,
       signal: AbortSignal.timeout(15000),
     });
   } catch (err) {
@@ -142,6 +157,31 @@ export async function onRequest(context) {
   }
 
   return response;
+}
+
+async function readRequestBody(request, limit) {
+  if (!request.body) return new ArrayBuffer(0);
+  const reader = request.body.getReader();
+  const chunks = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const merged = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
+  return merged;
 }
 
 function corsHeaders() {
