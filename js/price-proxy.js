@@ -20,7 +20,7 @@ const PriceProxy={
       const response=await fetch(url,{headers:{Accept:'application/json'}});
       if(!response.ok)return null;
       const data=await response.json();
-      if(!data||typeof data!=='object'||data.provider!==provider)return null;
+      if(!data||typeof data!=='object'||data.provider!==provider||data.simulated===true)return null;
       return data;
     }catch{return null;}
   },
