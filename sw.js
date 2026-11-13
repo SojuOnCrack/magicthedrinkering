@@ -109,7 +109,7 @@ async function staleWhileRevalidate(request, cacheName, event) {
   if (cached) {
     const cachedAt = Number(cached.headers.get('x-cforge-cached-at') || 0);
     const cacheControl = cached.headers.get('Cache-Control') || '';
-    const maxAgeMatch = cacheControl.match(/max-age=(\\d+)/i);
+    const maxAgeMatch = cacheControl.match(/max-age=(\d+)/i);
     const ttl = /no-cache|no-store|must-revalidate/i.test(cacheControl)
       ? 0
       : maxAgeMatch ? Number(maxAgeMatch[1]) * 1000 : DEFAULT_API_TTL;
@@ -143,10 +143,13 @@ async function cacheFirstImages(request) {
 
   try {
     const resp = await fetch(request);
-    if (resp.ok) {
+    const contentLength = Number(resp.headers.get('Content-Length') || 0);
+    if (resp.ok && (!contentLength || contentLength <= MAX_IMAGE_BYTES)) {
       const headers = new Headers(resp.headers);
       headers.set('x-sw-cached-at', String(Date.now()));
-      const imageBytes = await resp.arrayBuffer();\n      if (imageBytes.byteLength > MAX_IMAGE_BYTES) return cached ?? new Response('', { status: 413 });\n      const respWithTs = new Response(imageBytes, {
+      const imageBytes = await resp.arrayBuffer();
+      if (imageBytes.byteLength > MAX_IMAGE_BYTES) return cached ?? new Response('', { status: 413 });
+      const respWithTs = new Response(imageBytes, {
         status: resp.status,
         headers
       });
