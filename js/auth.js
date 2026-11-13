@@ -340,7 +340,7 @@ const DB={
       // Offline sharing — encode deck in URL
       return ShareMgr._encodeLocal(deck);
     }
-    const token=Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+    const token=Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
     const{error}=await this._sb.from('shared_decks').upsert({
       token,
       deck_name:deck.name,
