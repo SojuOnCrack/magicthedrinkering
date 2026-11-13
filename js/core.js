@@ -1,6 +1,15 @@
 /* CommanderForge — core: esc, Bus, IDB, Store, Partner, Parser, SF, ScryfallBulk */
 
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+
+function createId(prefix='id'){
+  const bytes=new Uint8Array(16);
+  if(globalThis.crypto?.getRandomValues){
+    globalThis.crypto.getRandomValues(bytes);
+    return prefix+Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  return prefix+Date.now().toString(36)+Math.random().toString(36).slice(2,12);
+}
 
 /* ═══ STORE ════════════════════════════════════════════════ */
 /* ═══ EVENT BUS — replaces setTimeout hacks ═══════════════════
@@ -8,7 +17,11 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
    ═══════════════════════════════════════════════════════════ */
 const Bus={
   _listeners:{},
-  on(event,cb){(this._listeners[event]||(this._listeners[event]=[])).push(cb);},
+  on(event,cb){
+    if(typeof cb!=='function')return()=>{};
+    (this._listeners[event]||(this._listeners[event]=[])).push(cb);
+    return()=>this.off(event,cb);
+  },
   off(event,cb){if(this._listeners[event])this._listeners[event]=this._listeners[event].filter(x=>x!==cb);},
   emit(event,data){(this._listeners[event]||[]).forEach(cb=>{try{cb(data);}catch(e){console.warn('[Bus]',event,e);}});}
 };
@@ -154,8 +167,8 @@ const Store={
     return this.cache[n]||null;
   },
   load(){
-    try{this.decks=JSON.parse(localStorage.getItem(this.DK)||'[]')}catch{this.decks=[]}
-    try{this.alerts=JSON.parse(localStorage.getItem(this.AK)||'[]')}catch{this.alerts=[]}
+    try{const value=JSON.parse(localStorage.getItem(this.DK)||'[]');this.decks=Array.isArray(value)?value:[]}catch{this.decks=[]}
+    try{const value=JSON.parse(localStorage.getItem(this.AK)||'[]');this.alerts=Array.isArray(value)?value:[];}catch{this.alerts=[]}
   },
   saveDecks(){try{localStorage.setItem(this.DK,JSON.stringify(this.decks))}catch{Notify.show('Storage full!','err')}},
   /* saveCache is now async + debounced — writes to IDB only */
@@ -167,19 +180,19 @@ const Store={
       if(entries.length)IDB.setBulk(entries);
     },500);
   },
-  saveCur(id){localStorage.setItem(this.CUR,id||'')},
-  getCur(){return localStorage.getItem(this.CUR)||''},
+  saveCur(id){try{localStorage.setItem(this.CUR,id||'')}catch(e){console.warn('[Store] Could not save current deck:',e);}},
+  getCur(){try{return localStorage.getItem(this.CUR)||''}catch{return''}},
   saveAlerts(){try{localStorage.setItem(this.AK,JSON.stringify(this.alerts))}catch{}},
   getDeck(id){return this.decks.find(d=>d.id===id)||null},
   addDeck(d){
     const deck={...d,updated:d?.updated||Date.now(),cloudUpdatedAt:d?.cloudUpdatedAt||0};
-    this.decks.push(deck);this.saveDecks();Bus.emit('decks:changed');if(typeof Dashboard!=='undefined')Dashboard.markDirty();
+    this.decks.push(deck);this.saveDecks();Bus.emit('decks:changed',deck);if(typeof Dashboard!=='undefined')Dashboard.markDirty();this._onSave?.(deck);
   },
   updDeck(d){
     const i=this.decks.findIndex(x=>x.id===d.id);
     if(i>=0){
       this.decks[i]={...d,updated:Date.now(),cloudUpdatedAt:d?.cloudUpdatedAt||this.decks[i]?.cloudUpdatedAt||0};
-      this.saveDecks();Bus.emit('decks:changed');if(typeof Dashboard!=='undefined')Dashboard.markDirty();
+      this.saveDecks();Bus.emit('decks:changed',this.decks[i]);if(typeof Dashboard!=='undefined')Dashboard.markDirty();this._onSave?.(this.decks[i]);
     }
   },
   delDeck(id){this.decks=this.decks.filter(d=>d.id!==id);this.saveDecks();Bus.emit('decks:changed');},
@@ -189,7 +202,7 @@ const Store={
     if(d?.name&&this._cachedNames)this._cachedNames.add(d.name);
     IDB.set(n,d);
   },
-  uid(){return 'd'+Date.now()+Math.random().toString(36).slice(2,6)}
+  uid(){return createId('d')}
 };
 
 /* ═══ PARTNER DETECTION ════════════════════════════════════ */

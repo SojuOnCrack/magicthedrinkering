@@ -47,16 +47,28 @@ export async function onRequest(context) {
         lastError = `HTTP ${upstream.status}`;
         continue;
       }
+      const contentType = upstream.headers.get('Content-Type') || '';
+      if (!contentType.toLowerCase().includes('application/json')) {
+        lastError = 'Moxfield returned an unexpected content type';
+        continue;
+      }
+      const maxBytes = 5 * 1024 * 1024;
       const contentLength = Number(upstream.headers.get('Content-Length') || 0);
-      if (contentLength > 5 * 1024 * 1024) {
+      if (contentLength > maxBytes) {
         return json({ error: 'Moxfield response is too large' }, 502);
       }
-      const body = await readLimitedBody(upstream, 5 * 1024 * 1024);
-      if (!body) return json({ error: 'Moxfield response is too large' }, 502);
+      const body = await readLimitedBody(upstream, maxBytes);
+      if (body === null) return json({ error: 'Moxfield response is too large' }, 502);
+      try {
+        JSON.parse(new TextDecoder().decode(body));
+      } catch {
+        lastError = 'Moxfield returned invalid JSON';
+        continue;
+      }
       const resp = new Response(body, {
         status: 200,
         headers: {
-          'Content-Type': upstream.headers.get('Content-Type') || 'application/json',
+          'Content-Type': contentType,
           'Cache-Control': 'public, max-age=0, s-maxage=900',
           'X-Content-Type-Options': 'nosniff',
           ...corsHeaders()

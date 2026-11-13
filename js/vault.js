@@ -395,7 +395,7 @@ const MyCollection={
         existing.qty=(existing.qty||0)+(parsed.qty||1);
       }else{
         (this._personalBulk||(this._personalBulk=[])).push({
-          id:'pb'+Date.now()+Math.random().toString(36).slice(2,6),
+          id:createId('pb'),
           name:parsed.name,
           qty:parsed.qty||1,
           folder:folderId||null,
@@ -522,7 +522,7 @@ const MyCollection={
   newFolder(){
     const name=prompt('Folder name:','New Folder');if(!name)return;
     const icons=['📁','⚔','🌊','🔥','🌿','💀','✨','🛡','🐉','💎'];
-    this._folders.push({id:'f'+Date.now(),name:name.trim(),icon:icons[Math.floor(Math.random()*icons.length)],created:Date.now()});
+    this._folders.push({id:createId('f'),name:name.trim(),icon:icons[Math.floor(Math.random()*icons.length)],created:Date.now()});
     this.save();this.render();CollSection?.render?.();
   },
   delFolder(id){

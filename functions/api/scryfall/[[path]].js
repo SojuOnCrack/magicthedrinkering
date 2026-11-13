@@ -12,6 +12,8 @@
  */
 
 const SCRYFALL_BASE = 'https://api.scryfall.com';
+const MAX_UPSTREAM_BYTES = 10 * 1024 * 1024;
+const MAX_ERROR_BYTES = 256 * 1024;
 
 // Wie lange jeder Endpunkt gecacht wird (in Sekunden)
 const CACHE_TTL = {
@@ -128,17 +130,37 @@ export async function onRequest(context) {
     });
   }
 
-  // Pass Scryfall error responses through unchanged
-  if (!scryfallResp.ok && scryfallResp.status !== 404) {
-    const body = await scryfallResp.text();
-    return new Response(body, {
-      status: scryfallResp.status,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+  const contentType = scryfallResp.headers.get('Content-Type') || '';
+  if (!contentType.toLowerCase().includes('application/json')) {
+    return new Response(JSON.stringify({ error: 'Unexpected response from Scryfall' }), {
+      status: 502,
+      headers: { 'Content-Type': 'application/json', 'X-Content-Type-Options': 'nosniff', ...corsHeaders() },
     });
   }
 
-  const body = await scryfallResp.arrayBuffer();
-  const contentType = scryfallResp.headers.get('Content-Type') ?? 'application/json';
+  // Bound both successful payloads and upstream error bodies before buffering them.
+  const limit = scryfallResp.ok || scryfallResp.status === 404 ? MAX_UPSTREAM_BYTES : MAX_ERROR_BYTES;
+  const contentLength = Number(scryfallResp.headers.get('Content-Length') || 0);
+  if (contentLength > limit) {
+    return new Response(JSON.stringify({ error: 'Scryfall response is too large' }), {
+      status: 502,
+      headers: { 'Content-Type': 'application/json', 'X-Content-Type-Options': 'nosniff', ...corsHeaders() },
+    });
+  }
+  const body = await readLimitedResponse(scryfallResp, limit);
+  if (body === null) {
+    return new Response(JSON.stringify({ error: 'Scryfall response is too large' }), {
+      status: 502,
+      headers: { 'Content-Type': 'application/json', 'X-Content-Type-Options': 'nosniff', ...corsHeaders() },
+    });
+  }
+
+  if (!scryfallResp.ok && scryfallResp.status !== 404) {
+    return new Response(body, {
+      status: scryfallResp.status,
+      headers: { 'Content-Type': contentType, 'X-Content-Type-Options': 'nosniff', ...corsHeaders() },
+    });
+  }
 
   const response = new Response(body, {
     status: scryfallResp.status,
@@ -157,6 +179,34 @@ export async function onRequest(context) {
   }
 
   return response;
+}
+
+async function readLimitedResponse(response, limit) {
+  if (!response.body) return new ArrayBuffer(0);
+  const reader = response.body.getReader();
+  const chunks = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const merged = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return merged.buffer;
 }
 
 async function readRequestBody(request, limit) {

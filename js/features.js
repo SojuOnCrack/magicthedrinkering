@@ -948,7 +948,7 @@ const OfflineQueue={
       const tx=db.transaction([IDB.STORE,'cforge_pending'],'readwrite');
       /* re-use IDB connection but to our own store â€” easier: just localStorage queue */
     }catch{}
-    const key='ofq_'+Date.now()+'_'+Math.random().toString(36).slice(2,4);
+    const key=createId('ofq_');
     try{localStorage.setItem(key,JSON.stringify(op));}catch{}
     const indicator=document.getElementById('sync-offline-dot');
     if(indicator){indicator.style.display='flex';indicator.title='Offline â€” '+this.pendingCount()+' changes queued';}

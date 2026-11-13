@@ -131,20 +131,30 @@ const DB={
   _mergePulledDecks(remoteRows){
     const remoteDecks=(remoteRows||[]).map(r=>this._normalizeCloudDeck(r));
     const localById=new Map((Store.decks||[]).map(d=>[d.id,d]));
-    const merged=[...remoteDecks];
+    const merged=[];
     let localOnlyCount=0;
+    let pendingPushCount=0;
     for(const remote of remoteDecks){
+      const local=localById.get(remote.id);
+      if(!local){merged.push(remote);continue;}
       localById.delete(remote.id);
+      const localUpdated=Number(local.updated||local.created||0);
+      const remoteUpdated=Number(remote.cloudUpdatedAt||remote.updated||0);
+      if(local.localOnly){
+        merged.push(local);
+        localOnlyCount++;
+      }else if(localUpdated>remoteUpdated){
+        merged.push({...local,localOnly:false,cloudUpdatedAt:remoteUpdated});
+        pendingPushCount++;
+      }else{
+        merged.push(remote);
+      }
     }
     for(const local of localById.values()){
-      merged.push({
-        ...local,
-        localOnly:true,
-        cloudUpdatedAt:local.cloudUpdatedAt||0
-      });
+      merged.push({...local,localOnly:true,cloudUpdatedAt:local.cloudUpdatedAt||0});
       localOnlyCount++;
     }
-    return {decks:merged,localOnlyCount};
+    return {decks:merged,localOnlyCount,pendingPushCount};
   },
 
   _cloudDecks(){
@@ -208,7 +218,7 @@ const DB={
         data:{username:nickname||email.split('@')[0]}
       }
     });
-    if(!error)this._user=data.user;
+    if(!error)this._user=data?.session?.user||null;
     return{data,error};
   },
 
@@ -222,7 +232,8 @@ const DB={
 
   async signOut(){
     if(!this._sb)return;
-    await this._sb.auth.signOut();
+    const{error}=await this._sb.auth.signOut();
+    if(error)throw error;
     this._user=null;
   },
 
@@ -234,7 +245,7 @@ const DB={
   },
 
   // Upload all decks to Supabase
-  _pushTimer:null,
+  _pushTimer:null,_pushQueued:false,
   schedulePush(){
     const cloudDecks=this._cloudDecks();
     if(!cloudDecks.length)return;
@@ -254,15 +265,21 @@ const DB={
   },
   async pushDecks(){
     if(!this._sb||!this._user)return;
-    this._syncing=true;Auth._updSyncDot('syncing');
+    if(this._syncing){this._pushQueued=true;return;}
+    this._syncing=true;
+    Auth._updSyncDot('syncing');
     try{
-      const allRows=this._cloudDecks().map(d=>({
-        id:d.id,user_id:this._user.id,
-        name:d.name,commander:d.commander||'',partner:d.partner||'',
-        cards:serializeDeckZones({...d,cards:this._deckCardsForCloud(d).main,sideboard:this._deckCardsForCloud(d).sideboard,maybeboard:this._deckCardsForCloud(d).maybeboard}),public:d.public!==false,
-        created_at:new Date(d.created||Date.now()).toISOString(),
-        updated_at:new Date(this._deckTimestamp(d)).toISOString()
-      }));
+      const allRows=this._cloudDecks().map(d=>{
+        const snapshot=this._deckCardsForCloud(d);
+        return {
+          id:d.id,user_id:this._user.id,
+          name:d.name,commander:d.commander||'',partner:d.partner||'',
+          cards:serializeDeckZones({...d,cards:snapshot.main,sideboard:snapshot.sideboard,maybeboard:snapshot.maybeboard}),
+          public:d.public!==false,
+          created_at:new Date(d.created||Date.now()).toISOString(),
+          updated_at:new Date(this._deckTimestamp(d)).toISOString()
+        };
+      });
       if(!allRows.length){
         Auth._updSyncDot('ok');
         return;
@@ -273,15 +290,24 @@ const DB={
         const{error}=await this._sb.from('decks').upsert(chunk,{onConflict:'id'});
         if(error)throw error;
       }
+      const syncedAtById=new Map(allRows.map(row=>[row.id,new Date(row.updated_at).getTime()]));
+      Store.decks=Store.decks.map(d=>syncedAtById.has(d.id)
+        ? {...d,cloudUpdatedAt:Math.max(Number(d.cloudUpdatedAt||0),syncedAtById.get(d.id))}
+        : d);
+      Store.saveDecks();
       Auth._updSyncDot('ok');
       Notify.show('Synced to cloud','ok');
     }catch(e){
       Auth._updSyncDot('err');
-      Notify.show('Sync failed: '+e.message,'err');
+      Notify.show('Sync failed: '+(e?.message||'Unknown error'),'err');
+    }finally{
+      this._syncing=false;
+      if(this._pushQueued){
+        this._pushQueued=false;
+        this.schedulePush();
+      }
     }
-    this._syncing=false;
   },
-
   // Download decks from Supabase
   async pullDecks(){
     if(!this._sb||!this._user)return;
@@ -298,6 +324,10 @@ const DB={
         App.renderSidebar();
         const last=Store.getCur();
         if(last&&Store.getDeck(last))App.loadDeck(last);
+        if(merged.pendingPushCount){
+          Notify.show(`Kept ${merged.pendingPushCount} newer local edit${merged.pendingPushCount===1?'':'s'} and queued them for cloud sync.`,'inf');
+          this.schedulePush();
+        }
         if(merged.localOnlyCount){
           Notify.show(`Pulled ${data.length} cloud decks. Kept ${merged.localOnlyCount} local-only draft${merged.localOnlyCount===1?'':'s'} on this device only.`,'inf');
           Auth._updSyncDot('warn');
@@ -430,28 +460,41 @@ const Auth={
     if(remember)Config.set('auth_email',email);
     else{Config.set('auth_email','');Config.set('auth_dismissed','');}
 
-    const{data,error}=this._mode==='login'
-      ? await DB.signIn(email,pass)
-      : await DB.signUp(email,pass,nickname);
+    let result;
+    try{
+      result=this._mode==='login'
+        ? await DB.signIn(email,pass)
+        : await DB.signUp(email,pass,nickname);
+    }catch(e){
+      this._setErr(e?.message||'Connection failed. Please try again.');
+      if(btn)btn.textContent=this._mode==='login'?'Sign In':'Create Account';
+      return;
+    }
 
+    const{data,error}=result||{};
     if(error){
-      /* Supabase 500: user-friendly error message. */
-      const msg = error.status===500
-        ? 'Server error. The Supabase project may be paused or rate-limited. Check the Supabase dashboard.'
+      const msg=error.status===500
+        ? 'Server error. Check the Supabase project status and try again.'
         : (error.message||'Unknown error');
       this._setErr(msg);
       if(btn)btn.textContent=this._mode==='login'?'Sign In':'Create Account';
       return;
     }
-    this.hide();
-    DB._bootHandled=true; /* prevent onAuthStateChange double-call after manual login */
-    const user=data.user||data.session?.user;
-    // Save nickname to profile on signup
-    if(this._mode==='signup'&&nickname&&user&&DB._sb){
-      await DB._sb.from('profiles').upsert({id:user.id,username:nickname},{onConflict:'id'});
+
+    // Email-confirmation signups have a user but deliberately no session yet.
+    // Do not show the user as signed in until Supabase actually issued a session.
+    if(this._mode==='signup'&&!data?.session){
+      this.hide();
+      this.showTab('login');
+      Notify.show('Account created. Confirm your email, then sign in.','ok',6000);
+      if(btn)btn.textContent='Sign In';
+      return;
     }
+
+    this.hide();
+    DB._bootHandled=true;
+    const user=data?.session?.user||data?.user;
     this._onSignedIn(user);
-    if(this._mode==='signup')Notify.show('Account created! Check your email to confirm.','ok',5000);
   },
 
 
