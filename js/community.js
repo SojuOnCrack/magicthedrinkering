@@ -339,7 +339,6 @@ const BulkPool={
           qty:line.qty,
           condition:cond,
           user_id:DB._user.id,
-          user_email:DB._user.email||'',
           price_usd:parseFloat(cd?.prices?.eur||0),
           created_at:new Date().toISOString()
         });
@@ -629,7 +628,6 @@ const TradeMgr={
     return {
       ...DB._listingSnapshot(cardName,extra),
       user_id:DB._user.id,
-      user_email:DB._user.email||'',
       qty:extra?.qty??1,
       condition:extra?.condition||'NM',
       note:extra?.note||''
@@ -746,7 +744,6 @@ const WishlistMgr={
       card_name:cardName,
       note,
       user_id:DB._user.id,
-      user_email:DB._user.email||''
     };
   },
 
