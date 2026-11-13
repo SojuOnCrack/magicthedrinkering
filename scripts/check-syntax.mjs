@@ -4,7 +4,7 @@ import { join, relative } from 'node:path';
 
 const roots = ['js', 'functions', 'scripts'];
 const rootFiles = ['sw.js'];
-const excluded = /(^|\\/)tracker(?:-[^/]+)?\\.js$/;
+const excluded = /(^|\/)tracker(?:-[^/]+)?\.js$/;
 const files = [...rootFiles];
 
 async function collect(dir) {
