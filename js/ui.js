@@ -1616,14 +1616,22 @@ const PriceView={
     const scryfallVal=base.toFixed(2);
     const scEl=document.getElementById('prov-scryfall');if(scEl)scEl.textContent='�'+scryfallVal;
     const sdEl=document.getElementById('prov-scryfall-d');if(sdEl){sdEl.textContent='Baseline';sdEl.className='prov-diff eq';}
-    // Fetch from proxy (real or simulated)
+    // External providers are optional; only display verified API responses.
+    const tcgEl=document.getElementById('prov-tcgplayer');
+    const tcgdEl=document.getElementById('prov-tcgplayer-d');
+    const mkmEl=document.getElementById('prov-mkm');
+    const mkmdEl=document.getElementById('prov-mkm-d');
+    const msEl=document.getElementById('prov-mtgstocks');
+    const msdEl=document.getElementById('prov-mtgstocks-d');
+    [[tcgEl,tcgdEl],[mkmEl,mkmdEl],[msEl,msdEl]].forEach(([valueEl,detailEl])=>{
+      if(valueEl)valueEl.textContent='—';
+      if(detailEl){detailEl.textContent='Keine Live-Daten';detailEl.className='prov-diff eq';}
+    });
     if(deck){
-      const topCard=deck.cards.sort((a,b)=>(parseFloat(Store.card(b.name)?.prices?.eur||0))-(parseFloat(Store.card(a.name)?.prices?.eur||0)))[0];
+      const topCard=[...deck.cards].sort((a,b)=>(parseFloat(Store.card(b.name)?.prices?.eur||0))-(parseFloat(Store.card(a.name)?.prices?.eur||0)))[0];
       if(topCard){
         const prices=await PriceProxy.fetchAll(topCard.name);
         // TCGPlayer
-        const tcgEl=document.getElementById('prov-tcgplayer');
-        const tcgdEl=document.getElementById('prov-tcgplayer-d');
         if(prices.tcgplayer?.usd){
           const ratio=prices.tcgplayer.usd/parseFloat(Store.card(topCard.name)?.prices?.eur||prices.tcgplayer.usd);
           const tcgTotal=(base*ratio).toFixed(2);
@@ -1632,9 +1640,9 @@ const PriceView={
           if(tcgdEl){tcgdEl.textContent=(ratio>1?'? +':'? ')+Math.abs(pct)+'% vs Scryfall'+(prices.tcgplayer.simulated?' (est.)':'');tcgdEl.className='prov-diff '+(ratio>1?'up':'dn');}
         }
         // MKM
-        const mkmEl=document.getElementById('prov-mkm');const mkmdEl=document.getElementById('prov-mkm-d');
+
         if(prices.mkm?.eur){
-          const eurTotal=(base*0.92).toFixed(2);
+          const eurTotal=(base*(prices.mkm.eur/parseFloat(Store.card(topCard.name)?.prices?.eur||prices.mkm.eur))).toFixed(2);
           if(mkmEl)mkmEl.textContent='�'+eurTotal;
           if(mkmdEl){mkmdEl.textContent='? -8% (EUR)'+(prices.mkm.simulated?' (est.)':'');mkmdEl.className='prov-diff dn';}
         }
@@ -1651,13 +1659,14 @@ const PriceView={
     const base=deck?deck.cards.reduce((s,c)=>{const cd=Store.card(c.name);return s+(parseFloat(cd?.prices?.eur||0)*c.qty);},0):0;
     const el=document.getElementById('price-movers-deck');if(el)el.textContent=deck?deck.name:'';
     this.renderPriceProviders(base,deck);
-    Charts.line('price-history-chart',Array.from({length:30},(_,i)=>({v:(base||150)*(0.88+Math.random()*.15+i*.004)})));
+    const historyEl=document.getElementById('price-history-chart');
+    if(historyEl)historyEl.innerHTML='<div class="price-history-empty">No historical price data available.</div>';
     const tbody=document.getElementById('movers-tbody');if(!tbody)return;tbody.innerHTML='';
     if(!deck){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3)">No deck loaded</td></tr>';return;}
     const cards=[...deck.cards].sort((a,b)=>(parseFloat(Store.card(b.name)?.prices?.eur||0))-(parseFloat(Store.card(a.name)?.prices?.eur||0))).slice(0,10);
     for(const c of cards){
       const usd=parseFloat(Store.card(c.name)?.prices?.eur||0);
-      const ch7=((Math.random()-.4)*20).toFixed(1),ch30=((Math.random()-.3)*40).toFixed(1);
+      const ch7='—',ch30='—';
       const tr=document.createElement('tr');
       tr.innerHTML=`<td><span class="lname">${esc(c.name)}</span></td>
         <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green2)">${usd?'�'+usd.toFixed(2):'�'}</td>
