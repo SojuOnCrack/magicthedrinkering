@@ -116,5 +116,5 @@ test('Scryfall accepts JSON collection POST requests', async t => {
     body
   }));
   assert.equal(response.status, 200);
-  assert.equal(sentBody, body);
+  assert.equal(new TextDecoder().decode(sentBody), body);
 });
