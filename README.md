@@ -50,6 +50,7 @@ CommanderForge is a browser-based Magic: The Gathering Commander deck builder an
 |   |-- moxfield/[id].js
 |   `-- scryfall/[[path]].js
 |-- supabase_schema.sql
+|-- supabase_security_hardening.sql
 |-- sw.js
 |-- manifest.json
 |-- _headers
@@ -84,8 +85,10 @@ Open `http://localhost:8788`.
 
 1. Create or select the Supabase project.
 2. Review and apply `supabase_schema.sql` to the project's SQL editor.
-3. In **Authentication → URL Configuration**, add the deployed app's `/api/auth/callback` URL and your local callback URL.
-4. Confirm Row Level Security policies are enabled and appropriate for every table used by the app.
+3. Apply `supabase_security_hardening.sql` immediately after the base schema. It restricts profile email access, hardens community RLS policies, and adds supporting indexes. Tracker (`mp_*`) tables are intentionally excluded.
+4. In **Authentication → URL Configuration**, add the deployed app's `/api/auth/callback` URL and your local callback URL.
+5. In **Authentication → Security and Protection**, enable leaked-password protection.
+6. Confirm Row Level Security policies are enabled and appropriate for every table used by the app.
 
 The frontend uses a Supabase publishable key. Publishable keys are intended for browser use; database access must be protected by RLS policies. Never put a Supabase secret/service-role key in frontend code.
 
